@@ -1,0 +1,57 @@
+import { Heart, X, Star, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+interface SwipeControlsProps {
+  onAction: (action: 'like' | 'pass' | 'super') => void;
+  onUndo?: () => void;
+}
+
+export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
+  return (
+    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+      <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm px-6 py-4 rounded-full border border-border/20 shadow-lg">
+        {/* Undo Button */}
+        {onUndo && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="w-12 h-12 rounded-full border-2 hover:scale-110 transition-transform"
+            onClick={onUndo}
+          >
+            <RotateCcw className="w-5 h-5" />
+          </Button>
+        )}
+        
+        {/* Pass Button */}
+        <Button
+          variant="destructive"
+          size="icon"
+          className="w-14 h-14 rounded-full hover:scale-110 transition-transform"
+          onClick={() => onAction('pass')}
+        >
+          <X className="w-6 h-6" />
+        </Button>
+        
+        {/* Super Like Button */}
+        <Button
+          variant="secondary"
+          size="icon"
+          className="w-12 h-12 rounded-full border-2 border-primary hover:scale-110 transition-transform bg-primary text-primary-foreground"
+          onClick={() => onAction('super')}
+        >
+          <Star className="w-5 h-5" fill="currentColor" />
+        </Button>
+        
+        {/* Like Button */}
+        <Button
+          variant="default"
+          size="icon"
+          className="w-14 h-14 rounded-full bg-accent hover:bg-accent/90 hover:scale-110 transition-transform"
+          onClick={() => onAction('like')}
+        >
+          <Heart className="w-6 h-6" fill="currentColor" />
+        </Button>
+      </div>
+    </div>
+  );
+}
