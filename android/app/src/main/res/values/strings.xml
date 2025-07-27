@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SwipeCore</string>
+    <string name="title_activity_main">SwipeCore</string>
+    <string name="package_name">com.swipecore.app</string>
+    <string name="custom_url_scheme">com.swipecore.app</string>
+</resources>
