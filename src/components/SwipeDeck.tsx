@@ -9,6 +9,7 @@ interface SwipeDeckProps {
   onSwipeAction?: (cardId: string, action: 'like' | 'pass' | 'super') => void;
   maxVisibleCards?: number;
   cards?: SwipeCardType[]; // Add cards prop for reactive updates
+  onCardTap?: (card: SwipeCardType) => void; // Add onCardTap prop
 }
 
 export function SwipeDeck({ 
@@ -16,7 +17,8 @@ export function SwipeDeck({
   config = {}, 
   onSwipeAction,
   maxVisibleCards = 3,
-  cards: propCards
+  cards: propCards,
+  onCardTap
 }: SwipeDeckProps) {
   const [cards, setCards] = useState<SwipeCardType[]>(propCards || []);
   const swipeConfig = { ...defaultSwipeConfig, ...config };
@@ -52,14 +54,18 @@ export function SwipeDeck({
     }
   };
 
+  const handleCardTap = (card: SwipeCardType) => {
+    onCardTap?.(card);
+  };
+
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   if (cards.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">No more cards!</h2>
-          <p className="text-muted-foreground">Check back later for more.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">No more restaurants!</h2>
+          <p className="text-muted-foreground">Check back later for more options.</p>
         </div>
       </div>
     );
@@ -77,6 +83,7 @@ export function SwipeDeck({
             config={swipeConfig}
             isTop={index === 0}
             index={index}
+            onCardTap={handleCardTap}
           />
         ))}
       </div>

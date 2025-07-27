@@ -2,9 +2,11 @@ import { SwipeDeck } from '@/components/SwipeDeck';
 import { useSwipeDeck } from '@/hooks/useSwipeDeck';
 import { generateMockCards } from '@/lib/swipe-core';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { dataProvider, cards, handleSwipeAction, getStats, addCards } = useSwipeDeck();
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Load initial mock cards
@@ -25,9 +27,9 @@ const Index = () => {
       <div className="flex items-center justify-between p-4 border-b border-border/20">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">S</span>
+            <span className="text-primary-foreground font-bold text-lg">🍕</span>
           </div>
-          <h1 className="text-xl font-bold text-foreground">SwipeApp</h1>
+          <h1 className="text-xl font-bold text-foreground">FoodSwipe</h1>
         </div>
         <div className="text-sm text-muted-foreground">
           {getStats().total} swipes

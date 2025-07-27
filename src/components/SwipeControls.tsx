@@ -1,5 +1,6 @@
 import { Heart, X, Star, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SwipeControlsProps {
   onAction: (action: 'like' | 'pass' | 'super') => void;
@@ -12,45 +13,81 @@ export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
       <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm px-6 py-4 rounded-full border border-border/20 shadow-lg">
         {/* Undo Button */}
         {onUndo && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="w-12 h-12 rounded-full border-2 hover:scale-110 transition-transform"
-            onClick={onUndo}
-          >
-            <RotateCcw className="w-5 h-5" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="w-12 h-12 rounded-full border-2 hover:scale-110 transition-transform"
+                  onClick={onUndo}
+                >
+                  <RotateCcw className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Undo last swipe</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         
         {/* Pass Button */}
-        <Button
-          variant="destructive"
-          size="icon"
-          className="w-14 h-14 rounded-full hover:scale-110 transition-transform"
-          onClick={() => onAction('pass')}
-        >
-          <X className="w-6 h-6" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                size="icon"
+                className="w-14 h-14 rounded-full hover:scale-110 transition-transform"
+                onClick={() => onAction('pass')}
+              >
+                <X className="w-6 h-6" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Not interested</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         {/* Super Like Button */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="w-12 h-12 rounded-full border-2 border-primary hover:scale-110 transition-transform bg-primary text-primary-foreground"
-          onClick={() => onAction('super')}
-        >
-          <Star className="w-5 h-5" fill="currentColor" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="w-12 h-12 rounded-full border-2 border-primary hover:scale-110 transition-transform bg-primary text-primary-foreground"
+                onClick={() => onAction('super')}
+              >
+                <Star className="w-5 h-5" fill="currentColor" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Must try!</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         
         {/* Like Button */}
-        <Button
-          variant="default"
-          size="icon"
-          className="w-14 h-14 rounded-full bg-accent hover:bg-accent/90 hover:scale-110 transition-transform"
-          onClick={() => onAction('like')}
-        >
-          <Heart className="w-6 h-6" fill="currentColor" />
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="default"
+                size="icon"
+                className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 hover:scale-110 transition-transform"
+                onClick={() => onAction('like')}
+              >
+                <Heart className="w-6 h-6" fill="currentColor" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Want to try</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );
