@@ -231,7 +231,7 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="h-full overflow-y-auto p-6 text-white">
+            <div className="h-full overflow-y-auto p-6 text-white scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
               {/* Header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1">
@@ -286,17 +286,20 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
               {/* Menu Preview */}
               {card.menu && card.menu.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3">Popular Items</h3>
+                  <h3 className="text-lg font-semibold mb-3">Menu Items</h3>
                   <div className="space-y-2">
-                    {card.menu.slice(0, 3).map((item) => (
+                    {card.menu.map((item) => (
                       <div key={item.id} className="flex justify-between items-center bg-white/10 p-3 rounded-lg">
-                        <div>
+                        <div className="flex-1">
                           <h4 className="font-medium">{item.name}</h4>
                           {item.description && (
                             <p className="text-sm text-white/70">{item.description}</p>
                           )}
+                          <span className="text-xs text-white/50 bg-white/10 px-2 py-1 rounded mt-1 inline-block">
+                            {item.category}
+                          </span>
                         </div>
-                        <span className="font-semibold">${item.price.toFixed(2)}</span>
+                        <span className="font-semibold ml-3">${item.price.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -306,15 +309,16 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
               {/* Reviews Preview */}
               {card.reviews && card.reviews.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Recent Reviews</h3>
+                  <h3 className="text-lg font-semibold mb-3">Customer Reviews</h3>
                   <div className="space-y-3">
-                    {card.reviews.slice(0, 2).map((review) => (
+                    {card.reviews.map((review) => (
                       <div key={review.id} className="bg-white/10 p-3 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-medium">{review.author}</span>
                           <div className="flex items-center">
                             {renderStars(review.rating)}
                           </div>
+                          <span className="text-xs text-white/50 ml-auto">{review.date}</span>
                         </div>
                         <p className="text-sm text-white/80">{review.comment}</p>
                       </div>
@@ -322,6 +326,13 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
                   </div>
                 </div>
               )}
+              
+              {/* Scroll indicator */}
+              <div className="flex justify-center mt-4 pb-2">
+                <div className="bg-white/20 px-3 py-1 rounded-full text-xs text-white/70">
+                  Scroll for more details
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
