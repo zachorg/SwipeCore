@@ -21,6 +21,7 @@ export function SwipeDeck({
   onCardTap
 }: SwipeDeckProps) {
   const [cards, setCards] = useState<SwipeCardType[]>(propCards || []);
+  const [swipeDirection, setSwipeDirection] = useState<'like' | 'pass' | null>(null);
   const swipeConfig = { ...defaultSwipeConfig, ...config };
 
   useEffect(() => {
@@ -58,6 +59,10 @@ export function SwipeDeck({
     onCardTap?.(card);
   };
 
+  const handleSwipeDirection = (direction: 'like' | 'pass' | null) => {
+    setSwipeDirection(direction);
+  };
+
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   if (cards.length === 0) {
@@ -74,7 +79,7 @@ export function SwipeDeck({
   return (
     <div className="flex-1 relative">
       {/* Card Stack */}
-      <div className="relative h-full">
+      <div className="relative h-full pb-32">
         {visibleCards.map((card, index) => (
           <SwipeCard
             key={card.id}
@@ -84,12 +89,13 @@ export function SwipeDeck({
             isTop={index === 0}
             index={index}
             onCardTap={handleCardTap}
+            onSwipeDirection={handleSwipeDirection}
           />
         ))}
       </div>
 
       {/* Swipe Controls */}
-      <SwipeControls onAction={handleControlAction} />
+      <SwipeControls onAction={handleControlAction} swipeDirection={swipeDirection} />
     </div>
   );
 }

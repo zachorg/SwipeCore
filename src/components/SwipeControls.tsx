@@ -5,11 +5,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 interface SwipeControlsProps {
   onAction: (action: 'like' | 'pass' | 'super') => void;
   onUndo?: () => void;
+  swipeDirection?: 'like' | 'pass' | null;
 }
 
-export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
+export function SwipeControls({ onAction, onUndo, swipeDirection }: SwipeControlsProps) {
   return (
-    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-50">
       <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm px-6 py-4 rounded-full border border-border/20 shadow-lg">
         {/* Undo Button */}
         {onUndo && (
@@ -19,7 +20,9 @@ export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="w-12 h-12 rounded-full border-2 hover:scale-110 transition-transform"
+                  className={`w-12 h-12 rounded-full border-2 transition-all duration-200 ${
+                    swipeDirection ? 'scale-90 opacity-50' : 'hover:scale-110'
+                  }`}
                   onClick={onUndo}
                 >
                   <RotateCcw className="w-5 h-5" />
@@ -39,7 +42,13 @@ export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
               <Button
                 variant="destructive"
                 size="icon"
-                className="w-14 h-14 rounded-full hover:scale-110 transition-transform"
+                className={`w-14 h-14 rounded-full transition-all duration-200 ${
+                  swipeDirection === 'pass' 
+                    ? 'scale-125 shadow-lg shadow-red-500/50' 
+                    : swipeDirection === 'like'
+                    ? 'scale-90 opacity-50'
+                    : 'hover:scale-110'
+                }`}
                 onClick={() => onAction('pass')}
               >
                 <X className="w-6 h-6" />
@@ -58,7 +67,9 @@ export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
               <Button
                 variant="secondary"
                 size="icon"
-                className="w-12 h-12 rounded-full border-2 border-primary hover:scale-110 transition-transform bg-primary text-primary-foreground"
+                className={`w-12 h-12 rounded-full border-2 border-primary transition-all duration-200 bg-primary text-primary-foreground ${
+                  swipeDirection ? 'scale-90 opacity-50' : 'hover:scale-110'
+                }`}
                 onClick={() => onAction('super')}
               >
                 <Star className="w-5 h-5" fill="currentColor" />
@@ -77,7 +88,13 @@ export function SwipeControls({ onAction, onUndo }: SwipeControlsProps) {
               <Button
                 variant="default"
                 size="icon"
-                className="w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 hover:scale-110 transition-transform"
+                className={`w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 transition-all duration-200 ${
+                  swipeDirection === 'like' 
+                    ? 'scale-125 shadow-lg shadow-green-500/50' 
+                    : swipeDirection === 'pass'
+                    ? 'scale-90 opacity-50'
+                    : 'hover:scale-110'
+                }`}
                 onClick={() => onAction('like')}
               >
                 <Heart className="w-6 h-6" fill="currentColor" />

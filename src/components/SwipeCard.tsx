@@ -1,4 +1,4 @@
-import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
+import { motion, PanInfo, useMotionValue, useTransform, animate } from 'framer-motion';
 import { SwipeCard as SwipeCardType, SwipeConfig } from '@/lib/swipe-core';
 import { Heart, X, Star, Clock, MapPin, DollarSign, ChevronUp, Phone, Globe } from 'lucide-react';
 import { useState, useRef } from 'react';
@@ -10,9 +10,10 @@ interface SwipeCardProps {
   isTop: boolean;
   index: number;
   onCardTap?: (card: SwipeCardType) => void;
+  onSwipeDirection?: (direction: 'like' | 'pass' | null) => void;
 }
 
-export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: SwipeCardProps) {
+export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap, onSwipeDirection }: SwipeCardProps) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -33,10 +34,19 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
     setIsDragging(true);
     setDragStartTime(Date.now());
     setDragDistance(0);
+    onSwipeDirection?.(null);
   };
 
   const handleDrag = (event: any, info: PanInfo) => {
     setDragDistance(Math.abs(info.offset.x) + Math.abs(info.offset.y));
+    
+    // Update swipe direction for button animations
+    if (Math.abs(info.offset.x) > 20) {
+      const direction = info.offset.x > 0 ? 'like' : 'pass';
+      onSwipeDirection?.(direction);
+    } else {
+      onSwipeDirection?.(null);
+    }
   };
 
   const handleDragEnd = (event: any, info: PanInfo) => {
@@ -55,12 +65,23 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
         dragDuration > 100 && 
         dragDuration < 2000) {
       onSwipe(card.id, swipeDirection);
+    } else {
+      // Animate card back to center if swipe doesn't meet threshold
+      animate(x, 0, { 
+        duration: config.snapBackDuration, 
+        ease: [0.25, 0.46, 0.45, 0.94] // Custom easing for smooth snap back
+      });
+      animate(y, 0, { 
+        duration: config.snapBackDuration, 
+        ease: [0.25, 0.46, 0.45, 0.94]
+      });
     }
     
     // Reset drag state after a short delay to prevent tap trigger
     setTimeout(() => {
       setIsDragging(false);
       setDragDistance(0);
+      onSwipeDirection?.(null);
     }, 100);
   };
 
@@ -120,7 +141,7 @@ export function SwipeCard({ card, onSwipe, config, isTop, index, onCardTap }: Sw
         y,
         rotate,
         opacity,
-        zIndex: isTop ? 10 : 10 - index,
+        zIndex: isTop ? 5 : 5 - index,
       }}
       drag={isTop && !isExpanded}
       dragConstraints={{ left: -50, right: 50, top: -50, bottom: 50 }}
