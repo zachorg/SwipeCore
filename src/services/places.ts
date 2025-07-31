@@ -191,7 +191,7 @@ export class PlacesApiClient {
       const response = await this.client.get<NearbySearchResponse>('/api/places/nearby', {
         params,
       });
-      console.log('🎯 Found places:', response.data.places?.length || 0);
+      console.log('🎯 Found places:', response.data.data?.length || 0);
       
       return response.data.data;
     } catch (error) {

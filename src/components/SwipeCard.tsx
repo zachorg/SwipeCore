@@ -143,6 +143,7 @@ export function SwipeCard({
 
   // Framer drag: only activate after drag threshold is exceeded
   const handleDragStart = () => {
+    setDragStartTime(Date.now());
     setIsDragging(true);
     onSwipeDirection?.(null);
   };
@@ -234,7 +235,7 @@ export function SwipeCard({
         zIndex: isTop ? 5 : 5 - index,
       }}
       drag={isTop && !isExpanded}
-      dragConstraints={{ left: -50, right: 50, top: -50, bottom: 50 }}
+      dragConstraints={{ left: -200, right: 200, top: -50, bottom: 50 }}
       dragElastic={0.1}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
