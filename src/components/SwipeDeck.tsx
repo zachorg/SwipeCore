@@ -1,30 +1,45 @@
-import { useState } from 'react';
-import { SwipeCard } from './SwipeCard';
-import { RestaurantCard, SwipeConfig, defaultSwipeConfig } from '@/types/places';
-import { SwipeControls } from './SwipeControls';
-import { useRestaurantSwipe, UseRestaurantSwipeOptions } from '@/hooks/useRestaurantSwipe';
-import { Button } from './ui/button';
-import { RefreshCw, MapPin, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
+import { useEffect, useState } from "react";
+import { SwipeCard } from "./SwipeCard";
+import {
+  RestaurantCard,
+  SwipeConfig,
+  defaultSwipeConfig,
+} from "@/types/places";
+import { SwipeControls } from "./SwipeControls";
+import {
+  useRestaurantSwipe,
+  UseRestaurantSwipeOptions,
+} from "@/hooks/useRestaurantSwipe";
+import { Button } from "./ui/button";
+import { RefreshCw, MapPin, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "./ui/alert";
+import { usePlaceDetails } from "@/hooks/usePlaces";
+import {
+  mergeCardWithDetails,
+  transformPlaceDetailsToCard,
+} from "@/utils/placeTransformers";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
-  onSwipeAction?: (cardId: string, action: 'like' | 'pass' | 'super') => void;
+  onSwipeAction?: (cardId: string, action: "like" | "pass" | "super") => void;
   maxVisibleCards?: number;
   onCardTap?: (card: RestaurantCard) => void;
   swipeOptions?: UseRestaurantSwipeOptions;
 }
 
-export function SwipeDeck({ 
-  config = {}, 
+export function SwipeDeck({
+  config = {},
   onSwipeAction,
   maxVisibleCards = 3,
   onCardTap,
-  swipeOptions = {}
+  swipeOptions = {},
 }: SwipeDeckProps) {
-  const [swipeDirection, setSwipeDirection] = useState<'like' | 'pass' | null>(null);
-  const swipeConfig = { ...defaultSwipeConfig, ...config };
+  const [swipeDirection, setSwipeDirection] = useState<"like" | "pass" | null>(
+    null
+  );
 
+  // State to track the selected place ID
+  const swipeConfig = { ...defaultSwipeConfig, ...config };
   // Use the comprehensive restaurant swipe hook
   const {
     cards,
@@ -42,12 +57,12 @@ export function SwipeDeck({
     usingLiveData,
   } = useRestaurantSwipe(swipeOptions);
 
-  const handleSwipe = (cardId: string, action: 'like' | 'pass' | 'super') => {
+  const handleSwipe = (cardId: string, action: "like" | "pass" | "super") => {
     swipeCard(cardId, action);
     onSwipeAction?.(cardId, action);
   };
 
-  const handleControlAction = (action: 'like' | 'pass' | 'super') => {
+  const handleControlAction = (action: "like" | "pass" | "super") => {
     if (currentCard) {
       handleSwipe(currentCard.id, action);
     }
@@ -57,10 +72,10 @@ export function SwipeDeck({
     onCardTap?.(card);
   };
 
-  const handleSwipeDirection = (direction: 'like' | 'pass' | null) => {
+  const handleSwipeDirection = (direction: "like" | "pass" | null) => {
     setSwipeDirection(direction);
   };
-
+  
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   // Loading state
@@ -71,10 +86,14 @@ export function SwipeDeck({
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              {isLocationLoading ? 'Getting your location...' : 'Finding restaurants...'}
+              {isLocationLoading
+                ? "Getting your location..."
+                : "Finding restaurants..."}
             </h2>
             <p className="text-muted-foreground">
-              {usingLiveData ? 'Loading restaurants near you' : 'Preparing your restaurant deck'}
+              {usingLiveData
+                ? "Loading restaurants near you"
+                : "Preparing your restaurant deck"}
             </p>
           </div>
         </div>
@@ -94,7 +113,11 @@ export function SwipeDeck({
           </Alert>
           <div className="space-y-2">
             {!hasLocation && (
-              <Button onClick={requestLocation} variant="outline" className="w-full">
+              <Button
+                onClick={requestLocation}
+                variant="outline"
+                className="w-full"
+              >
                 <MapPin className="w-4 h-4 mr-2" />
                 Enable Location Services
               </Button>
@@ -116,9 +139,12 @@ export function SwipeDeck({
         <div className="text-center space-y-4 max-w-md">
           <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Location Access Needed</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              Location Access Needed
+            </h2>
             <p className="text-muted-foreground mb-4">
-              We need your location to find restaurants near you. Don't worry, we only use it to show nearby options.
+              We need your location to find restaurants near you. Don't worry,
+              we only use it to show nearby options.
             </p>
           </div>
           <Button onClick={requestLocation} className="w-full">
@@ -137,9 +163,11 @@ export function SwipeDeck({
         <div className="text-center space-y-4">
           <div className="text-6xl">🍽️</div>
           <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">No more restaurants!</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              No more restaurants!
+            </h2>
             <p className="text-muted-foreground mb-4">
-              {usingLiveData 
+              {usingLiveData
                 ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
                 : "Check back later for more options."}
             </p>
@@ -174,7 +202,10 @@ export function SwipeDeck({
       </div>
 
       {/* Swipe Controls */}
-      <SwipeControls onAction={handleControlAction} swipeDirection={swipeDirection} />
+      <SwipeControls
+        onAction={handleControlAction}
+        swipeDirection={swipeDirection}
+      />
     </div>
   );
 }

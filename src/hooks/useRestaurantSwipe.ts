@@ -3,6 +3,7 @@ import { useGeolocation } from "./useGeolocation";
 import {
   useNearbyPlaces,
   useNearbyPlacesWithLocation,
+  usePlaceDetails,
   usePrefetchPlaceDetails,
 } from "./usePlaces";
 import {
@@ -17,6 +18,7 @@ import {
   filterCardsByPreferences,
   sortCards,
   getDefaultRestaurantImage,
+  mergeCardWithDetails,
 } from "../utils/placeTransformers";
 
 export interface UseRestaurantSwipeOptions {
@@ -86,6 +88,14 @@ export const useRestaurantSwipe = (
     requestOnMount: autoStart,
   });
 
+  // Current location
+  const location = position?.coords
+    ? {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      }
+    : null;
+
   const {
     data: places,
     setLocation,
@@ -102,14 +112,6 @@ export const useRestaurantSwipe = (
       refetchOnWindowFocus: false, // Don't refetch when window gains focus
     }
   );
-
-  // Current location
-  const location = position?.coords
-    ? {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      }
-    : null;
 
   // Search configuration
   const finalSearchConfig = {
@@ -136,6 +138,22 @@ export const useRestaurantSwipe = (
     }
   );
 
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+
+  const {
+    data: placeDetails,
+    isLoading: isLoadingDetails,
+    error: detailsError,
+  } = usePlaceDetails(selectedPlaceId || "", {
+    // Only enable the query when a place is selected
+    enabled: Boolean(selectedPlaceId),
+  });
+
+  // Handle selecting a place
+  const handleSelectPlace = (placeId: string) => {
+    setSelectedPlaceId(placeId);
+  };
+
   // Prefetch place details for top cards
   const { mutate: prefetchDetailsAction } = usePrefetchPlaceDetails();
 
@@ -152,29 +170,49 @@ export const useRestaurantSwipe = (
     }
 
     try {
-      // Transform places to restaurant cards
+      if (!defaultFeatureFlags.useGooglePlacesApi || !location) {
+        // Fallback to mock data (you could import your existing mock data here)
+        const mockCards: RestaurantCard[] = [
+          {
+            id: "mock-1",
+            title: "Demo Restaurant",
+            subtitle: "Italian",
+            cuisine: "Italian",
+            rating: 4.5,
+            priceRange: "$$",
+            distance: "0.5km",
+            address: "Demo Address",
+            imageUrl: getDefaultRestaurantImage("Italian"),
+            reviews: [],
+          },
+        ];
+        setCards(mockCards);
+        return;
+      }
+
+      console.log("SetCards with live data");
+      if (places?.length <= 0) {
+        return;
+      }
+      //   // Transform places to restaurant cards
       const transformedCards = transformPlacesToCards(nearbyPlaces, {
         userLatitude: location?.latitude,
         userLongitude: location?.longitude,
         defaultImageUrl: getDefaultRestaurantImage(),
       });
-
       // Apply filters based on search config
       const filteredCards = filterCardsByPreferences(transformedCards, {
         maxDistance: finalSearchConfig.radius,
         minRating: finalSearchConfig.minRating,
         onlyOpenNow: finalSearchConfig.isOpenNow,
       });
-
       // Sort cards (closest first by default)
       const sortedCards = sortCards(filteredCards, "distance");
-
       // Limit to max cards
       const limitedCards = sortedCards.slice(0, maxCards);
-
       setCards(limitedCards);
+      setSelectedPlaceId(limitedCards[0].id);
       setError(null);
-
       // Prefetch details for top 3 cards
       if (prefetchDetails && limitedCards.length > 0) {
         const topCardIds = limitedCards.slice(0, 3).map((card) => card.id);
@@ -184,7 +222,17 @@ export const useRestaurantSwipe = (
       console.error("Error transforming places data:", err);
       setError("Failed to process restaurant data.");
     }
-  }, [nearbyPlaces, location, finalSearchConfig, maxCards, prefetchDetails]);
+  }, [nearbyPlaces]); //finalSearchConfig, maxCards, prefetchDetails
+
+  useEffect(() => {
+    if (placeDetails) {
+      let card = cards[0];
+      mergeCardWithDetails(card, placeDetails);
+      cards[0] = card;
+      setCards(cards);
+      console.log(JSON.stringify(placeDetails));
+    }
+  }, [placeDetails]);
 
   // Handle location errors
   useEffect(() => {
@@ -248,15 +296,15 @@ export const useRestaurantSwipe = (
 
   // Refresh cards (reload from API)
   const refreshCards = useCallback(async () => {
-    if (location) {
-      refetchPlaces();
-    } else {
-      const position = await getCurrentPosition();
-      setLocation({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-    }
+    // if (location) {
+    //   refetchPlaces();
+    // } else {
+    //   const position = await getCurrentPosition();
+    //   setLocation({
+    //     lat: position.coords.latitude,
+    //     lng: position.coords.longitude,
+    //   });
+    // }
   }, [location, refetchPlaces, getCurrentPosition]);
 
   // Request location permission
@@ -270,41 +318,6 @@ export const useRestaurantSwipe = (
   const hasLocation = Boolean(location);
   const canSwipe = cards.length > 0 && !isLoading;
   const usingLiveData = defaultFeatureFlags.useGooglePlacesApi;
-
-  // Use mock data if live data is disabled or no location
-  useEffect(() => {
-    if (
-      !defaultFeatureFlags.useGooglePlacesApi ||
-      (!location && !isLocationLoading)
-    ) {
-      // Fallback to mock data (you could import your existing mock data here)
-      const mockCards: RestaurantCard[] = [
-        {
-          id: "mock-1",
-          title: "Demo Restaurant",
-          subtitle: "Italian",
-          cuisine: "Italian",
-          rating: 4.5,
-          priceRange: "$$",
-          distance: "0.5km",
-          address: "Demo Address",
-          imageUrl: getDefaultRestaurantImage("Italian"),
-          reviews: [],
-        },
-      ];
-      setCards(mockCards);
-    } else {
-      console.log("SetCards with live data");
-      if (places?.length > 0) {
-        const transformedCards = transformPlacesToCards(places, {
-          userLatitude: location.latitude,
-          userLongitude: location.longitude,
-          defaultImageUrl: getDefaultRestaurantImage(),
-        });
-        setCards(transformedCards);
-      }
-    }
-  }, [location, isLocationLoading]);
 
   return {
     // Cards and state
