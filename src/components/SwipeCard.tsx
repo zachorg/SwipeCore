@@ -5,7 +5,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { SwipeCard as SwipeCardType, SwipeConfig } from "@/lib/swipe-core";
+import { RestaurantCard, SwipeConfig } from "@/types/places";
 import {
   Heart,
   X,
@@ -28,12 +28,12 @@ import {
 } from "@/components/ui/dialog";
 
 interface SwipeCardProps {
-  card: SwipeCardType;
+  card: RestaurantCard;
   onSwipe: (cardId: string, direction: "like" | "pass" | "super") => void;
   config: SwipeConfig;
   isTop: boolean;
   index: number;
-  onCardTap?: (card: SwipeCardType) => void;
+  onCardTap?: (card: RestaurantCard) => void;
   onSwipeDirection?: (direction: "like" | "pass" | null) => void;
 }
 
@@ -252,9 +252,21 @@ export function SwipeCard({
       >
         {/* Background Image */}
         <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${card.imageUrl})` }}
-        />
+          className="absolute inset-0 bg-cover bg-center bg-gray-200"
+          style={{ 
+            backgroundImage: card.imageUrl ? `url(${card.imageUrl})` : 'none',
+            backgroundColor: card.imageUrl ? 'transparent' : '#f3f4f6'
+          }}
+        >
+          {!card.imageUrl && (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-400 text-center">
+                <MapPin className="w-16 h-16 mx-auto mb-2" />
+                <p className="text-sm">No image available</p>
+              </div>
+            </div>
+          )}
+        </div>
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         {/* Like Indicator */}
@@ -308,10 +320,17 @@ export function SwipeCard({
                   <span>{card.distance}</span>
                 </div>
               )}
-              {card.deliveryTime && (
+              {card.openingHours && (
                 <div className="flex items-center gap-2 text-sm text-white/80">
                   <Clock className="w-4 h-4" />
-                  <span>{card.deliveryTime}</span>
+                  <span>{card.openingHours}</span>
+                  {card.isOpenNow !== undefined && (
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      card.isOpenNow ? 'bg-green-500/80 text-white' : 'bg-red-500/80 text-white'
+                    }`}>
+                      {card.isOpenNow ? 'Open' : 'Closed'}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -407,32 +426,14 @@ export function SwipeCard({
                 )}
               </div>
 
-              {/* Menu Preview */}
-              {card.menu && card.menu.length > 0 && (
+              {/* Additional Info */}
+              {card.placeDetails?.editorialSummary && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3">Menu Items</h3>
-                  <div className="space-y-2">
-                    {card.menu.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex justify-between items-center bg-white/10 p-3 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.name}</h4>
-                          {item.description && (
-                            <p className="text-sm text-white/70">
-                              {item.description}
-                            </p>
-                          )}
-                          <span className="text-xs text-white/50 bg-white/10 px-2 py-1 rounded mt-1 inline-block">
-                            {item.category}
-                          </span>
-                        </div>
-                        <span className="font-semibold ml-3">
-                          ${item.price.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                  <h3 className="text-lg font-semibold mb-3">About</h3>
+                  <div className="bg-white/10 p-3 rounded-lg">
+                    <p className="text-sm text-white/80">
+                      {card.placeDetails.editorialSummary.text}
+                    </p>
                   </div>
                 </div>
               )}
@@ -455,7 +456,7 @@ export function SwipeCard({
                             {renderStars(review.rating)}
                           </div>
                           <span className="text-xs text-white/50 ml-auto">
-                            {review.date}
+                            {review.relativeTime || review.date}
                           </span>
                         </div>
                         <p className="text-sm text-white/80">

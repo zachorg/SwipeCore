@@ -1,61 +1,59 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { SwipeCard } from './SwipeCard';
-import { SwipeCard as SwipeCardType, SwipeConfig, defaultSwipeConfig, SwipeDataProvider } from '@/lib/swipe-core';
+import { RestaurantCard, SwipeConfig, defaultSwipeConfig } from '@/types/places';
 import { SwipeControls } from './SwipeControls';
+import { useRestaurantSwipe, UseRestaurantSwipeOptions } from '@/hooks/useRestaurantSwipe';
+import { Button } from './ui/button';
+import { RefreshCw, MapPin, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
 
 interface SwipeDeckProps {
-  dataProvider: SwipeDataProvider;
   config?: Partial<SwipeConfig>;
   onSwipeAction?: (cardId: string, action: 'like' | 'pass' | 'super') => void;
   maxVisibleCards?: number;
-  cards?: SwipeCardType[]; // Add cards prop for reactive updates
-  onCardTap?: (card: SwipeCardType) => void; // Add onCardTap prop
+  onCardTap?: (card: RestaurantCard) => void;
+  swipeOptions?: UseRestaurantSwipeOptions;
 }
 
 export function SwipeDeck({ 
-  dataProvider, 
   config = {}, 
   onSwipeAction,
   maxVisibleCards = 3,
-  cards: propCards,
-  onCardTap
+  onCardTap,
+  swipeOptions = {}
 }: SwipeDeckProps) {
-  const [cards, setCards] = useState<SwipeCardType[]>(propCards || []);
   const [swipeDirection, setSwipeDirection] = useState<'like' | 'pass' | null>(null);
   const swipeConfig = { ...defaultSwipeConfig, ...config };
 
-  useEffect(() => {
-    // Use prop cards if provided, otherwise get from data provider
-    if (propCards) {
-      setCards(propCards);
-    } else {
-      setCards(dataProvider.getCards());
-    }
-  }, [dataProvider, propCards]);
+  // Use the comprehensive restaurant swipe hook
+  const {
+    cards,
+    currentCard,
+    isLoading,
+    isLocationLoading,
+    error,
+    hasLocation,
+    location,
+    swipeCard,
+    refreshCards,
+    requestLocation,
+    canSwipe,
+    totalCards,
+    usingLiveData,
+  } = useRestaurantSwipe(swipeOptions);
 
   const handleSwipe = (cardId: string, action: 'like' | 'pass' | 'super') => {
-    // Save action
-    dataProvider.saveAction({
-      cardId,
-      action,
-      timestamp: Date.now(),
-    });
-
-    // Remove card from stack
-    dataProvider.removeCard(cardId);
-    setCards(prev => prev.filter(card => card.id !== cardId));
-
-    // Trigger callback
+    swipeCard(cardId, action);
     onSwipeAction?.(cardId, action);
   };
 
   const handleControlAction = (action: 'like' | 'pass' | 'super') => {
-    if (cards.length > 0) {
-      handleSwipe(cards[0].id, action);
+    if (currentCard) {
+      handleSwipe(currentCard.id, action);
     }
   };
 
-  const handleCardTap = (card: SwipeCardType) => {
+  const handleCardTap = (card: RestaurantCard) => {
     onCardTap?.(card);
   };
 
@@ -65,12 +63,93 @@ export function SwipeDeck({
 
   const visibleCards = cards.slice(0, maxVisibleCards);
 
-  if (cards.length === 0) {
+  // Loading state
+  if (isLoading && cards.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">No more restaurants!</h2>
-          <p className="text-muted-foreground">Check back later for more options.</p>
+        <div className="text-center space-y-4">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {isLocationLoading ? 'Getting your location...' : 'Finding restaurants...'}
+            </h2>
+            <p className="text-muted-foreground">
+              {usingLiveData ? 'Loading restaurants near you' : 'Preparing your restaurant deck'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertCircle className="w-12 h-12 mx-auto text-destructive" />
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <div className="space-y-2">
+            {!hasLocation && (
+              <Button onClick={requestLocation} variant="outline" className="w-full">
+                <MapPin className="w-4 h-4 mr-2" />
+                Enable Location Services
+              </Button>
+            )}
+            <Button onClick={refreshCards} variant="default" className="w-full">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No location permission state
+  if (!hasLocation && !isLocationLoading && usingLiveData) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="text-center space-y-4 max-w-md">
+          <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
+          <div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">Location Access Needed</h2>
+            <p className="text-muted-foreground mb-4">
+              We need your location to find restaurants near you. Don't worry, we only use it to show nearby options.
+            </p>
+          </div>
+          <Button onClick={requestLocation} className="w-full">
+            <MapPin className="w-4 h-4 mr-2" />
+            Enable Location Services
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // No cards available state
+  if (cards.length === 0 && !isLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">🍽️</div>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">No more restaurants!</h2>
+            <p className="text-muted-foreground mb-4">
+              {usingLiveData 
+                ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
+                : "Check back later for more options."}
+            </p>
+          </div>
+          {usingLiveData && (
+            <Button onClick={refreshCards} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Results
+            </Button>
+          )}
         </div>
       </div>
     );
