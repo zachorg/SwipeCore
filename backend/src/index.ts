@@ -38,9 +38,12 @@ app.use(limiter);
 app.use(helmet());
 
 // CORS configuration
+// Allow all origins for simplicity, but refine this in a production environment
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
+  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Permit specific HTTP methods
+  allowedHeaders: ['Content-Type'], // Specify permitted headers
+  credentials: true, // Allow credentials like cookies, authorization headers
 }));
 
 // Body parsing middleware

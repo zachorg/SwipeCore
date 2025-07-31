@@ -41,8 +41,23 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
   const requestPermissions = async (): Promise<boolean> => {
     try {
-      const permissions = await Geolocation.requestPermissions();
-      return permissions.location === 'granted';
+      // For web browsers, we use the navigator.geolocation API
+      if (!navigator.geolocation) {
+        console.error('Geolocation is not supported by this browser');
+        return false;
+      }
+      
+      // Request permission by attempting to get the current position
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          () => resolve(true), // Success callback - user granted permission
+          (error) => {
+            console.error('Error requesting geolocation permissions:', error);
+            resolve(false); // Error callback - user denied permission or error occurred
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      });
     } catch (error) {
       console.error('Error requesting geolocation permissions:', error);
       return false;
