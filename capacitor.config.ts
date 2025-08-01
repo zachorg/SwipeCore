@@ -10,6 +10,12 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 0
+    },
+    Geolocation: {
+      // Geolocation plugin configuration
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 300000
     }
   }
 };

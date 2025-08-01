@@ -1,25 +1,28 @@
 import { SwipeDeck } from '@/components/SwipeDeck';
-import { useSwipeDeck } from '@/hooks/useSwipeDeck';
-import { generateMockCards } from '@/lib/swipe-core';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { RestaurantCard } from '@/types/places';
 
 const Index = () => {
-  const { dataProvider, cards, handleSwipeAction, getStats, addCards } = useSwipeDeck();
   const navigate = useNavigate();
+  const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0, supers: 0 });
 
-  useEffect(() => {
-    // Load initial mock cards
-    const mockCards = generateMockCards(20);
-    addCards(mockCards);
-    console.log('Loaded', mockCards.length, 'mock cards');
-    console.log('Cards state:', cards.length);
-  }, [addCards]);
+  const handleSwipeAction = (cardId: string, action: 'like' | 'pass' | 'super') => {
+    console.log(`Swiped ${action} on restaurant:`, cardId);
+    
+    // Update stats
+    setSwipeStats(prev => ({
+      ...prev,
+      [action === 'like' ? 'likes' : action === 'pass' ? 'passes' : 'supers']: 
+        prev[action === 'like' ? 'likes' : action === 'pass' ? 'passes' : 'supers'] + 1
+    }));
+  };
 
-  // Debug log when cards change
-  useEffect(() => {
-    console.log('Cards updated:', cards.length, 'cards available');
-  }, [cards]);
+  const handleCardTap = (card: RestaurantCard) => {
+    console.log('Tapped on restaurant:', card.title);
+    // Navigate to restaurant detail page
+    navigate(`/restaurant/${card.id}`);
+  };
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -33,12 +36,28 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Swipe Deck */}
+      {/* Swipe Deck with Live Data */}
       <SwipeDeck 
-        dataProvider={dataProvider}
         onSwipeAction={handleSwipeAction}
-        cards={cards}
+        onCardTap={handleCardTap}
+        swipeOptions={{
+          searchConfig: {
+            radius: 5000, // 5km radius
+            type: 'restaurant',
+            minRating: 3.0,
+          },
+          autoStart: true,
+          maxCards: 20,
+          prefetchDetails: true,
+        }}
       />
+      
+      {/* Debug Stats */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute bottom-4 left-4 bg-black/80 text-white p-2 rounded text-xs">
+          👍 {swipeStats.likes} | 👎 {swipeStats.passes} | ⭐ {swipeStats.supers}
+        </div>
+      )}
     </div>
   );
 };
