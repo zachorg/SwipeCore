@@ -3,6 +3,7 @@ import { useGeolocation } from "./useGeolocation";
 import {
   useNearbyPlaces,
   useNearbyPlacesWithLocation,
+  usePhotoUrl,
   usePlaceDetails,
   usePrefetchPlaceDetails,
 } from "./usePlaces";
@@ -96,22 +97,25 @@ export const useRestaurantSwipe = (
       }
     : null;
 
-  const {
-    data: places,
-    setLocation,
-    refetch,
-  } = useNearbyPlacesWithLocation(
-    {
-      // Optional search parameters
-      radius: 1500, // 1.5km radius
-      type: "restaurant", // Type of places to search for
-      keyword: "pizza", // Optional keyword search
-    },
-    {
-      enabled: true, // Enable the query
-      refetchOnWindowFocus: false, // Don't refetch when window gains focus
-    }
-  );
+  // does not work.
+  // const {
+  //   data: nearbyPlaces,
+  //   setLocation,
+  //   refetch: refetchPlaces,
+  //   isLoading: isPlacesLoading,
+  //   error: placesError,
+  // } = useNearbyPlacesWithLocation(
+  //   {
+  //     // Optional search parameters
+  //     radius: 15000, // 1.5km radius
+  //     type: "restaurant", // Type of places to search for
+  //     keyword: "pizza", // Optional keyword search
+  //   },
+  //   {
+  //     enabled: true, // Enable the query
+  //     refetchOnWindowFocus: false, // Don't refetch when window gains focus
+  //   }
+  // );
 
   // Search configuration
   const finalSearchConfig = {
@@ -154,8 +158,39 @@ export const useRestaurantSwipe = (
     setSelectedPlaceId(placeId);
   };
 
+  interface PhotoReference {
+    id: string;
+    widthPx: number;
+    heightPx: number;
+  }
+
+  const [selectedPhotoReference, setSelectedPhotoReference] =
+    useState<PhotoReference | null>(null);
+
+  const {
+    data: placePhotoUrls,
+    isLoading: isPhotosLoading,
+    error: photosError,
+  } = usePhotoUrl(
+    selectedPlaceId || "",
+    selectedPhotoReference?.id || "",
+    selectedPhotoReference?.widthPx || 400,
+    selectedPhotoReference?.heightPx || 400,
+    {
+      enabled: Boolean(selectedPhotoReference?.id),
+    }
+  );
+
+  function handleSelectPhotoReference(
+    id: string,
+    widthPx: number,
+    heightPx: number
+  ) {
+    setSelectedPhotoReference({ id, widthPx, heightPx });
+  }
+
   // Prefetch place details for top cards
-  const { mutate: prefetchDetailsAction } = usePrefetchPlaceDetails();
+  // const { mutate: prefetchDetailsAction } = usePrefetchPlaceDetails();
 
   // Transform places to cards when data changes
   useEffect(() => {
@@ -191,7 +226,7 @@ export const useRestaurantSwipe = (
       }
 
       console.log("SetCards with live data");
-      if (places?.length <= 0) {
+      if (nearbyPlaces?.length <= 0) {
         return;
       }
       //   // Transform places to restaurant cards
@@ -211,13 +246,13 @@ export const useRestaurantSwipe = (
       // Limit to max cards
       const limitedCards = sortedCards.slice(0, maxCards);
       setCards(limitedCards);
-      setSelectedPlaceId(limitedCards[0].id);
+      handleSelectPlace(limitedCards[0].id);
       setError(null);
       // Prefetch details for top 3 cards
-      if (prefetchDetails && limitedCards.length > 0) {
-        const topCardIds = limitedCards.slice(0, 3).map((card) => card.id);
-        prefetchDetailsAction(topCardIds);
-      }
+      // if (prefetchDetails && limitedCards.length > 0) {
+      //   const topCardIds = limitedCards.slice(0, 3).map((card) => card.id);
+      //   prefetchDetailsAction(topCardIds);
+      // }
     } catch (err) {
       console.error("Error transforming places data:", err);
       setError("Failed to process restaurant data.");
@@ -227,12 +262,34 @@ export const useRestaurantSwipe = (
   useEffect(() => {
     if (placeDetails) {
       let card = cards[0];
+      if (placeDetails.photos) {
+        const { name, widthPx, heightPx } = placeDetails.photos[0];
+        console.log(`fetching photos for ${card.title}:${name} ..`);
+        handleSelectPhotoReference(name, widthPx, heightPx);
+      } else {
+        console.log(`${card.title} does not have any photos..`);
+      }
       mergeCardWithDetails(card, placeDetails);
       cards[0] = card;
       setCards(cards);
-      console.log(JSON.stringify(placeDetails));
+      console.log("Place details for current card fetched!");
     }
   }, [placeDetails]);
+
+  useEffect(() => {
+    if (placePhotoUrls) {
+      let card = cards[0];
+      card.imageUrl = placePhotoUrls;
+      cards[0] = card;
+      setCards(cards);
+      console.log(`Place photos for current card fetched: ${placePhotoUrls}`);
+    }
+  }, [placePhotoUrls]);
+
+  useEffect(() => {
+    console.log("Selected Photo Reference:", selectedPhotoReference);
+    console.log("Is Photo URL Enabled:", Boolean(selectedPhotoReference?.id));
+  }, [selectedPhotoReference]);
 
   // Handle location errors
   useEffect(() => {
@@ -240,6 +297,13 @@ export const useRestaurantSwipe = (
       setError(`Location error: ${locationError}`);
     }
   }, [locationError]);
+
+  // Handle Photo errors
+  useEffect(() => {
+    if (photosError) {
+      setError(`Photos error: ${photosError}`);
+    }
+  }, [photosError]);
 
   // Handle places API errors
   useEffect(() => {
@@ -284,28 +348,33 @@ export const useRestaurantSwipe = (
         restaurant: swipedCard.title,
       });
 
-      // Prefetch details for next cards if running low
       const remainingCards = cards.filter((card) => card.id !== cardId);
-      if (remainingCards.length <= 3 && remainingCards.length > 0) {
-        const nextCardIds = remainingCards.slice(0, 2).map((card) => card.id);
-        prefetchDetailsAction(nextCardIds);
+      const currentCard = remainingCards.length > 0 ? remainingCards[0] : null;
+      if (currentCard) {
+        handleSelectPlace(currentCard.id);
       }
+
+      // Prefetch details for next cards if running low
+      // if (remainingCards.length <= 3 && remainingCards.length > 0) {
+      //   const nextCardIds = remainingCards.slice(0, 2).map((card) => card.id);
+      //   prefetchDetailsAction(nextCardIds);
+      // }
     },
-    [cards, prefetchDetailsAction]
+    [cards] // , prefetchDetailsAction
   );
 
   // Refresh cards (reload from API)
   const refreshCards = useCallback(async () => {
     // if (location) {
     //   refetchPlaces();
-    // } else {
+    // } //else {
     //   const position = await getCurrentPosition();
     //   setLocation({
     //     lat: position.coords.latitude,
     //     lng: position.coords.longitude,
     //   });
     // }
-  }, [location, refetchPlaces, getCurrentPosition]);
+  }, [location]);
 
   // Request location permission
   const requestLocation = useCallback(() => {

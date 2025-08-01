@@ -58,7 +58,7 @@ router.get('/:placeId', asyncHandler(async (req: Request, res: Response) => {
 // GET /api/places/photo/:photoReference - Get photo URL
 router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Response) => {
   const params = {
-    photoReference: req.params.photoReference,
+    photoReference: req.query.photoReference,
     maxWidth: req.query.maxWidth ? parseInt(req.query.maxWidth as string) : undefined,
     maxHeight: req.query.maxHeight ? parseInt(req.query.maxHeight as string) : undefined,
   };

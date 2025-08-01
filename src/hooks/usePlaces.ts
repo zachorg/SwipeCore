@@ -1,21 +1,25 @@
-import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  placesApi, 
-  PlaceBasic, 
-  PlaceDetails, 
+import React from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  placesApi,
+  PlaceBasic,
+  PlaceDetails,
   NearbySearchParams,
-  PlacesApiError 
-} from '../services/places';
+  PlacesApiError,
+} from "../services/places";
 
 // Query keys for React Query
 export const PLACES_QUERY_KEYS = {
-  all: ['places'] as const,
-  nearby: (params: NearbySearchParams) => ['places', 'nearby', params] as const,
-  details: (placeId: string) => ['places', 'details', placeId] as const,
-  photo: (photoReference: string, maxWidth?: number, maxHeight?: number) => 
-    ['places', 'photo', photoReference, maxWidth, maxHeight] as const,
-  health: () => ['places', 'health'] as const,
+  all: ["places"] as const,
+  nearby: (params: NearbySearchParams) => ["places", "nearby", params] as const,
+  details: (placeId: string) => ["places", "details", placeId] as const,
+  photo: (
+    placeId: string,
+    photoReference: string,
+    maxWidth?: number,
+    maxHeight?: number
+  ) => ["places", "photo", placeId, photoReference, maxWidth, maxHeight] as const,
+  health: () => ["places", "health"] as const,
 };
 
 // Cache configuration
@@ -25,7 +29,8 @@ const CACHE_CONFIG = {
   PHOTO_STALE_TIME: 60 * 60 * 1000, // 1 hour (matches backend cache)
   HEALTH_STALE_TIME: 30 * 1000, // 30 seconds
   RETRY_COUNT: 3,
-  RETRY_DELAY: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  RETRY_DELAY: (attemptIndex: number) =>
+    Math.min(1000 * 2 ** attemptIndex, 30000),
 };
 
 /**
@@ -55,7 +60,11 @@ export const useNearbyPlaces = (
     refetchOnMount,
     retry: (failureCount, error) => {
       // Don't retry on client errors (4xx)
-      if (error instanceof PlacesApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      if (
+        error instanceof PlacesApiError &&
+        error.statusCode >= 400 &&
+        error.statusCode < 500
+      ) {
         return false;
       }
       return failureCount < CACHE_CONFIG.RETRY_COUNT;
@@ -74,10 +83,7 @@ export const usePlaceDetails = (
     refetchOnWindowFocus?: boolean;
   } = {}
 ) => {
-  const {
-    enabled = true,
-    refetchOnWindowFocus = false,
-  } = options;
+  const { enabled = true, refetchOnWindowFocus = false } = options;
 
   return useQuery({
     queryKey: PLACES_QUERY_KEYS.details(placeId),
@@ -87,7 +93,11 @@ export const usePlaceDetails = (
     gcTime: CACHE_CONFIG.DETAILS_STALE_TIME * 2,
     refetchOnWindowFocus,
     retry: (failureCount, error) => {
-      if (error instanceof PlacesApiError && error.statusCode >= 400 && error.statusCode < 500) {
+      if (
+        error instanceof PlacesApiError &&
+        error.statusCode >= 400 &&
+        error.statusCode < 500
+      ) {
         return false;
       }
       return failureCount < CACHE_CONFIG.RETRY_COUNT;
@@ -100,6 +110,7 @@ export const usePlaceDetails = (
  * Hook for getting photo URLs
  */
 export const usePhotoUrl = (
+  placeId,
   photoReference: string,
   maxWidth: number = 400,
   maxHeight: number = 400,
@@ -110,18 +121,23 @@ export const usePhotoUrl = (
   const { enabled = true } = options;
 
   return useQuery({
-    queryKey: PLACES_QUERY_KEYS.photo(photoReference, maxWidth, maxHeight),
-    queryFn: () => placesApi.getPhotoUrl(photoReference, maxWidth, maxHeight),
+    queryKey: PLACES_QUERY_KEYS.photo(
+      placeId,
+      photoReference,
+      maxWidth,
+      maxHeight
+    ),
+    queryFn: () => placesApi.getPhotoUrl(placeId, photoReference, maxWidth, maxHeight),
     enabled: enabled && Boolean(photoReference),
     staleTime: CACHE_CONFIG.PHOTO_STALE_TIME,
     gcTime: CACHE_CONFIG.PHOTO_STALE_TIME * 2,
-    retry: (failureCount, error) => {
-      if (error instanceof PlacesApiError && error.statusCode >= 400 && error.statusCode < 500) {
-        return false;
-      }
-      return failureCount < CACHE_CONFIG.RETRY_COUNT;
-    },
-    retryDelay: CACHE_CONFIG.RETRY_DELAY,
+    // retry: (failureCount, error) => {
+    //   if (error instanceof PlacesApiError && error.statusCode >= 400 && error.statusCode < 500) {
+    //     return false;
+    //   }
+    //   return failureCount < CACHE_CONFIG.RETRY_COUNT;
+    // },
+    // retryDelay: CACHE_CONFIG.RETRY_DELAY,
   });
 };
 
@@ -152,7 +168,7 @@ export const useRefreshNearbyPlaces = () => {
       await queryClient.invalidateQueries({
         queryKey: PLACES_QUERY_KEYS.nearby(params),
       });
-      
+
       // Fetch fresh data
       return placesApi.searchNearby(params);
     },
@@ -171,14 +187,14 @@ export const usePrefetchPlaceDetails = () => {
 
   return useMutation({
     mutationFn: async (placeIds: string[]) => {
-      const prefetchPromises = placeIds.map(placeId =>
+      const prefetchPromises = placeIds.map((placeId) =>
         queryClient.prefetchQuery({
           queryKey: PLACES_QUERY_KEYS.details(placeId),
           queryFn: () => placesApi.getPlaceDetails(placeId),
           staleTime: CACHE_CONFIG.DETAILS_STALE_TIME,
         })
       );
-      
+
       await Promise.allSettled(prefetchPromises);
       return placeIds;
     },
@@ -189,7 +205,7 @@ export const usePrefetchPlaceDetails = () => {
  * Custom hook that combines geolocation and nearby places search
  */
 export const useNearbyPlacesWithLocation = (
-  searchOptions: Omit<NearbySearchParams, 'lat' | 'lng'> = {},
+  searchOptions: Omit<NearbySearchParams, "lat" | "lng"> = {},
   queryOptions: {
     enabled?: boolean;
     refetchOnWindowFocus?: boolean;
@@ -197,7 +213,10 @@ export const useNearbyPlacesWithLocation = (
 ) => {
   // This would use the geolocation hook we created earlier
   // For now, we'll accept lat/lng as parameters
-  const [location, setLocation] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [location, setLocation] = React.useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const nearbyQuery = useNearbyPlaces(
     {
@@ -226,34 +245,34 @@ export const usePlacesQueryStates = () => {
 
   const invalidateAllNearbyQueries = () => {
     queryClient.invalidateQueries({
-      queryKey: ['places', 'nearby'],
+      queryKey: ["places", "nearby"],
     });
   };
 
   const invalidateAllDetailsQueries = () => {
     queryClient.invalidateQueries({
-      queryKey: ['places', 'details'],
+      queryKey: ["places", "details"],
     });
   };
 
   const clearAllPlacesCache = () => {
     queryClient.removeQueries({
-      queryKey: ['places'],
+      queryKey: ["places"],
     });
   };
 
   const getCacheStats = () => {
     const queryCache = queryClient.getQueryCache();
     const queries = queryCache.getAll();
-    const placesQueries = queries.filter(query => 
-      query.queryKey[0] === 'places'
+    const placesQueries = queries.filter(
+      (query) => query.queryKey[0] === "places"
     );
 
     return {
       total: placesQueries.length,
-      nearby: placesQueries.filter(q => q.queryKey[1] === 'nearby').length,
-      details: placesQueries.filter(q => q.queryKey[1] === 'details').length,
-      photos: placesQueries.filter(q => q.queryKey[1] === 'photo').length,
+      nearby: placesQueries.filter((q) => q.queryKey[1] === "nearby").length,
+      details: placesQueries.filter((q) => q.queryKey[1] === "details").length,
+      photos: placesQueries.filter((q) => q.queryKey[1] === "photo").length,
     };
   };
 

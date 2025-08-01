@@ -16,13 +16,14 @@ export class GooglePlacesService {
 
   constructor() {
     this.apiKey = process.env.GOOGLE_PLACES_API_KEY!;
-    
+
     if (!this.apiKey) {
       throw new CustomError('Google Places API key is not configured', 500);
     }
 
     this.client = axios.create({
-      baseURL: process.env.PLACES_BASE_URL || 'https://places.googleapis.com/v1',
+      baseURL:
+        process.env.PLACES_BASE_URL || 'https://places.googleapis.com/v1',
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
@@ -40,7 +41,9 @@ export class GooglePlacesService {
     // Add request/response interceptors for logging
     this.client.interceptors.request.use(
       (config) => {
-        console.log(`🌐 Google Places API Request: ${config.method?.toUpperCase()} ${config.url}`);
+        console.log(
+          `🌐 Google Places API Request: ${config.method?.toUpperCase()} ${config.url}`
+        );
         return config;
       },
       (error) => {
@@ -51,7 +54,9 @@ export class GooglePlacesService {
 
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`✅ Google Places API Response: ${response.status} ${response.config.url}`);
+        console.log(
+          `✅ Google Places API Response: ${response.status} ${response.config.url}`
+        );
         return response;
       },
       (error) => {
@@ -63,7 +68,7 @@ export class GooglePlacesService {
 
   async searchNearby(params: NearbySearchParams): Promise<PlaceBasic[]> {
     const cacheKey = `nearby:${params.lat}:${params.lng}:${params.radius}:${params.keyword || ''}:${params.type || ''}`;
-    
+
     // Check cache first
     const cached = this.cache.get<PlaceBasic[]>(cacheKey);
     if (cached) {
@@ -87,18 +92,24 @@ export class GooglePlacesService {
         languageCode: 'en',
       };
 
-      if (params.keyword) {
-        (requestBody as any).textQuery = params.keyword;
-      }
+      // TEXT QUERY DOES NOT EXIST IN NEW GOOGLE API
+      // if (params.keyword) {
+      //   (requestBody as any).textQuery = params.keyword;
+      // }
 
-      const response = await this.client.post<GooglePlacesNearbyResponse>('/places:searchNearby', requestBody, {
-        headers: {
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location',
-        },
-      });
+      const response = await this.client.post<GooglePlacesNearbyResponse>(
+        '/places:searchNearby',
+        requestBody,
+        {
+          headers: {
+            'X-Goog-FieldMask':
+              'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location',
+          },
+        }
+      );
 
       const places = response.data.places || [];
-      
+
       // Cache the results
       const ttl = parseInt(process.env.CACHE_TTL_NEARBY || '300');
       this.cache.set(cacheKey, places, ttl);
@@ -112,7 +123,7 @@ export class GooglePlacesService {
 
   async getPlaceDetails(placeId: string): Promise<PlaceDetails> {
     const cacheKey = `details:${placeId}`;
-    
+
     // Check cache first
     const cached = this.cache.get<PlaceDetails>(cacheKey);
     if (cached) {
@@ -121,14 +132,18 @@ export class GooglePlacesService {
     }
 
     try {
-      const response = await this.client.get<GooglePlacesDetailsResponse>(`/places/${placeId}`, {
-        headers: {
-          'X-Goog-FieldMask': 'id,displayName,formattedAddress,rating,priceLevel,photos,types,location,nationalPhoneNumber,internationalPhoneNumber,websiteUri,regularOpeningHours,reviews,editorialSummary',
-        },
-      });
+      const response = await this.client.get<GooglePlacesDetailsResponse>(
+        `/places/${placeId}`,
+        {
+          headers: {
+            'X-Goog-FieldMask':
+              'id,displayName,formattedAddress,rating,priceLevel,photos,types,location,nationalPhoneNumber,internationalPhoneNumber,websiteUri,regularOpeningHours,reviews,editorialSummary',
+          },
+        }
+      );
 
       const place = response.data;
-      
+
       // Cache the results
       const ttl = parseInt(process.env.CACHE_TTL_DETAILS || '1800');
       this.cache.set(cacheKey, place, ttl);
@@ -140,9 +155,13 @@ export class GooglePlacesService {
     }
   }
 
-  async getPhotoUrl(photoReference: string, maxWidth: number = 400, maxHeight: number = 400): Promise<string> {
+  async getPhotoUrl(
+    photoReference: string,
+    maxWidth: number = 400,
+    maxHeight: number = 400
+  ): Promise<string> {
     const cacheKey = `photo:${photoReference}:${maxWidth}:${maxHeight}`;
-    
+
     // Check cache first
     const cached = this.cache.get<string>(cacheKey);
     if (cached) {
@@ -156,14 +175,15 @@ export class GooglePlacesService {
       const response = await this.client.get(`/${photoReference}/media`, {
         params: {
           maxHeightPx: maxHeight,
-        maxWidthPx: maxWidth,
+          maxWidthPx: maxWidth,
           skipHttpRedirect: true,
         },
       });
 
       // The response should contain the photoUri
-      const photoUrl = response.data.photoUri || response.request.res.responseUrl;
-      
+      const photoUrl =
+        response.data.photoUri || response.request.res.responseUrl;
+
       // Cache the URL
       const ttl = parseInt(process.env.CACHE_TTL_PHOTOS || '3600');
       this.cache.set(cacheKey, photoUrl, ttl);
@@ -183,15 +203,27 @@ export class GooglePlacesService {
       case 400:
         return new CustomError('Invalid request parameters', 400);
       case 403:
-        return new CustomError('API access denied. Check your API key and restrictions.', 403);
+        return new CustomError(
+          'API access denied. Check your API key and restrictions.',
+          403
+        );
       case 429:
-        return new CustomError('API quota exceeded. Please try again later.', 429);
+        return new CustomError(
+          'API quota exceeded. Please try again later.',
+          429
+        );
       case 500:
       case 502:
       case 503:
-        return new CustomError('Google Places service temporarily unavailable', 503);
+        return new CustomError(
+          'Google Places service temporarily unavailable',
+          503
+        );
       default:
-        return new CustomError(`Google Places API error: ${message}`, status || 500);
+        return new CustomError(
+          `Google Places API error: ${message}`,
+          status || 500
+        );
     }
   }
 

@@ -142,7 +142,7 @@ export interface PlaceSearchConfig {
 export const defaultSearchConfig: PlaceSearchConfig = {
   radius: 5000, // 5km
   type: 'restaurant',
-  minRating: 3.0,
+  minRating: 0.0,
 };
 
 // Location context
