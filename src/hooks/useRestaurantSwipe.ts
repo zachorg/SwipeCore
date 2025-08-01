@@ -261,27 +261,31 @@ export const useRestaurantSwipe = (
 
   useEffect(() => {
     if (placeDetails) {
-      let card = cards[0];
+      const currentCard = cards[0];
       if (placeDetails.photos) {
         const { name, widthPx, heightPx } = placeDetails.photos[0];
-        console.log(`fetching photos for ${card.title}:${name} ..`);
+        console.log(`fetching photos for ${currentCard.title}:${name} ..`);
         handleSelectPhotoReference(name, widthPx, heightPx);
       } else {
-        console.log(`${card.title} does not have any photos..`);
+        console.log(`${currentCard.title} does not have any photos..`);
       }
-      mergeCardWithDetails(card, placeDetails);
-      cards[0] = card;
-      setCards(cards);
+      
+      // mergeCardWithDetails returns a new card object
+      const updatedCard = mergeCardWithDetails(currentCard, placeDetails);
+      const updatedCards = [...cards];
+      updatedCards[0] = updatedCard;
+      setCards(updatedCards);
       console.log("Place details for current card fetched!");
     }
   }, [placeDetails]);
 
   useEffect(() => {
     if (placePhotoUrls) {
-      let card = cards[0];
-      card.imageUrl = placePhotoUrls;
-      cards[0] = card;
-      setCards(cards);
+      // Create a new card object and new array to ensure React detects changes
+      const updatedCard = { ...cards[0], imageUrl: placePhotoUrls };
+      const updatedCards = [...cards];
+      updatedCards[0] = updatedCard;
+      setCards(updatedCards);
       console.log(`Place photos for current card fetched: ${placePhotoUrls}`);
     }
   }, [placePhotoUrls]);
