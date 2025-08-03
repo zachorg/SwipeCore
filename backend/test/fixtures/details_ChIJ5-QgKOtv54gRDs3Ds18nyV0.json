@@ -1,0 +1,379 @@
+{
+  "id": "ChIJ5-QgKOtv54gRDs3Ds18nyV0",
+  "types": [
+    "bowling_alley",
+    "video_arcade",
+    "bar",
+    "sports_complex",
+    "sports_activity_location",
+    "restaurant",
+    "food",
+    "point_of_interest",
+    "establishment"
+  ],
+  "nationalPhoneNumber": "(407) 671-8675",
+  "internationalPhoneNumber": "+1 407-671-8675",
+  "formattedAddress": "2530 Aloma Ave, Winter Park, FL 32792, USA",
+  "location": {
+    "latitude": 28.6012946,
+    "longitude": -81.31801639999999
+  },
+  "rating": 4.5,
+  "websiteUri": "http://www.alomabowlingcenters.com/aloma",
+  "regularOpeningHours": {
+    "openNow": true,
+    "periods": [
+      {
+        "open": {
+          "day": 0,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 1,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 1,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 2,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 2,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 3,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 3,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 4,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 4,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 5,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 5,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 6,
+          "hour": 0,
+          "minute": 0
+        }
+      },
+      {
+        "open": {
+          "day": 6,
+          "hour": 10,
+          "minute": 0
+        },
+        "close": {
+          "day": 0,
+          "hour": 0,
+          "minute": 0
+        }
+      }
+    ],
+    "weekdayDescriptions": [
+      "Monday: 10:00 AM – 12:00 AM",
+      "Tuesday: 10:00 AM – 12:00 AM",
+      "Wednesday: 10:00 AM – 12:00 AM",
+      "Thursday: 10:00 AM – 12:00 AM",
+      "Friday: 10:00 AM – 12:00 AM",
+      "Saturday: 10:00 AM – 12:00 AM",
+      "Sunday: 10:00 AM – 12:00 AM"
+    ],
+    "nextCloseTime": "2025-08-04T04:00:00Z"
+  },
+  "displayName": {
+    "text": "Aloma Bowl",
+    "languageCode": "en"
+  },
+  "editorialSummary": {
+    "text": "Family-friendly bowling alley with 32 lanes, a bar, lounge & grill, plus arcade games & pool tables.",
+    "languageCode": "en"
+  },
+  "reviews": [
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/reviews/ChZDSUhNMG9nS0VQXzc4cTZidTV1NkhnEAE",
+      "relativePublishTimeDescription": "a month ago",
+      "rating": 5,
+      "text": {
+        "text": "We went to Aloma Bowl for Father’s Day and had such a great time! The atmosphere was fun and lively—perfect for a family outing. Bowling was a blast, and the ambience really made it feel special. Everything was clean, the staff was friendly and helpful, and there were plenty of interactive games to enjoy. It’s definitely a great spot for families or anyone looking to have a good time. Highly recommend!",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "We went to Aloma Bowl for Father’s Day and had such a great time! The atmosphere was fun and lively—perfect for a family outing. Bowling was a blast, and the ambience really made it feel special. Everything was clean, the staff was friendly and helpful, and there were plenty of interactive games to enjoy. It’s definitely a great spot for families or anyone looking to have a good time. Highly recommend!",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Jasmine Roman",
+        "uri": "https://www.google.com/maps/contrib/112176854976685118763/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWu1q-ugpVDLCkmeka-84_wg1p95-qy7NW8J3mAz5EclrqZ-6Y2zg=s128-c0x00000000-cc-rp-mo-ba5"
+      },
+      "publishTime": "2025-06-16T14:54:45.654542Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=ChZDSUhNMG9nS0VQXzc4cTZidTV1NkhnEAE&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChZDSUhNMG9nS0VQXzc4cTZidTV1NkhnEAE!2m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/reviews/ChZDSUhNMG9nS0VJQ0FnTUNZaGMtVkhBEAE",
+      "relativePublishTimeDescription": "3 months ago",
+      "rating": 5,
+      "text": {
+        "text": "Aloma Bowl is the best! My husband and I frequent here, just ourselves or with a group of friends. We enjoy bowling and Aloma Bowl has friendly staff, plentiful lanes and a solid F&B menu. The food is delicious - cheese curds and tater tots are a must! The daily promotions are always great and the venue is kept clean. I’ve done karaoke on a Friday night, which is held at the semi-private bar dining area. We’ve gone to a few alleys around the area and Aloma Bowl is our favorite.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "Aloma Bowl is the best! My husband and I frequent here, just ourselves or with a group of friends. We enjoy bowling and Aloma Bowl has friendly staff, plentiful lanes and a solid F&B menu. The food is delicious - cheese curds and tater tots are a must! The daily promotions are always great and the venue is kept clean. I’ve done karaoke on a Friday night, which is held at the semi-private bar dining area. We’ve gone to a few alleys around the area and Aloma Bowl is our favorite.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Yomaira Hernandez",
+        "uri": "https://www.google.com/maps/contrib/114166005877682786154/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjU8bmylB9kIpWzeYVIHHGHrSHspyqo5j--jJaH3dEc83P9XsMiK=s128-c0x00000000-cc-rp-mo"
+      },
+      "publishTime": "2025-05-05T17:49:35.707670Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=ChZDSUhNMG9nS0VJQ0FnTUNZaGMtVkhBEAE&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChZDSUhNMG9nS0VJQ0FnTUNZaGMtVkhBEAE!2m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/reviews/Ci9DQUlRQUNvZENodHljRjlvT21kME5GSlBNVXBoU0MxVFJqWkxhV2RIVFV4blRHYxAB",
+      "relativePublishTimeDescription": "4 weeks ago",
+      "rating": 1,
+      "text": {
+        "text": "I grew up in this bowling alley I haven’t been in many years I thought it would be fun to bring my kids so we got an hour then we had like 20 minutes left sent our son up to pay for another hour and realized they charged $45. Their board made it look like they had it for $6.50 per hour per lane. We had no interest in paying that much for an hour. Apparently the board was just confusing and the 6.50. That I suppose is on us but a. That price is insane and b. Their board is definitely misleading. The thing that really made us mad is when we went up and said never mind on the second hour and the obliged and refunded but they also immediately cut off our lane when we had over 10 minutes left. This place is over priced as it is and now they are just taking our time from us. I’m so frustrated. I grew up here. It’s disappointing but I’m going to have to find somewhere else to bowl.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "I grew up in this bowling alley I haven’t been in many years I thought it would be fun to bring my kids so we got an hour then we had like 20 minutes left sent our son up to pay for another hour and realized they charged $45. Their board made it look like they had it for $6.50 per hour per lane. We had no interest in paying that much for an hour. Apparently the board was just confusing and the 6.50. That I suppose is on us but a. That price is insane and b. Their board is definitely misleading. The thing that really made us mad is when we went up and said never mind on the second hour and the obliged and refunded but they also immediately cut off our lane when we had over 10 minutes left. This place is over priced as it is and now they are just taking our time from us. I’m so frustrated. I grew up here. It’s disappointing but I’m going to have to find somewhere else to bowl.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Callista Cates",
+        "uri": "https://www.google.com/maps/contrib/106065517924150311445/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocLEsXFF_tHp9UKy76kyfkqKMDOy7UpOFt44a6kL86OvgbDMPQ=s128-c0x00000000-cc-rp-mo"
+      },
+      "publishTime": "2025-07-05T23:05:07.114098391Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=Ci9DQUlRQUNvZENodHljRjlvT21kME5GSlBNVXBoU0MxVFJqWkxhV2RIVFV4blRHYxAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sCi9DQUlRQUNvZENodHljRjlvT21kME5GSlBNVXBoU0MxVFJqWkxhV2RIVFV4blRHYxAB!2m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/reviews/ChdDSUhNMG9nS0VJQ0FnSURma2ZyLTB3RRAB",
+      "relativePublishTimeDescription": "6 months ago",
+      "rating": 5,
+      "text": {
+        "text": "Had my 60th birthday party there they welcome me with lanes and my name on the overheads. Tables were set up. Pizza and wings were ready on time. Hot and delicious.  We bowled for 2 hours had cake and drinks from the wonderful bartender Skyler every one love her. Wonderful staff at Aloma always friendly and nice.  This was the best party ever. Thanks Aloma staff",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "Had my 60th birthday party there they welcome me with lanes and my name on the overheads. Tables were set up. Pizza and wings were ready on time. Hot and delicious.  We bowled for 2 hours had cake and drinks from the wonderful bartender Skyler every one love her. Wonderful staff at Aloma always friendly and nice.  This was the best party ever. Thanks Aloma staff",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "David Reynolds",
+        "uri": "https://www.google.com/maps/contrib/100005173613712818834/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXZa8d531QZrOTxAALr8SotQ-g8ZJQgGZZWQ_sqG89cYDZGZl2J=s128-c0x00000000-cc-rp-mo"
+      },
+      "publishTime": "2025-01-07T11:52:31.275300Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=ChdDSUhNMG9nS0VJQ0FnSURma2ZyLTB3RRAB&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChdDSUhNMG9nS0VJQ0FnSURma2ZyLTB3RRAB!2m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/reviews/ChZDSUhNMG9nS0VJQ0FnTUNvaS1TZVJ3EAE",
+      "relativePublishTimeDescription": "3 months ago",
+      "rating": 1,
+      "text": {
+        "text": "If I could give negative stars, I would. This place is an absolute disgrace to customer service and hospitality. From the moment we walked in, it was clear that cleanliness and professionalism are completely absent here. The bathroom was filthy, reeking of neglect and lacking basic hygiene. The lane we were assigned to was sticky, broken, and clearly hadn’t been cleaned in ages. Disgusting doesn’t even begin to cover it.\n\nNow let’s talk about the so-called “server” Heather. I’ve been to many establishments and dealt with all kinds of staff, but Heather is hands down the rudest person I’ve ever encountered in a customer-facing role. She was dismissive, hostile, and completely unprofessional. It’s baffling how someone with experience in hospitality could treat paying customers with such blatant disrespect. Heather does NOT deserve to work with the public. Her attitude was appalling, and she made what should have been a fun outing feel hostile and uncomfortable.\n\nAs for the manager—if you can even call him that—he didn’t intervene once, even after the interaction was clearly escalating. In fact, it was obvious he was under the influence—high as hell, slurring his words and completely unbothered by the chaos happening under his watch. He is not management material in the slightest. The lack of accountability and professionalism is beyond belief.\n\nThis place should be ashamed. The staff needs serious retraining—or replacing entirely. Until major changes are made, avoid this place at all costs. You’re better off staying home than subjecting yourself to this disaster.",
+        "languageCode": "en"
+      },
+      "originalText": {
+        "text": "If I could give negative stars, I would. This place is an absolute disgrace to customer service and hospitality. From the moment we walked in, it was clear that cleanliness and professionalism are completely absent here. The bathroom was filthy, reeking of neglect and lacking basic hygiene. The lane we were assigned to was sticky, broken, and clearly hadn’t been cleaned in ages. Disgusting doesn’t even begin to cover it.\n\nNow let’s talk about the so-called “server” Heather. I’ve been to many establishments and dealt with all kinds of staff, but Heather is hands down the rudest person I’ve ever encountered in a customer-facing role. She was dismissive, hostile, and completely unprofessional. It’s baffling how someone with experience in hospitality could treat paying customers with such blatant disrespect. Heather does NOT deserve to work with the public. Her attitude was appalling, and she made what should have been a fun outing feel hostile and uncomfortable.\n\nAs for the manager—if you can even call him that—he didn’t intervene once, even after the interaction was clearly escalating. In fact, it was obvious he was under the influence—high as hell, slurring his words and completely unbothered by the chaos happening under his watch. He is not management material in the slightest. The lack of accountability and professionalism is beyond belief.\n\nThis place should be ashamed. The staff needs serious retraining—or replacing entirely. Until major changes are made, avoid this place at all costs. You’re better off staying home than subjecting yourself to this disaster.",
+        "languageCode": "en"
+      },
+      "authorAttribution": {
+        "displayName": "Solene Jouault",
+        "uri": "https://www.google.com/maps/contrib/112940066078474652759/reviews",
+        "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocK_kzTZjYGb8p_IcV3LcpxZ3ztaoIP7Djj5PlLzRABhUUs5Pg=s128-c0x00000000-cc-rp-mo"
+      },
+      "publishTime": "2025-04-19T21:21:30.730994Z",
+      "flagContentUri": "https://www.google.com/local/review/rap/report?postId=ChZDSUhNMG9nS0VJQ0FnTUNvaS1TZVJ3EAE&d=17924085&t=1",
+      "googleMapsUri": "https://www.google.com/maps/reviews/data=!4m6!14m5!1m4!2m3!1sChZDSUhNMG9nS0VJQ0FnTUNvaS1TZVJ3EAE!2m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    }
+  ],
+  "photos": [
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpcq44YGwdLYE--DM0yeV2yXqQovCKd6HYaneJYeLAXsIzvtDWZVB2_DmCBofjxEBCQn_XzG92VRMZOqIcJm0z83W9ov3eTVVN3-SI6PRtshzM9ou_1UefuBm1bt6L5n93sAEXNJGzKejYpYY9ssOqW0AVTC16Ml1I1gYwOmFMj1TVHvSQS1oSocrCvCINMBavbSnqtxaHRIsY7uLH3Phlrvykl4o0mqXf1eaAYuze_zn_cv0pXaebhbrW2LiAt-uqI99sD1r5zzhJW9XLhWujFiWI8aXoa4mcA-mNjEz8fpCzin1cpEga0wCaFPB_OIswJDELBbxVIRjwPwIwkndsWz-5xLRQESW5Jz7BuHw9lJQwRvCJ4ePjerTJC-IKzdD1jcWRzo_w3IdVyJhGPIoZcH4XHOju3itamWYWSuor7JrFKy",
+      "widthPx": 4800,
+      "heightPx": 3200,
+      "authorAttributions": [
+        {
+          "displayName": "Harry Lim",
+          "uri": "https://maps.google.com/maps/contrib/114719815970929545057",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjV8xqwjKqDYyfMDSMvfP5bUiAHrjei3SNpEoZf3rOr0pp4rPLnd=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICuyMGrvwE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICuyMGrvwE!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpcOQDp3iFIxI22b7BhOqvLMGLTiF4rY8Rv9nNHXsPzHyYysgxecGIEYu6anzBJ1ePka-renuTY9q3Yvo6VawHuREe-0zezHjYn_MmlpJalYAqKu-5EEQuLZPZjrGBOQ9V8kRKatxqk_fdsaFOQV_ZsCIQr5XSGQEGzfx1dIO8l-BRAQfF2mTO12fm6Ez71Xzspr91sXZVi4uwvNjyEJxF96zmTvYVvJYqlO2N0ITT_rIbkivFQxYn2ksXmMzukRU4fALMKRWudMayt6xrjQPihs9jMBrxM_Y4tKidARxAH1ZvDm4KPLVF510fxgYdk7Nux0ioV3jRccHk3wXiEXkNXCYOz5KWXVpGl6GIuCW9aZuXYaGLE0GttwvHIskJcgPKUl4wa8zrMGaUtJtVIS_H8rMuzxN4-aRWJ6ymrpRRgbEBjQ",
+      "widthPx": 3600,
+      "heightPx": 4800,
+      "authorAttributions": [
+        {
+          "displayName": "Peralte Desir",
+          "uri": "https://maps.google.com/maps/contrib/104119604119670812658",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUtshZpe2h-Z_ixJZOhSirXwL3T36T75Gt1v3IjH1GZjcn-9ZAPDA=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICGqaDi2gE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICGqaDi2gE!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpefek_sc-9JKrC6yfREYKC89hs62cZCvDJBU3eEBWvAdEzqqZ9I7teKBQ5lrWP071amzRoaiPsFjjc3NH0dttoORr3o9yAQmzCWuG9WyBA074gK97to9CDfCcIxnupTu1JS0ml6gowqtC7-NvJqLXPbvoE7F8SooZjKwOdfExvGsRzWgWHa_YbRIzp55au1YXizTih0Xilstbh7nJqLHuBRLSM50UoW7wcwRUf50ALzozOm52fjojTDqrVDrum9GBD9UsdD_R3QwnIyahwyU73bbIRmeY6sQQ9RQoZrTz-JRg",
+      "widthPx": 1024,
+      "heightPx": 684,
+      "authorAttributions": [
+        {
+          "displayName": "Aloma Bowl",
+          "uri": "https://maps.google.com/maps/contrib/104843480735678056402",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWVd0PZjSFB92veitQHf9N9oY1Vc2PC35uiLy6BOMqfSqUiUtu2=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipMBOSusMqhEe5B9TxPTwxzzze4JurRUUhs7n2hi&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipMBOSusMqhEe5B9TxPTwxzzze4JurRUUhs7n2hi!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpfUFHNakaFDY8-K3kKr3ASTcD5ibWtD6n-t014bTbVyU9yBd5TMLOdwo4Q2EN-ERlC7kxvnpt5pp2RH4YCbJ7HPFleadoNsqaOe71hQo9rRf47-doKgUkrmAvCkQt55IPFNFZsoBdwR1E5bkYw4OSencbYhlye7KRbUxH6260pQoiN1Ed7CCb_zZ0ce-fmbo6oLk3fgk2dlDABUMp5XhNcGgpJ8LZtgeKZCE98dca9lnLRrakq5Kim6qf93sCDDcuzKRPlsM9UMKyrtrZE6GMoasKfWqQH5zR-La3eG5G4R2dekRpJXOBNylr1Z54OsYsXz9HedpN5Q_2Nu5-zfqfMTUGr0z1idpByMAx8boDNJHvs5VVgDXtUw5IsRF8Z7vY8rT3iJAZRgOUIvlld9mA5XjH6Ujym6QJuJRd8fdik",
+      "widthPx": 4032,
+      "heightPx": 3024,
+      "authorAttributions": [
+        {
+          "displayName": "A E",
+          "uri": "https://maps.google.com/maps/contrib/101680399501156496275",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjXla5zHRxO667H34QmHbv_BE7hP2WPdI68ZO5exHZaWfLrBUKjO5Q=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICiz4qkLA&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICiz4qkLA!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpcjDbIQ84INY3gaNKKNdiOAYWVMBzst1iviSpIVLH2iNBZrozS4ceUwC4vc8z9ElhBZUQ5CYn2-yyBwPr4dCt0IE25j2E_FC0hkQyqSaFEuPBBsgOWsoK3KG_HpuWvm4rk-ISMF-CMCmvJzIhniF-yTK4vz5r503KNb0ACIJJtba_aVz2C2Emi1lk3dvkSCcxIfK-xKoIfsxetjqKpziGxvDfN6P24EcBrjagHvglsTysoxUAOarvgM1LpPKPvs9gYzJB7RdazgT3uCL72Je13U14HNxpH5LeE5PM-Nsx-DSgfyWZIQMaKi6lihuySKGZgFPOFQzyTftJR3fQ9ifFvwDcfW6vQcxiNknZMCdPBmT9DaJSXLVxTAMbyr0dKGtln01cSEwnkafjG9kxtSREUC9QN6fQRH3oyydC6qXPHv7g",
+      "widthPx": 2250,
+      "heightPx": 4000,
+      "authorAttributions": [
+        {
+          "displayName": "YaTra Mor",
+          "uri": "https://maps.google.com/maps/contrib/112665392804258248367",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjUOfRH1o9V8XYnBQq8u7-vXJi4behIyzLAMmQEvxCNa2eclVwSL=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgID2tv7LEA&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgID2tv7LEA!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpfp8NO0gAtqfzyEV5JeEfSpYUCdL22vhp0dZx-BW-uQO4jAiVlsBHWDowYBtdxw17_HJ8I6Wh85EqwVp-XnwtbSwYHU2Klrkn9lsAIeZOFMAJ9ZGhfAkwBgr2nDpK8RfvOqgWsNtRpdl1dFiLHQ_L8SNeA_ri5uR_voi5tWRJljq_TBRG6alDW-zWimaUvCYzDzLOxU51cwGPf37XFgIxFx0vVQ5G4gReGSSd5PkgeJWzOw9iTlu7m8zZm1vCkpbPS8iC9j3QFrTnPvn61pZ9Za4HUbB7FamOGTSJjM9ybdqg",
+      "widthPx": 1081,
+      "heightPx": 1521,
+      "authorAttributions": [
+        {
+          "displayName": "Aloma Bowl",
+          "uri": "https://maps.google.com/maps/contrib/104843480735678056402",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWVd0PZjSFB92veitQHf9N9oY1Vc2PC35uiLy6BOMqfSqUiUtu2=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sAF1QipOIf7EJKPY_0smSVGMEgHUsB44rmB8C4Jq279PK&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sAF1QipOIf7EJKPY_0smSVGMEgHUsB44rmB8C4Jq279PK!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpduChnAcH_HIZBQqyrzHFaYNvtOOBwxGHNlTCkUDqUJIim2fzRRoO7O1TZAvQma4pEn2CkST4Fo9qtO-n1Jho581nqTUwZttewLzFzCerskJflYKOZXEgjfqy8iZNOa9QDwSjV7Hk6IzKzD_Klw8XH9shjVDMGVj3D5jQGVGqYVHjxT_UhNw1ZBhtW600QTm9x4UVmHMIRN2WUbIdy4iPEBFLqpV6ua3tYvRzeTqMZ3QwZzLt9TtwfUWJ1ubrGvi61XqErl4e_FN1UPyyxHF4g_2y9eDmNFK3zOTJT6mz39FAL6tFTbngjbVWSKT0bX544xAPJIpwfWXPZqSAEtD5j83lMGVUzgWX44ms00v8YdjR3xrdNe8Jvuhn6GTrQ3nRpOHml_5qbhUMNETrf_31-XYyn-BR__9enWl5UBh_QBSjBK",
+      "widthPx": 3024,
+      "heightPx": 4032,
+      "authorAttributions": [
+        {
+          "displayName": "Kelly",
+          "uri": "https://maps.google.com/maps/contrib/105968207777003916080",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjU65t-5leY6sa-9ZycEYSVUSB8enVAx9SC-Sk87hU_3uBHpnTuxxw=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgIDxu9WXoQE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgIDxu9WXoQE!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpci3Oj6u4nf2AizmgpDi2jZfQDwVR2TC1lfjbAlB_GPZ5ih6nsWHuE3ZJAZT2kIJE5sZs8mT3zy6ing8RFtL54hhDVDQvMMoL16xJCkJIF3OktHExm1VXelUwSrYp4lRYDDUeBPV4zMWIi2A28fLQWnWfq4pNCvU4LO7WW-X_2UVJUvujQMAwInaPg9nB1rX1DlCr1F6B3IKuOIlv3pgKpOXDl81N7kU3SJMM4pOU902sNXpxbVtLbyqsJnLEg7pdTX2Nd6FJDbe-mRpNiAz1-rHeghJ5Aeiz9pkxZd9N_03z71PgaR7oFMdyA6UeurMOsJ8kRvnnu5navqpFjLNEaoXysBKN2YANdlkkQvB4YbE6u5uwU_zRwlXpFz3YBL_yB4l1ufwmzs1Ezoohy9hxbqoY4N9Pff20AA_t1zn1lW09QD",
+      "widthPx": 3072,
+      "heightPx": 4080,
+      "authorAttributions": [
+        {
+          "displayName": "Kyle Baker",
+          "uri": "https://maps.google.com/maps/contrib/104404336364396634562",
+          "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocJvqYL3Ealpq_QMU9DF1xjuMuqKFUWFHgX0acGq0Te0T-5aaQ=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgIDW877I6wE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgIDW877I6wE!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpdIwvYbULkfyvCX7nkjYok0PeDpJ9a4QxZIypHdX0CmvhhdY6wdFiqyt8jEVOPT6ZFuwIAvIiiHUpNTpzIpz9I6l2eYj-bM_7z7ZOk_VJ_YF_8rBonwng2ZsKf18ViuLLdRizkrvt3Tu6AvMiAVT7xLU1flBJ8KrZvWSvuTNG2JHYOcaT9zE4lpKhb6OL_4TEGAs6tk5rIUVfZJ4YZr2m-MLGW2U10GAgOXBise6JbMsfVXaJQ1OIwL5WznBNZtNXXZkr1qn_pxL8jBDKjXoXvKDIjJ7yeF5YscXrjkVznZXp3V3phBAxsRuxKf09cDLGaq8oSa6nmFKDFu3Lowps7I35bgH7mMg374CuDvnmyoCNOyTX3q2l1lbRWFWG_OkN6MdGrkK_--bX2USE08ML_0ZrT965zd-yLcp5h_FsNGUNB6",
+      "widthPx": 4032,
+      "heightPx": 3024,
+      "authorAttributions": [
+        {
+          "displayName": "Kim Harold",
+          "uri": "https://maps.google.com/maps/contrib/109826656762099749948",
+          "photoUri": "https://lh3.googleusercontent.com/a/ACg8ocKCORADldEWzuGEXL8M-rVblo6bcALwYLW53CVXDqdQseRjsQ=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICEtLGa4gE&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICEtLGa4gE!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    },
+    {
+      "name": "places/ChIJ5-QgKOtv54gRDs3Ds18nyV0/photos/ATKogpchTn16ftyIy52djR1K1DXZRq_6sycaA70lyAkHxihP8ZZ8sHy7zq_iBIXrF4EEKaLYShf0kCLZ19tfmlGNYF2N70oSO0xjq_zEOJkCQCrQcU9mV0wx8ktcSvg83XFgSCAZX5fSITH9ODXu6BaiAkwv2lf36bxi277hY2KojBVYif4n00ZBOYPiLGx8LapJ84hBvNCrS1Voux1kPkqYyCRO5ETJ_0B1wuJx6H2NE42Nk8xVANGyQwIVJ5-70wMVEMClnA4y_Eld54prOHzMYSTMNEhhfmAGc9Wm7dj4j9u60rswhZJ8mAaHqN3qKUPtncsGnPcma3dZjXFEnkc9rgUon2_a-p2TpDAoftmPhWvaCNkANaVFQR5ZBLLUH3ZmvcslR6v_znFYZn9lTmwh40zqZ9BBMdoEnYzUdoIk_Kae5A",
+      "widthPx": 4000,
+      "heightPx": 3000,
+      "authorAttributions": [
+        {
+          "displayName": "Jennifer Jones",
+          "uri": "https://maps.google.com/maps/contrib/112303992764497403348",
+          "photoUri": "https://lh3.googleusercontent.com/a-/ALV-UjWckEj26_tLREbhpvhBQY8kb9OCxwGIz37-0Ztq0wx3VJsqAunu=s100-p-k-no-mo"
+        }
+      ],
+      "flagContentUri": "https://www.google.com/local/imagery/report/?cb_client=maps_api_places.places_api&image_key=!1e10!2sCIHM0ogKEICAgICFs4OxNw&hl=en-US",
+      "googleMapsUri": "https://www.google.com/maps/place//data=!3m4!1e2!3m2!1sCIHM0ogKEICAgICFs4OxNw!2e10!4m2!3m1!1s0x88e76feb2820e4e7:0x5dc9275fb3c3cd0e"
+    }
+  ]
+}

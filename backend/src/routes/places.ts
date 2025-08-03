@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { GooglePlacesService } from '../services/googlePlaces';
+import { places } from '../google';
 import { asyncHandler } from '../middleware/errorHandler';
 import {
   nearbySearchSchema,
@@ -9,7 +9,6 @@ import {
 } from '../types/places';
 
 const router = Router();
-const placesService = new GooglePlacesService();
 
 // GET /api/places/nearby - Search for nearby places
 router.get('/nearby', asyncHandler(async (req: Request, res: Response) => {
@@ -29,10 +28,8 @@ router.get('/nearby', asyncHandler(async (req: Request, res: Response) => {
 
   const validatedParams = nearbySearchSchema.parse(cleanParams);
 
-  const places = await placesService.searchNearby(validatedParams);
-
-  // Ensure places is always an array
-  const placesArray = places || [];
+  const response = await places.nearby(validatedParams);
+  const placesArray = response?.places || [];
 
   res.json({
     success: true,
@@ -46,7 +43,7 @@ router.get('/nearby', asyncHandler(async (req: Request, res: Response) => {
 router.get('/:placeId', asyncHandler(async (req: Request, res: Response) => {
   const { placeId } = placeIdSchema.parse(req.params);
 
-  const place = await placesService.getPlaceDetails(placeId);
+  const place = await places.details(placeId);
 
   res.json({
     success: true,
@@ -57,8 +54,9 @@ router.get('/:placeId', asyncHandler(async (req: Request, res: Response) => {
 
 // GET /api/places/photo/:photoReference - Get photo URL
 router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Response) => {
+  // The actual photo reference is in the query parameter, not the URL parameter
   const params = {
-    photoReference: req.query.photoReference,
+    photoReference: (req.query.photoReference as string) || req.params.photoReference,
     maxWidth: req.query.maxWidth ? parseInt(req.query.maxWidth as string) : undefined,
     maxHeight: req.query.maxHeight ? parseInt(req.query.maxHeight as string) : undefined,
   };
@@ -70,7 +68,7 @@ router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Resp
 
   const validatedParams = photoReferenceSchema.parse(cleanParams);
 
-  const photoUrl = await placesService.getPhotoUrl(
+  const photoUrl = await places.photo(
     validatedParams.photoReference,
     validatedParams.maxWidth,
     validatedParams.maxHeight
@@ -86,28 +84,6 @@ router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Resp
   });
 }));
 
-// GET /api/places/cache/stats - Get cache statistics (development only)
-if (process.env.NODE_ENV === 'development') {
-  router.get('/cache/stats', asyncHandler(async (req: Request, res: Response) => {
-    const stats = placesService.getCacheStats();
-    
-    res.json({
-      success: true,
-      data: stats,
-      timestamp: new Date().toISOString(),
-    });
-  }));
-
-  // POST /api/places/cache/clear - Clear cache (development only)
-  router.post('/cache/clear', asyncHandler(async (req: Request, res: Response) => {
-    placesService.clearCache();
-    
-    res.json({
-      success: true,
-      message: 'Cache cleared successfully',
-      timestamp: new Date().toISOString(),
-    });
-  }));
-}
+// TODO: Re-implement cache stats and clear with new client system if needed
 
 export { router as placesRouter };

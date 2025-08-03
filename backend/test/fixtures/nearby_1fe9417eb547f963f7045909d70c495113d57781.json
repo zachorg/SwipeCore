@@ -1,0 +1,19 @@
+{
+  "places": [
+    {
+      "id": "ChIJMockPlace123",
+      "displayName": {
+        "text": "Test Mock Restaurant",
+        "languageCode": "en"
+      },
+      "formattedAddress": "123 Test Street, Test City, TC 12345",
+      "rating": 4.3,
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "types": ["restaurant", "food", "establishment"],
+      "location": {
+        "latitude": 40.7128,
+        "longitude": -74.0060
+      }
+    }
+  ]
+}
