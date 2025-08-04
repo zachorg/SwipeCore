@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { withCache } from '../cache/withCache';
+import { withDevCache } from '../cache/devCache';
 import { nearbyKey, detailsKey } from './key';
 import { config } from '../config';
 import { NearbySearchParams } from '../types/places';
@@ -7,7 +8,12 @@ import { NearbySearchParams } from '../types/places';
 const base = 'https://places.googleapis.com/v1';
 
 export async function nearby(p: NearbySearchParams) {
-  return withCache(
+  // Use dev cache in development, regular cache in production
+  const cacheFunction = (config.nodeEnv === 'development' && config.useDevCache) 
+    ? withDevCache 
+    : withCache;
+
+  return cacheFunction(
     nearbyKey(p),
     config.cacheTtlDays * 86400,
     async () => {
@@ -39,8 +45,14 @@ export async function nearby(p: NearbySearchParams) {
   );
 }
 
-export async function details(id: string) {
-  return withCache(
+export async function details(id: string, options: { skipDevCache?: boolean } = {}) {
+  // Use dev cache in development, regular cache in production
+  // Skip dev cache if requested (to prevent circular dependencies from mock client)
+  const cacheFunction = (config.nodeEnv === 'development' && config.useDevCache && !options.skipDevCache) 
+    ? withDevCache 
+    : withCache;
+
+  return cacheFunction(
     detailsKey(id),
     config.cacheTtlDays * 86400,
     async () => {

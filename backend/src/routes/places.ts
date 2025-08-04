@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { places } from '../google';
 import { asyncHandler } from '../middleware/errorHandler';
+import { devCache } from '../cache/devCache';
+import { config } from '../config';
 import {
   nearbySearchSchema,
   placeIdSchema,
@@ -84,6 +86,25 @@ router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Resp
   });
 }));
 
-// TODO: Re-implement cache stats and clear with new client system if needed
+// Development only endpoints for dev cache management
+if (config.nodeEnv === 'development') {
+  router.delete('/dev-cache', asyncHandler(async (req: Request, res: Response) => {
+    devCache.clear();
+    res.json({
+      success: true,
+      message: 'Dev cache cleared successfully',
+      timestamp: new Date().toISOString(),
+    });
+  }));
+
+  router.get('/dev-cache/stats', asyncHandler(async (req: Request, res: Response) => {
+    const stats = devCache.getCacheStats();
+    res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString(),
+    });
+  }));
+}
 
 export { router as placesRouter };
