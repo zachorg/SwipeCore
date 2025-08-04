@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   placesApi,
@@ -213,7 +213,7 @@ export const useNearbyPlacesWithLocation = (
 ) => {
   // This would use the geolocation hook we created earlier
   // For now, we'll accept lat/lng as parameters
-  const [location, setLocation] = React.useState<{
+  const [location, setLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);

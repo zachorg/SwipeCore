@@ -19,9 +19,4 @@ export const config = {
   // Rate limiting
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 600000,
   rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  
-  // Cache TTLs (in seconds)
-  cacheTtlNearby: Number(process.env.CACHE_TTL_NEARBY) || 300,
-  cacheTtlDetails: Number(process.env.CACHE_TTL_DETAILS) || 1800,
-  cacheTtlPhotos: Number(process.env.CACHE_TTL_PHOTOS) || 3600,
 };
