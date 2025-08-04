@@ -21,6 +21,7 @@ import {
   getDefaultRestaurantImage,
   mergeCardWithDetails,
 } from "../utils/placeTransformers";
+import { generateMockCards } from "@/lib/swipe-core";
 
 export interface UseRestaurantSwipeOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -97,26 +98,6 @@ export const useRestaurantSwipe = (
       }
     : null;
 
-  // does not work.
-  // const {
-  //   data: nearbyPlaces,
-  //   setLocation,
-  //   refetch: refetchPlaces,
-  //   isLoading: isPlacesLoading,
-  //   error: placesError,
-  // } = useNearbyPlacesWithLocation(
-  //   {
-  //     // Optional search parameters
-  //     radius: 15000, // 1.5km radius
-  //     type: "restaurant", // Type of places to search for
-  //     keyword: "pizza", // Optional keyword search
-  //   },
-  //   {
-  //     enabled: true, // Enable the query
-  //     refetchOnWindowFocus: false, // Don't refetch when window gains focus
-  //   }
-  // );
-
   // Search configuration
   const finalSearchConfig = {
     ...defaultSearchConfig,
@@ -189,8 +170,16 @@ export const useRestaurantSwipe = (
     setSelectedPhotoReference({ id, widthPx, heightPx });
   }
 
-  // Prefetch place details for top cards
-  // const { mutate: prefetchDetailsAction } = usePrefetchPlaceDetails();
+  if (
+    (!defaultFeatureFlags.useGooglePlacesApi || !location) &&
+    cards &&
+    setCards &&
+    cards?.length == 0
+  ) {
+    console.log("SetCards with mock data");
+    const mockCards: RestaurantCard[] = generateMockCards();
+    setCards(mockCards);
+  }
 
   // Transform places to cards when data changes
   useEffect(() => {
@@ -206,22 +195,6 @@ export const useRestaurantSwipe = (
 
     try {
       if (!defaultFeatureFlags.useGooglePlacesApi || !location) {
-        // Fallback to mock data (you could import your existing mock data here)
-        const mockCards: RestaurantCard[] = [
-          {
-            id: "mock-1",
-            title: "Demo Restaurant",
-            subtitle: "Italian",
-            cuisine: "Italian",
-            rating: 4.5,
-            priceRange: "$$",
-            distance: "0.5km",
-            address: "Demo Address",
-            imageUrl: getDefaultRestaurantImage("Italian"),
-            reviews: [],
-          },
-        ];
-        setCards(mockCards);
         return;
       }
 
@@ -248,16 +221,11 @@ export const useRestaurantSwipe = (
       setCards(limitedCards);
       handleSelectPlace(limitedCards[0].id);
       setError(null);
-      // Prefetch details for top 3 cards
-      // if (prefetchDetails && limitedCards.length > 0) {
-      //   const topCardIds = limitedCards.slice(0, 3).map((card) => card.id);
-      //   prefetchDetailsAction(topCardIds);
-      // }
     } catch (err) {
       console.error("Error transforming places data:", err);
       setError("Failed to process restaurant data.");
     }
-  }, [nearbyPlaces]); //finalSearchConfig, maxCards, prefetchDetails
+  }, [nearbyPlaces]);
 
   useEffect(() => {
     if (placeDetails) {
@@ -357,28 +325,12 @@ export const useRestaurantSwipe = (
       if (currentCard) {
         handleSelectPlace(currentCard.id);
       }
-
-      // Prefetch details for next cards if running low
-      // if (remainingCards.length <= 3 && remainingCards.length > 0) {
-      //   const nextCardIds = remainingCards.slice(0, 2).map((card) => card.id);
-      //   prefetchDetailsAction(nextCardIds);
-      // }
     },
-    [cards] // , prefetchDetailsAction
+    [cards]
   );
 
   // Refresh cards (reload from API)
-  const refreshCards = useCallback(async () => {
-    // if (location) {
-    //   refetchPlaces();
-    // } //else {
-    //   const position = await getCurrentPosition();
-    //   setLocation({
-    //     lat: position.coords.latitude,
-    //     lng: position.coords.longitude,
-    //   });
-    // }
-  }, [location]);
+  const refreshCards = useCallback(async () => {}, [location]);
 
   // Request location permission
   const requestLocation = useCallback(() => {
