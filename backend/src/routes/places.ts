@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { places } from '../google';
+import * as places from '../google';
 import { asyncHandler } from '../middleware/errorHandler';
-import { devCache } from '../cache/devCache';
+import { cache } from '../cache';
 import { config } from '../config';
 import {
   nearbySearchSchema,
@@ -89,7 +89,7 @@ router.get('/photo/:photoReference', asyncHandler(async (req: Request, res: Resp
 // Development only endpoints for dev cache management
 if (config.nodeEnv === 'development') {
   router.delete('/dev-cache', asyncHandler(async (req: Request, res: Response) => {
-    devCache.clear();
+    cache.clearDevCache();
     res.json({
       success: true,
       message: 'Dev cache cleared successfully',
@@ -98,7 +98,7 @@ if (config.nodeEnv === 'development') {
   }));
 
   router.get('/dev-cache/stats', asyncHandler(async (req: Request, res: Response) => {
-    const stats = devCache.getCacheStats();
+    const stats = cache.getDevCacheStats();
     res.json({
       success: true,
       data: stats,

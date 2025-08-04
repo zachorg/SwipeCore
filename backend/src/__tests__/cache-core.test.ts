@@ -1,7 +1,7 @@
-import { withCache } from '../cache/withCache';
+import { withCache } from '../cache';
 import { local } from '../cache/local';
 
-describe('Cache System Core Functionality', () => {
+describe('Unified Cache System', () => {
   let fetcherCallCount = 0;
   const mockFetcher = jest.fn(async () => {
     fetcherCallCount++;
@@ -15,7 +15,7 @@ describe('Cache System Core Functionality', () => {
     mockFetcher.mockClear();
   });
 
-  describe('Simplified cache functionality', () => {
+  describe('Unified cache functionality', () => {
     it('should use fetcher when no cache is available', async () => {
       const key = 'test-fetch-only';
       const ttl = 60;
@@ -26,7 +26,7 @@ describe('Cache System Core Functionality', () => {
       expect(result.data).toBe('fetch-1');
     });
 
-    it('should hit NodeCache on subsequent calls', async () => {
+    it('should hit cache on subsequent calls', async () => {
       const key = 'test-nodecache-hit';
       const ttl = 60;
       
@@ -35,13 +35,13 @@ describe('Cache System Core Functionality', () => {
       expect(mockFetcher).toHaveBeenCalledTimes(1);
       expect(result1.data).toBe('fetch-1');
       
-      // Second call should hit NodeCache
+      // Second call should hit cache
       const result2 = await withCache(key, ttl, mockFetcher);
       expect(mockFetcher).toHaveBeenCalledTimes(1); // No additional fetch
-      expect(result2.data).toBe('fetch-1'); // Same data from NodeCache
+      expect(result2.data).toBe('fetch-1'); // Same data from cache
     });
 
-    it('should handle TTL expiration in NodeCache', async () => {
+    it('should handle TTL expiration', async () => {
       const key = 'test-ttl-behavior';
       const shortTtl = 1; // 1 second
       
@@ -61,7 +61,7 @@ describe('Cache System Core Functionality', () => {
       expect(mockFetcher).toHaveBeenCalledTimes(2);
     }, 10000);
 
-    it('should store data correctly in NodeCache', async () => {
+    it('should store data correctly in cache', async () => {
       const key = 'test-nodecache-storage';
       const ttl = 60;
       const testData = { test: 'data', number: 42 };
@@ -70,7 +70,7 @@ describe('Cache System Core Functionality', () => {
       
       await withCache(key, ttl, mockFetcher);
       
-      // Verify data is stored in NodeCache
+      // Verify data is stored (in test env, uses NodeCache)
       const cachedData = local.get(key);
       expect(cachedData).toEqual(testData);
     });

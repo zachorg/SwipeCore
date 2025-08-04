@@ -4,8 +4,6 @@ load();
 
 export const config = {
   cacheTtlDays: Number(process.env.CACHE_TTL_DAYS) || 1,
-  apiMode: process.env.GOOGLE_API_MODE ?? 'live',
-  fixtureDir: process.env.FIXTURE_DIR ?? './test/fixtures',
   
   // Server config
   port: Number(process.env.PORT) || 4000,

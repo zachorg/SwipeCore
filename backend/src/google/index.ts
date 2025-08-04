@@ -1,5 +1,2 @@
-import { config } from '../config';
-import * as live from './liveClient';
-import * as smartMock from './mockClient';
-
-export const places = config.apiMode === 'mock' ? smartMock : live;
+// Export the live client directly - dev caching is handled internally
+export { nearby, details, photo } from './liveClient';

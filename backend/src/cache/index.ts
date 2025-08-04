@@ -1,4 +1,3 @@
-// Export all cache functionality
-export { withCache } from './withCache';
-export { withDevCache, devCache } from './devCache';
+// Export unified cache functionality
+export { withCache, cache } from './unifiedCache';
 export { local } from './local';

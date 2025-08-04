@@ -90,3 +90,4 @@ export interface PlaceDetails extends PlaceBasic {
   };
 }
 
+export type NearbySearchParams = z.infer<typeof nearbySearchSchema>;
