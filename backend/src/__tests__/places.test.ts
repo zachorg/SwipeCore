@@ -1,24 +1,18 @@
 import request from 'supertest';
 
 // Create mock functions that can be imported and controlled
-const mockSearchNearby = jest.fn();
-const mockGetPlaceDetails = jest.fn();
-const mockGetPhotoUrl = jest.fn();
-const mockGetCacheStats = jest.fn();
-const mockClearCache = jest.fn();
+const mockNearby = jest.fn();
+const mockDetails = jest.fn();
+const mockPhoto = jest.fn();
 
-// Mock the GooglePlacesService before importing the app
-jest.mock('../services/googlePlaces', () => {
-  return {
-    GooglePlacesService: jest.fn().mockImplementation(() => ({
-      searchNearby: mockSearchNearby,
-      getPlaceDetails: mockGetPlaceDetails,
-      getPhotoUrl: mockGetPhotoUrl,
-      getCacheStats: mockGetCacheStats,
-      clearCache: mockClearCache,
-    })),
-  };
-});
+// Mock the Google API integration before importing the app
+jest.mock('../google', () => ({
+  places: {
+    nearby: mockNearby,
+    details: mockDetails, 
+    photo: mockPhoto,
+  },
+}));
 
 import app from '../index';
 
@@ -26,23 +20,22 @@ describe('Places API Endpoints', () => {
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
-    // Set up default mock implementations
-    mockGetCacheStats.mockReturnValue({ keys: 0, hits: 0, misses: 0 });
   });
 
   describe('GET /api/places/nearby', () => {
     it('should return nearby places with valid parameters', async () => {
-      const mockPlaces = [
-        {
-          id: 'place1',
-          displayName: { text: 'Test Restaurant', languageCode: 'en' },
-          rating: 4.5,
-          location: { latitude: 40.7128, longitude: -74.0060 },
-        },
-      ];
+      const mockResponse = {
+        places: [
+          {
+            id: 'place1',
+            displayName: { text: 'Test Restaurant', languageCode: 'en' },
+            rating: 4.5,
+            location: { latitude: 40.7128, longitude: -74.0060 },
+          },
+        ],
+      };
 
-      mockSearchNearby.mockResolvedValue(mockPlaces);
+      mockNearby.mockResolvedValue(mockResponse);
 
       const response = await request(app)
         .get('/api/places/nearby')
@@ -54,13 +47,30 @@ describe('Places API Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toEqual(mockPlaces);
+      expect(response.body.data).toEqual(mockResponse.places);
       expect(response.body.count).toBe(1);
-      expect(mockSearchNearby).toHaveBeenCalledWith({
+      expect(mockNearby).toHaveBeenCalledWith({
         lat: 40.7128,
         lng: -74.0060,
         radius: 1500,
       });
+    });
+
+    it('should handle empty places response', async () => {
+      const mockResponse = { places: [] };
+      mockNearby.mockResolvedValue(mockResponse);
+
+      const response = await request(app)
+        .get('/api/places/nearby')
+        .query({
+          lat: 40.7128,
+          lng: -74.0060,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toEqual([]);
+      expect(response.body.count).toBe(0);
     });
 
     it('should return 400 for invalid latitude', async () => {
@@ -88,7 +98,7 @@ describe('Places API Endpoints', () => {
     });
 
     it('should handle service errors gracefully', async () => {
-      mockSearchNearby.mockRejectedValue(new Error('Service unavailable'));
+      mockNearby.mockRejectedValue(new Error('Service unavailable'));
 
       const response = await request(app)
         .get('/api/places/nearby')
@@ -112,7 +122,7 @@ describe('Places API Endpoints', () => {
         nationalPhoneNumber: '+1 555-123-4567',
       };
 
-      mockGetPlaceDetails.mockResolvedValue(mockPlace);
+      mockDetails.mockResolvedValue(mockPlace);
 
       const response = await request(app)
         .get('/api/places/place1');
@@ -120,7 +130,7 @@ describe('Places API Endpoints', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data).toEqual(mockPlace);
-      expect(mockGetPlaceDetails).toHaveBeenCalledWith('place1');
+      expect(mockDetails).toHaveBeenCalledWith('place1');
     });
 
     it('should return 400 for empty place ID', async () => {
@@ -131,7 +141,7 @@ describe('Places API Endpoints', () => {
     });
 
     it('should handle service errors gracefully', async () => {
-      mockGetPlaceDetails.mockRejectedValue(new Error('Place not found'));
+      mockDetails.mockRejectedValue(new Error('Place not found'));
 
       const response = await request(app)
         .get('/api/places/invalid-place-id');
@@ -145,11 +155,12 @@ describe('Places API Endpoints', () => {
     it('should return photo URL for valid photo reference', async () => {
       const mockPhotoUrl = 'https://example.com/photo.jpg';
 
-      mockGetPhotoUrl.mockResolvedValue(mockPhotoUrl);
+      mockPhoto.mockResolvedValue(mockPhotoUrl);
 
       const response = await request(app)
         .get('/api/places/photo/test-photo-ref')
         .query({
+          photoReference: 'test-photo-ref',
           maxWidth: 400,
           maxHeight: 400,
         });
@@ -158,19 +169,22 @@ describe('Places API Endpoints', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.photoUrl).toBe(mockPhotoUrl);
       expect(response.body.data.photoReference).toBe('test-photo-ref');
-      expect(mockGetPhotoUrl).toHaveBeenCalledWith('test-photo-ref', 400, 400);
+      expect(mockPhoto).toHaveBeenCalledWith('test-photo-ref', 400, 400);
     });
 
     it('should use default dimensions when not provided', async () => {
       const mockPhotoUrl = 'https://example.com/photo.jpg';
 
-      mockGetPhotoUrl.mockResolvedValue(mockPhotoUrl);
+      mockPhoto.mockResolvedValue(mockPhotoUrl);
 
       const response = await request(app)
-        .get('/api/places/photo/test-photo-ref');
+        .get('/api/places/photo/test-photo-ref')
+        .query({
+          photoReference: 'test-photo-ref',
+        });
 
       expect(response.status).toBe(200);
-      expect(mockGetPhotoUrl).toHaveBeenCalledWith('test-photo-ref', 400, 400);
+      expect(mockPhoto).toHaveBeenCalledWith('test-photo-ref', 400, 400);
     });
   });
 
@@ -198,9 +212,7 @@ describe('Places API Endpoints', () => {
   });
 
   describe('Rate Limiting', () => {
-    it('should apply rate limiting after many requests', async () => {
-      // Note: This test would need to be adjusted based on actual rate limit settings
-      // For now, just verify the endpoint works normally
+    it('should apply rate limiting headers', async () => {
       const response = await request(app)
         .get('/health');
 
