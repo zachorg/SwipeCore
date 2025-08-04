@@ -6,7 +6,7 @@ import { initializeDeviceOptimizations } from '@/utils/deviceOptimization';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0});
+  const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0, supers: 0 });
 
   // Initialize device optimizations on component mount
   useEffect(() => {
@@ -14,13 +14,14 @@ const Index = () => {
   }, []);
 
   const handleSwipeAction = (cardId: string, action: 'like' | 'pass') => {
+  const handleSwipeAction = (cardId: string, action: 'like' | 'pass' | 'super') => {
     console.log(`Swiped ${action} on restaurant:`, cardId);
     
     // Update stats
     setSwipeStats(prev => ({
       ...prev,
-      [action === 'like' ? 'likes' : 'passes']: 
-        prev[action === 'like' ? 'likes' : 'passes'] + 1
+      [action === 'like' ? 'likes' : action === 'pass' ? 'passes' : 'supers']: 
+        prev[action === 'like' ? 'likes' : action === 'pass' ? 'passes' : 'supers'] + 1
     }));
   };
 
@@ -61,7 +62,7 @@ const Index = () => {
       {/* Debug Stats */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute bottom-4 left-4 bg-black/80 text-white p-2 rounded text-xs">
-          👍 {swipeStats.likes} | 👎 {swipeStats.passes}
+          👍 {swipeStats.likes} | 👎 {swipeStats.passes} | ⭐ {swipeStats.supers}
         </div>
       )}
     </div>
