@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SwipeCard } from "./SwipeCard";
 import {
   RestaurantCard,
   SwipeConfig,
   defaultSwipeConfig,
-} from "@/types/places";
+  androidOptimizedSwipeConfig,
+} from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
   useRestaurantSwipe,
@@ -13,11 +14,7 @@ import {
 import { Button } from "./ui/button";
 import { RefreshCw, MapPin, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "./ui/alert";
-import { usePlaceDetails } from "@/hooks/usePlaces";
-import {
-  mergeCardWithDetails,
-  transformPlaceDetailsToCard,
-} from "@/utils/placeTransformers";
+import { isAndroid } from "@/lib/utils";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -38,8 +35,9 @@ export function SwipeDeck({
     null
   );
 
-  // State to track the selected place ID
-  const swipeConfig = { ...defaultSwipeConfig, ...config };
+  // Use optimized config for Android devices
+  const baseConfig = isAndroid() ? androidOptimizedSwipeConfig : defaultSwipeConfig;
+  const swipeConfig = { ...baseConfig, ...config };
   // Use the comprehensive restaurant swipe hook
   const {
     cards,

@@ -186,6 +186,14 @@ export const defaultSwipeConfig: SwipeConfig = {
   maxRotation: 15,
 };
 
+// Optimized config for Android devices
+export const androidOptimizedSwipeConfig: SwipeConfig = {
+  threshold: 80, // Lower threshold for more responsive feel
+  snapBackDuration: 0.2, // Faster snap back
+  swipeOutDuration: 0.25, // Slightly faster swipe out
+  maxRotation: 12, // Reduced rotation for smoother animation
+};
+
 // Data transformation utilities
 export interface PlaceTransformOptions {
   userLatitude?: number;

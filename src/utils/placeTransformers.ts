@@ -4,7 +4,7 @@ import {
   RestaurantCard, 
   AppReview, 
   PlaceTransformOptions 
-} from '../types/places';
+} from '../types/Types';
 import { calculateDistance } from '../services/places';
 
 /**

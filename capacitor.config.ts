@@ -7,6 +7,13 @@ const config: CapacitorConfig = {
   server: {
     cleartext: true
   },
+  android: {
+    // Android-specific performance optimizations
+    webContentsDebuggingEnabled: false,
+    allowMixedContent: true,
+    captureInput: true,
+    webViewPresentationStyle: 'fullscreen'
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0

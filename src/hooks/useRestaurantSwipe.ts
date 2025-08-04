@@ -13,7 +13,7 @@ import {
   PlaceSearchConfig,
   defaultSearchConfig,
   defaultFeatureFlags,
-} from "../types/places";
+} from "../types/Types";
 import {
   transformPlacesToCards,
   filterCardsByPreferences,
