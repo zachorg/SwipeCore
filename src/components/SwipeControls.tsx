@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SwipeControlsProps {
-  onAction: (action: 'like' | 'pass' | 'super') => void;
+  onAction: (action: 'like' | 'pass') => void;
   onUndo?: () => void;
   swipeDirection?: 'like' | 'pass' | null;
 }
@@ -54,30 +54,6 @@ export function SwipeControls({ onAction, onUndo, swipeDirection }: SwipeControl
                 <X className="w-6 h-6" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Not interested</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
-        {/* Super Like Button */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="secondary"
-                size="icon"
-                className={`w-12 h-12 rounded-full border-2 border-primary transition-all duration-200 bg-primary text-primary-foreground ${
-                  swipeDirection ? 'scale-90 opacity-50' : 'hover:scale-110'
-                }`}
-                onClick={() => onAction('super')}
-              >
-                <Star className="w-5 h-5" fill="currentColor" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Must try!</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
         
@@ -100,9 +76,6 @@ export function SwipeControls({ onAction, onUndo, swipeDirection }: SwipeControl
                 <Heart className="w-6 h-6" fill="currentColor" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Want to try</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>

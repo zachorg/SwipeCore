@@ -167,7 +167,7 @@ export interface UserPreferences {
 // Swipe-related interfaces (updated)
 export interface SwipeAction {
   cardId: string;
-  action: 'like' | 'pass' | 'super';
+  action: 'like' | 'pass';
   timestamp: number;
   place?: PlaceBasic;
 }
@@ -217,7 +217,6 @@ export interface SwipeAnalytics {
   totalSwipes: number;
   likesCount: number;
   passesCount: number;
-  superLikesCount: number;
   averageDecisionTime: number;
   searchParameters: PlaceSearchConfig;
   locationContext: LocationContext;

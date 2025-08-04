@@ -29,7 +29,7 @@ import {
 
 interface SwipeCardProps {
   card: RestaurantCard;
-  onSwipe: (cardId: string, direction: "like" | "pass" | "super") => void;
+  onSwipe: (cardId: string, direction: "like" | "pass") => void;
   config: SwipeConfig;
   isTop: boolean;
   index: number;
@@ -270,22 +270,6 @@ export function SwipeCard({
         </div>
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-        {/* Like Indicator */}
-        <motion.div
-          className="absolute top-8 right-8 bg-green-500/90 px-4 py-2 rounded-full flex items-center gap-2"
-          style={{ opacity: likeOpacity }}
-        >
-          <Heart className="w-5 h-5 text-white" fill="currentColor" />
-          <span className="text-white font-bold">WANT TO TRY</span>
-        </motion.div>
-        {/* Pass Indicator */}
-        <motion.div
-          className="absolute top-8 left-8 bg-red-500/90 px-4 py-2 rounded-full flex items-center gap-2"
-          style={{ opacity: passOpacity }}
-        >
-          <X className="w-5 h-5 text-white" />
-          <span className="text-white font-bold">PASS</span>
-        </motion.div>
         {/* Restaurant Info Badge */}
         <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black/70 px-4 py-2 rounded-full flex items-center gap-2">
           <span className="text-white font-semibold">{card.cuisine}</span>

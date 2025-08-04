@@ -21,7 +21,7 @@ import {
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
-  onSwipeAction?: (cardId: string, action: "like" | "pass" | "super") => void;
+  onSwipeAction?: (cardId: string, action: "like" | "pass") => void;
   maxVisibleCards?: number;
   onCardTap?: (card: RestaurantCard) => void;
   swipeOptions?: UseRestaurantSwipeOptions;
@@ -57,12 +57,12 @@ export function SwipeDeck({
     usingLiveData,
   } = useRestaurantSwipe(swipeOptions);
 
-  const handleSwipe = (cardId: string, action: "like" | "pass" | "super") => {
+  const handleSwipe = (cardId: string, action: "like" | "pass") => {
     swipeCard(cardId, action);
     onSwipeAction?.(cardId, action);
   };
 
-  const handleControlAction = (action: "like" | "pass" | "super") => {
+  const handleControlAction = (action: "like" | "pass") => {
     if (currentCard) {
       handleSwipe(currentCard.id, action);
     }

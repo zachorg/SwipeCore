@@ -25,7 +25,7 @@ export function useSwipeDeck(initialCards: SwipeCard[] = []) {
     return provider;
   }, []);
 
-  const handleSwipeAction = useCallback((cardId: string, action: 'like' | 'pass' | 'super') => {
+  const handleSwipeAction = useCallback((cardId: string, action: 'like' | 'pass') => {
     const swipeAction: SwipeAction = {
       cardId,
       action,
@@ -48,9 +48,8 @@ export function useSwipeDeck(initialCards: SwipeCard[] = []) {
   const getStats = useCallback(() => {
     const likes = actionHistory.filter(a => a.action === 'like').length;
     const passes = actionHistory.filter(a => a.action === 'pass').length;
-    const supers = actionHistory.filter(a => a.action === 'super').length;
     
-    return { likes, passes, supers, total: actionHistory.length };
+    return { likes, passes, total: actionHistory.length };
   }, [actionHistory]);
 
   return {

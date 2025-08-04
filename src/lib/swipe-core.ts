@@ -39,7 +39,7 @@ export interface Review {
 
 export interface SwipeAction {
   cardId: string;
-  action: 'like' | 'pass' | 'super';
+  action: 'like' | 'pass';
   timestamp: number;
 }
 
