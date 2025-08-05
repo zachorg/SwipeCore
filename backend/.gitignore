@@ -118,3 +118,5 @@ build/
 # Logs
 logs
 *.log
+
+dev-cache-nearby.json

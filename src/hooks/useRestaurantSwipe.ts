@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useGeolocation } from "./useGeolocation";
 import {
   useNearbyPlaces,
-  useNearbyPlacesWithLocation,
   usePhotoUrl,
   usePlaceDetails,
-  usePrefetchPlaceDetails,
 } from "./usePlaces";
 import {
   RestaurantCard,

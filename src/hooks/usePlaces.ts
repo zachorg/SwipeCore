@@ -2,8 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   placesApi,
-  PlaceBasic,
-  PlaceDetails,
   NearbySearchParams,
   PlacesApiError,
 } from "../services/places";
@@ -285,4 +283,5 @@ export const usePlacesQueryStates = () => {
 };
 
 // Type exports for convenience
-export type { PlaceBasic, PlaceDetails, NearbySearchParams, PlacesApiError };
+export type { NearbySearchParams, PlacesApiError } from "../services/places";
+export type { PlaceBasic, PlaceDetails } from "../types/places";

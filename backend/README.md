@@ -1,35 +1,23 @@
 # SwipeCore Backend
 
-Express API proxy for Google Places API with Redis caching and smart-mock system.
+Express API proxy for Google Places API with unified caching system.
 
 ## Features
 
-- **Redis + NodeCache Fallback**: Resilient caching with automatic fallback
-- **Smart-Mock System**: Captures live API responses as fixtures for development
+- **Unified Caching**: File-based development cache + NodeCache for production
 - **Google Places API Compliance**: Respects caching rules (≤30 days for coordinates, unlimited for place IDs)
-- **Environment-Based Switching**: Live vs mock modes for different environments
+- **Development Cache Management**: Dev-only endpoints for cache inspection and clearing
+- **Environment Configuration**: Streamlined setup with dotenv-flow
 
 ## Quick Start
 
-### 1. Start Redis with Docker
-
-```bash
-docker run -d --name swipecore-redis -p 6379:6379 redis:7-alpine
-```
-
-Verify Redis is running:
-```bash
-docker exec swipecore-redis redis-cli ping
-# Should return: PONG
-```
-
-### 2. Install Dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Environment Configuration
+### 2. Environment Configuration
 
 Copy the example environment file:
 ```bash
@@ -47,126 +35,63 @@ PLACES_BASE_URL=https://places.googleapis.com/v1
 PORT=4000
 NODE_ENV=development
 
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-CACHE_TTL_DAYS=28    # keep ≤30 per Google rules
-GOOGLE_API_MODE=live # live | mock
-FIXTURE_DIR=./test/fixtures
+# Cache Configuration
+CACHE_TTL_DAYS=1    # keep ≤30 per Google rules
+USE_DEV_CACHE=true  # File-based cache for development
 
 # Rate Limiting
 RATE_LIMIT_WINDOW_MS=600000
 RATE_LIMIT_MAX_REQUESTS=100
-
-# Cache TTL (in seconds)
-CACHE_TTL_NEARBY=300
-CACHE_TTL_DETAILS=1800
-CACHE_TTL_PHOTOS=3600
 ```
 
-## API Modes
+## Caching System
 
-### Live Mode (`GOOGLE_API_MODE=live`)
-- Makes real API calls to Google Places
-- Uses Redis → NodeCache → Google API fallback chain
-- Respects Google's caching rules
+The backend uses a unified caching approach:
+- **Development**: File-based cache (`dev-cache-nearby.json`) for persistence across restarts
+- **Production**: In-memory NodeCache for optimal performance
+- **TTL Compliance**: Configurable cache duration up to 30 days per Google requirements
 
-### Mock Mode (`GOOGLE_API_MODE=mock`)
-- **Smart-Mock System**: First call captures live response and writes fixture
-- Subsequent calls use cached fixtures
-- No network calls after initial capture
-- Perfect for development and testing
-
-## Google Places API Caching Rules
-
-According to [Google's documentation](https://developers.google.com/maps/documentation/places/web-service/policies#caching):
-
-- **Nearby Search (coordinates)**: Cache ≤ 30 days
-- **Place Details (place IDs)**: Cache unlimited (place IDs are permanent)
-- **Photos**: Follow same rules as the associated place data
-
-Our system enforces these rules automatically via `CACHE_TTL_DAYS` configuration.
+### Cache Types
+- **Nearby Search**: Cache ≤ 30 days (coordinates-based)
+- **Place Details**: Cache unlimited (place IDs are permanent)
+- **Photos**: Follow same rules as associated place data
 
 ## NPM Scripts
 
 ```bash
-# Development (mock mode with hot reload)
+# Development with hot reload
 npm run dev
 
 # Production build
 npm run build
 
-# Production server (live mode)
-npm run serve
+# Production server
+npm start
 
-# Run tests (mock mode with coverage)
+# Run tests with coverage
 npm test
 
 # Watch mode tests
 npm run test:watch
-
-# Prime fixtures with real API calls
-npm run prime
 
 # Linting
 npm run lint
 npm run lint:fix
 ```
 
-## Cache Architecture
+## Development Cache Management
 
-### Cache Fallback Chain
-
-```
-Request → Redis → NodeCache → Google API
-    ↓         ↓         ↓           ↓
-   Hit    Miss but   Miss but   Live API
-  Return   NodeCache   Fetcher    Response
-  Data      Hit       Call API   (with TTL)
-           Return     Store both
-           Data       Return Data
-```
-
-### Cache Keys
-
-- **Nearby Search**: `nearby:{sha1_hash_of_params}`
-- **Place Details**: `details:{place_id}`
-- **Photos**: `photo:{photo_reference}`
-
-Example:
-```typescript
-// Parameters: { lat: 40.7128, lng: -74.0060, radius: 1500 }
-// Cache Key: nearby:a1b2c3d4e5f6789abcdef1234567890abcdef12
-```
-
-## Smart-Mock System
-
-### How It Works
-
-1. **First Request**: Makes live API call → saves response as JSON fixture
-2. **Subsequent Requests**: Reads from fixture file instantly
-3. **Atomic Writes**: Uses `flag: 'wx'` to prevent race conditions
-4. **Network Blocking**: `nock.disableNetConnect()` prevents accidental live calls in tests
-
-### Fixture Management
-
-Fixtures are stored in `FIXTURE_DIR` (default: `./test/fixtures`):
-
-```
-test/fixtures/
-├── nearby:a1b2c3d4e5f6789abcdef1234567890abcdef12.json
-├── details:ChIJN1t_tDeuEmsRUsoyG83frY4.json
-└── photo:photo_reference_123.json
-```
-
-### Prime Fixtures
-
-Generate fixtures for common queries:
+The backend provides development-only endpoints for cache management:
 
 ```bash
-npm run prime
+# Clear development cache
+curl -X DELETE http://localhost:4000/api/places/dev-cache
+
+# View cache statistics
+curl http://localhost:4000/api/places/dev-cache/stats
 ```
 
-This makes real API calls and saves responses as fixtures for development use.
+These endpoints are only available when `NODE_ENV=development`.
 
 ## API Endpoints
 
@@ -187,77 +112,39 @@ GET /api/places/photo/photo_reference?maxWidth=400&maxHeight=400
 
 ## Development Workflow
 
-### 1. Mock Development
+### 1. Development
 ```bash
-# Start in mock mode (default for npm run dev)
+# Start development server
 npm run dev
 
-# API calls will create fixtures automatically
+# Test API endpoints
 curl "http://localhost:4000/api/places/nearby?lat=40.7128&lng=-74.0060&radius=1500"
 ```
 
-### 2. Test with Coverage
+### 2. Testing
 ```bash
-# Run all tests with network blocking
+# Run all tests with coverage
 npm test
 
 # Watch mode for development
 npm run test:watch
 ```
 
-### 3. Production Deployment
+### 3. Production
 ```bash
 # Build for production
 npm run build
 
-# Run with live Google API
-GOOGLE_API_MODE=live npm run serve
-```
-
-## Redis Management
-
-### Start Redis
-```bash
-docker run -d --name swipecore-redis -p 6379:6379 redis:7-alpine
-```
-
-### Stop Redis
-```bash
-docker stop swipecore-redis
-```
-
-### Restart Redis
-```bash
-docker restart swipecore-redis
-```
-
-### Redis CLI
-```bash
-docker exec -it swipecore-redis redis-cli
-```
-
-Common Redis commands:
-```redis
-# Check connection
-PING
-
-# List all keys
-KEYS *
-
-# Get cache value
-GET "nearby:a1b2c3d4e5f6789abcdef1234567890abcdef12"
-
-# Clear all cache
-FLUSHALL
+# Start production server
+npm start
 ```
 
 ## Testing
 
 ### Test Architecture
-- **Network Blocking**: `nock.disableNetConnect()` in mock mode
-- **Fixture Validation**: Tests verify fixture creation and reuse
-- **Cache Testing**: Redis → NodeCache fallback verification
-- **Integration Tests**: End-to-end API behavior
+- **Comprehensive Coverage**: Jest test suites with mocked integrations
+- **Cache Testing**: Unified cache system verification
+- **Integration Tests**: End-to-end API behavior testing
 
 ### Run Tests
 ```bash
@@ -266,7 +153,7 @@ npm test
 
 # Specific test files
 npm test cache-core.test.ts
-npm test mock-integration.test.ts
+npm test places.test.ts
 
 # Watch mode
 npm run test:watch
@@ -274,19 +161,7 @@ npm run test:watch
 
 ## Troubleshooting
 
-### Redis Connection Issues
-```bash
-# Check if Redis is running
-docker ps --filter name=swipecore-redis
-
-# Check Redis logs
-docker logs swipecore-redis
-
-# Restart Redis
-docker restart swipecore-redis
-```
-
-### Google API Issues
+### API Key Issues
 ```bash
 # Verify API key in environment
 echo $GOOGLE_PLACES_API_KEY
@@ -301,29 +176,19 @@ curl "https://places.googleapis.com/v1/places:searchNearby" \
 
 ### Cache Issues
 ```bash
-# Clear Redis cache
-docker exec swipecore-redis redis-cli FLUSHALL
+# Clear development cache via API
+curl -X DELETE http://localhost:4000/api/places/dev-cache
 
-# Clear fixture files
-rm -rf test/fixtures/*
-
-# Restart with fresh cache
+# Or restart development server
 npm run dev
 ```
 
 ## Production Considerations
 
 ### Environment Variables
-- Set `GOOGLE_API_MODE=live` in production
-- Configure `REDIS_URL` for production Redis instance
 - Use proper `GOOGLE_PLACES_API_KEY` with appropriate quotas
-- Set `CACHE_TTL_DAYS=28` to respect Google's 30-day limit
-
-### Monitoring
-- Monitor Redis memory usage and connection health
-- Track Google API quota usage
-- Log cache hit/miss ratios for optimization
-- Set up alerts for API failures
+- Set `CACHE_TTL_DAYS` to respect Google's 30-day limit (max 30)
+- Configure rate limiting appropriately for your use case
 
 ### Security
 - Never commit `.env` files with real API keys
