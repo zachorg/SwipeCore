@@ -43,7 +43,7 @@ export interface UseRestaurantSwipeReturn {
   location: { latitude: number; longitude: number } | null;
 
   // Actions
-  swipeCard: (cardId: string, action: "like" | "pass") => void;
+  swipeCard: (cardId: string, action: "menu" | "pass") => void;
   refreshCards: () => void;
   requestLocation: () => void;
 
@@ -278,7 +278,7 @@ export const useRestaurantSwipe = (
 
   // Swipe card action
   const swipeCard = useCallback(
-    (cardId: string, action: "like" | "pass") => {
+    (cardId: string, action: "menu" | "pass") => {
       const swipedCard = cards.find((card) => card.id === cardId);
       if (!swipedCard) return;
 
@@ -301,7 +301,7 @@ export const useRestaurantSwipe = (
       setCards((prev) => prev.filter((card) => card.id !== cardId));
 
       // If user liked the card, add to liked cards
-      if (action === "like") {
+      if (action === "menu") {
         setLikedCards((prev) => [...prev, swipedCard]);
       }
 

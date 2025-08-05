@@ -13,14 +13,14 @@ const Index = () => {
     initializeDeviceOptimizations();
   }, []);
 
-  const handleSwipeAction = (cardId: string, action: "like" | "pass") => {
+  const handleSwipeAction = (cardId: string, action: "menu" | "pass") => {
     console.log(`Swiped ${action} on restaurant:`, cardId);
 
     // Update stats
     setSwipeStats((prev) => ({
       ...prev,
-      [action === "like" ? "likes" : "passes"]:
-        prev[action === "like" ? "likes" : "passes"] + 1,
+      [action === "menu" ? "likes" : "passes"]:
+        prev[action === "menu" ? "likes" : "passes"] + 1,
     }));
   };
 

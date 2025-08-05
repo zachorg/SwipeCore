@@ -32,12 +32,12 @@ import { isIOS } from "@/lib/utils";
 
 interface SwipeCardProps {
   card: RestaurantCard;
-  onSwipe: (cardId: string, direction: "like" | "pass") => void;
+  onSwipe: (cardId: string, direction: "menu" | "pass") => void;
   config: SwipeConfig;
   isTop: boolean;
   index: number;
   onCardTap?: (card: RestaurantCard) => void;
-  onSwipeDirection?: (direction: "like" | "pass" | null) => void;
+  onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
 }
 
 export function SwipeCard({
@@ -52,6 +52,7 @@ export function SwipeCard({
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -88,6 +89,33 @@ export function SwipeCard({
     [openMapDialogAddress]
   );
 
+  // Image navigation handlers
+  const handleImageNavigation = useCallback(
+    (event: React.MouseEvent, direction: "left" | "right") => {
+      event.stopPropagation();
+      if (!card.images || card.images.length <= 1) return;
+
+      if (direction === "left") {
+        setCurrentImageIndex((prev) =>
+          prev > 0 ? prev - 1 : card.images!.length - 1
+        );
+      } else {
+        setCurrentImageIndex((prev) =>
+          prev < card.images!.length - 1 ? prev + 1 : 0
+        );
+      }
+    },
+    [card.images]
+  );
+
+  // Get current image URL
+  const getCurrentImageUrl = useCallback(() => {
+    if (card.images && card.images.length > 0) {
+      return card.images[currentImageIndex];
+    }
+    return card.imageUrl;
+  }, [card.images, card.imageUrl, currentImageIndex]);
+
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
     x,
@@ -95,44 +123,53 @@ export function SwipeCard({
     [-config.maxRotation, config.maxRotation]
   );
 
-  const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
-  
+  // Conditional opacity transform - only for high-end devices
+  const opacity = deviceInfo.isLowEndDevice
+    ? undefined
+    : useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
+
   // Optimized touch handlers for better Android performance
-  const handleTouchStart = useCallback((event: React.TouchEvent) => {
-    // Allow scrolling when card is expanded, prevent default only when not expanded
-    if (!isExpanded) {
-      event.preventDefault();
-    }
-    const touch = event.touches[0];
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      time: Date.now(),
-    };
-    dragMovedRef.current = false;
-    setIsDragging(false);
-  }, [isExpanded]);
+  const handleTouchStart = useCallback(
+    (event: React.TouchEvent) => {
+      // Allow scrolling when card is expanded, prevent default only when not expanded
+      if (!isExpanded) {
+        event.preventDefault();
+      }
+      const touch = event.touches[0];
+      touchStartRef.current = {
+        x: touch.clientX,
+        y: touch.clientY,
+        time: Date.now(),
+      };
+      dragMovedRef.current = false;
+      setIsDragging(false);
+    },
+    [isExpanded]
+  );
 
-  const handleTouchMove = useCallback((event: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
+  const handleTouchMove = useCallback(
+    (event: React.TouchEvent) => {
+      if (!touchStartRef.current) return;
 
-    // Allow scrolling when card is expanded
-    if (isExpanded) return;
+      // Allow scrolling when card is expanded
+      if (isExpanded) return;
 
-    const touch = event.touches[0];
-    const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
-    const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+      const touch = event.touches[0];
+      const deltaX = Math.abs(touch.clientX - touchStartRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
 
-    if (
-      !dragMovedRef.current &&
-      (deltaX > DRAG_START_THRESHOLD || deltaY > DRAG_START_THRESHOLD)
-    ) {
-      dragMovedRef.current = true;
-      setIsDragging(true);
-      // Prevent scrolling when dragging starts (but only when not expanded)
-      event.preventDefault();
-    }
-  }, [isExpanded]);
+      if (
+        !dragMovedRef.current &&
+        (deltaX > DRAG_START_THRESHOLD || deltaY > DRAG_START_THRESHOLD)
+      ) {
+        dragMovedRef.current = true;
+        setIsDragging(true);
+        // Prevent scrolling when dragging starts (but only when not expanded)
+        event.preventDefault();
+      }
+    },
+    [isExpanded]
+  );
 
   const handleTouchEnd = useCallback((event: React.TouchEvent) => {
     if (!touchStartRef.current) return;
@@ -162,7 +199,7 @@ export function SwipeCard({
   const handleDrag = useCallback(
     (_: any, info: PanInfo) => {
       if (Math.abs(info.offset.x) > 20) {
-        const direction = info.offset.x > 0 ? "like" : "pass";
+        const direction = info.offset.x > 0 ? "menu" : "pass";
         onSwipeDirection?.(direction);
       } else {
         onSwipeDirection?.(null);
@@ -171,18 +208,10 @@ export function SwipeCard({
     [onSwipeDirection]
   );
 
-  // Mouse click handler for desktop
-  const handleCardTap = useCallback(() => {
-    // Only trigger on desktop (no touch points), and if not dragging
-    if ((window.navigator.maxTouchPoints || 0) === 0 && !isDragging) {
-      setIsExpanded((value) => !value);
-    }
-  }, [isDragging]);
-
   const handleDragEnd = useCallback(
     (_: any, info: PanInfo) => {
       const swipeDistance = Math.abs(info.offset.x);
-      const swipeDirection = info.offset.x > 0 ? "like" : "pass";
+      const swipeDirection = info.offset.x > 0 ? "menu" : "pass";
       const dragDuration = Date.now() - dragStartTime;
 
       // Only trigger swipe if:
@@ -198,7 +227,9 @@ export function SwipeCard({
         dragDuration > 100 &&
         dragDuration < 2000
       ) {
-        onSwipe(card.id, swipeDirection);
+        // Map menu direction back to like for the actual swipe action
+        const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
+        onSwipe(card.id, actualDirection);
       } else {
         // Animate card back to center with device-optimized settings
         const snapDuration = performanceConfig.fastSnapBack
@@ -260,6 +291,226 @@ export function SwipeCard({
       .map((_, i) => <DollarSign key={i} className="w-3 h-3 text-green-500" />);
   };
 
+  const MainContentOverlay = () => {
+    return (
+      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+        <div className="space-y-3">
+          {/* Restaurant Name and Rating with Expand Button */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
+              {card.rating && (
+                <div className="flex items-center gap-2 mb-2">
+                  {renderStars(card.rating)}
+                  <span className="text-sm text-white/80">({card.rating})</span>
+                </div>
+              )}
+            </div>
+
+            {/* Expand/Collapse button - Right aligned and bigger */}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition-colors ml-4 flex-shrink-0"
+              aria-label={isExpanded ? "Close details" : "View details"}
+            >
+              <ChevronUp
+                className={`w-5 h-5 text-white transition-transform ${
+                  isExpanded ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Restaurant Details */}
+          <div className="space-y-2">
+            {card.distance && (
+              <div className="flex items-center gap-2 text-sm text-white/80">
+                <MapPin className="w-4 h-4" />
+                <span>{card.distance}</span>
+              </div>
+            )}
+            {card.openingHours && (
+              <div className="flex items-center gap-2 text-sm text-white/80">
+                <Clock className="w-4 h-4" />
+                <span>{card.openingHours}</span>
+                {card.isOpenNow !== undefined && (
+                  <span
+                    className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      card.isOpenNow
+                        ? "bg-green-500/80 text-white"
+                        : "bg-red-500/80 text-white"
+                    }`}
+                  >
+                    {card.isOpenNow ? "Open" : "Closed"}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const DetailedContentContainer = () => {
+    return (
+      <motion.div
+        className="absolute inset-0 bg-black/95 backdrop-blur-sm"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ touchAction: "auto" }}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
+        <div
+          className="h-full overflow-y-auto p-6 text-white scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+          style={{ touchAction: "pan-y" }}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-2">{card.title}</h2>
+              {card.cuisine && (
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm bg-white/20 px-2 py-1 rounded">
+                    {card.cuisine}
+                  </span>
+                  {card.priceRange && (
+                    <div className="flex items-center">
+                      {renderPriceRange(card.priceRange)}
+                    </div>
+                  )}
+                </div>
+              )}
+              {card.rating && (
+                <div className="flex items-center gap-2">
+                  {renderStars(card.rating)}
+                  <span className="text-sm text-white/80">({card.rating})</span>
+                </div>
+              )}
+            </div>
+            {/* Close button */}
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="ml-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              aria-label="Close details"
+            >
+              <ChevronUp className="w-5 h-5 text-white rotate-180" />
+            </button>
+          </div>
+
+          {/* Contact Info */}
+          <div className="space-y-3 mb-6">
+            {card.address && (
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <Button
+                    variant="link"
+                    className="p-0 h-auto font-medium"
+                    onClick={() => {
+                      handleMapsClick(card?.address);
+                    }}
+                  >
+                    Open in Maps
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {card.phone && (
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="w-4 h-4 text-white/60" />
+                <span>{card.phone}</span>
+              </div>
+            )}
+            {card.website && (
+              <div className="flex items-center gap-2 text-sm">
+                <Globe className="w-4 h-4 text-white/60" />
+                <span>{card.website}</span>
+              </div>
+            )}
+            {card.openingHours && (
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-white/60" />
+                <span>{card.openingHours}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Additional Info */}
+          {card.placeDetails?.editorialSummary && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">About</h3>
+              <div className="bg-white/10 p-3 rounded-lg">
+                <p className="text-sm text-white/80">
+                  {card.placeDetails.editorialSummary.text}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Reviews Preview */}
+          {card.reviews && card.reviews.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Customer Reviews</h3>
+              <div className="space-y-3">
+                {card.reviews.map((review) => (
+                  <div key={review.id} className="bg-white/10 p-3 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-medium">{review.author}</span>
+                      <div className="flex items-center">
+                        {renderStars(review.rating)}
+                      </div>
+                      <span className="text-xs text-white/50 ml-auto">
+                        {review.relativeTime || review.date}
+                      </span>
+                    </div>
+                    <p className="text-sm text-white/80">{review.comment}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  const MapsDialog = () => {
+    return (
+      <Dialog open={openMapDialog} onOpenChange={setOpenMapDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Open in Maps</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <Button className="w-full" onClick={() => openMapsApp("google")}>
+              Google Maps
+            </Button>
+            {isIOS() && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => openMapsApp("apple")}
+              >
+                Apple Maps
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpenMapDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <motion.div
       className="absolute inset-4 select-none"
@@ -268,7 +519,7 @@ export function SwipeCard({
         x,
         y,
         rotate,
-        opacity,
+        ...(opacity && { opacity }), // Only add opacity for high-end devices
         zIndex: isTop ? 5 : 5 - index,
         // Hardware acceleration optimized for device capabilities
         willChange:
@@ -305,8 +556,7 @@ export function SwipeCard({
     >
       {/* Card Container - Optimized for Android performance */}
       <div
-        className="relative w-full h-full bg-card rounded-2xl overflow-hidden shadow-2xl border border-border/20 cursor-pointer"
-        onClick={handleCardTap}
+        className="relative w-full h-full bg-card rounded-2xl overflow-hidden shadow-2xl border border-border/20"
         style={{
           // Force hardware acceleration on Android
           transform: "translateZ(0)",
@@ -314,24 +564,53 @@ export function SwipeCard({
           perspective: 1000,
         }}
       >
-        {/* Background Image - Optimized loading */}
+        {/* Background Image Section - Full height */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-gray-200"
           style={{
-            backgroundImage: card.imageUrl ? `url(${card.imageUrl})` : "none",
-            backgroundColor: card.imageUrl ? "transparent" : "#f3f4f6",
+            backgroundImage: getCurrentImageUrl()
+              ? `url(${getCurrentImageUrl()})`
+              : "none",
+            backgroundColor: getCurrentImageUrl() ? "transparent" : "#f3f4f6",
             // Optimize image rendering for mobile
             imageRendering: "auto" as const,
             transform: "translateZ(0)",
           }}
         >
-          {!card.imageUrl && (
+          {!getCurrentImageUrl() && (
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-400 text-center">
                 <MapPin className="w-16 h-16 mx-auto mb-2" />
                 <p className="text-sm">No image available</p>
               </div>
             </div>
+          )}
+
+          {/* Image Navigation Areas - Only show if multiple images and not expanded */}
+          {card.images && card.images.length > 1 && !isExpanded && (
+            <>
+              {/* Left navigation area */}
+              <div
+                className="absolute left-0 top-0 w-1/3 h-full z-10 cursor-pointer"
+                onClick={(e) => handleImageNavigation(e, "left")}
+              />
+              {/* Right navigation area */}
+              <div
+                className="absolute right-0 top-0 w-1/3 h-full z-10 cursor-pointer"
+                onClick={(e) => handleImageNavigation(e, "right")}
+              />
+              {/* Image indicators */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 z-10">
+                {card.images.map((_: string, index: number) => (
+                  <div
+                    key={index}
+                    className={`w-2 h-2 rounded-full ${
+                      index === currentImageIndex ? "bg-white" : "bg-white/50"
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
         {/* Gradient Overlay */}
@@ -345,227 +624,15 @@ export function SwipeCard({
             </div>
           )}
         </div>
-        {/* Card Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-          <div className="space-y-3">
-            {/* Restaurant Name and Rating */}
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
-                {card.rating && (
-                  <div className="flex items-center gap-2 mb-2">
-                    {renderStars(card.rating)}
-                    <span className="text-sm text-white/80">
-                      ({card.rating})
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Restaurant Details */}
-            <div className="space-y-2">
-              {card.distance && (
-                <div className="flex items-center gap-2 text-sm text-white/80">
-                  <MapPin className="w-4 h-4" />
-                  <span>{card.distance}</span>
-                </div>
-              )}
-              {card.openingHours && (
-                <div className="flex items-center gap-2 text-sm text-white/80">
-                  <Clock className="w-4 h-4" />
-                  <span>{card.openingHours}</span>
-                  {card.isOpenNow !== undefined && (
-                    <span
-                      className={`ml-2 px-2 py-0.5 rounded text-xs ${
-                        card.isOpenNow
-                          ? "bg-green-500/80 text-white"
-                          : "bg-red-500/80 text-white"
-                      }`}
-                    >
-                      {card.isOpenNow ? "Open" : "Closed"}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Tap to expand indicator */}
-            <div className="flex items-center justify-center pt-2">
-              <div className="bg-white/20 px-3 py-1 rounded-full flex items-center gap-1">
-                <ChevronUp
-                  className={`w-4 h-4 text-white transition-transform ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
-                />
-                <span className="text-sm text-white">
-                  {isExpanded ? "Tap to close" : "Tap for details"}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         {/* Expanded Content Overlay */}
-        {isExpanded && (
-          <motion.div
-            className="absolute inset-0 bg-black/95 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{ touchAction: 'auto' }}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-          >
-            <div
-              className="h-full overflow-y-auto p-6 text-white scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
-              style={{ touchAction: 'pan-y' }}
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold mb-2">{card.title}</h2>
-                  {card.cuisine && (
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm bg-white/20 px-2 py-1 rounded">
-                        {card.cuisine}
-                      </span>
-                      {card.priceRange && (
-                        <div className="flex items-center">
-                          {renderPriceRange(card.priceRange)}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {card.rating && (
-                    <div className="flex items-center gap-2">
-                      {renderStars(card.rating)}
-                      <span className="text-sm text-white/80">
-                        ({card.rating})
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Contact Info */}
-              <div className="space-y-3 mb-6">
-                {card.address && (
-                  <div className="flex items-center gap-3">
-                    <MapPin className="w-5 h-5 text-muted-foreground" />
-                    <div>
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto font-medium"
-                        onClick={() => {
-                          handleMapsClick(card?.address);
-                        }}
-                      >
-                        Open in Maps
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {card.phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-white/60" />
-                    <span>{card.phone}</span>
-                  </div>
-                )}
-                {card.website && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Globe className="w-4 h-4 text-white/60" />
-                    <span>{card.website}</span>
-                  </div>
-                )}
-                {card.openingHours && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-white/60" />
-                    <span>{card.openingHours}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Additional Info */}
-              {card.placeDetails?.editorialSummary && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3">About</h3>
-                  <div className="bg-white/10 p-3 rounded-lg">
-                    <p className="text-sm text-white/80">
-                      {card.placeDetails.editorialSummary.text}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Reviews Preview */}
-              {card.reviews && card.reviews.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">
-                    Customer Reviews
-                  </h3>
-                  <div className="space-y-3">
-                    {card.reviews.map((review) => (
-                      <div
-                        key={review.id}
-                        className="bg-white/10 p-3 rounded-lg"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium">{review.author}</span>
-                          <div className="flex items-center">
-                            {renderStars(review.rating)}
-                          </div>
-                          <span className="text-xs text-white/50 ml-auto">
-                            {review.relativeTime || review.date}
-                          </span>
-                        </div>
-                        <p className="text-sm text-white/80">
-                          {review.comment}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Scroll indicator */}
-              <div className="flex justify-center mt-4 pb-2">
-                <div className="bg-white/20 px-3 py-1 rounded-full text-xs text-white/70">
-                  Scroll for more details
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        {isExpanded && <DetailedContentContainer />}
+        {/* Main Content Overlay */}
+        {!isExpanded && <MainContentOverlay />}
       </div>
-      <Dialog open={openMapDialog} onOpenChange={setOpenMapDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Open in Maps</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <Button className="w-full" onClick={() => openMapsApp("google")}>
-              Google Maps
-            </Button>
-            {isIOS() && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => openMapsApp("apple")}
-              >
-                Apple Maps
-              </Button>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpenMapDialog(false)}>
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MapsDialog />
     </motion.div>
   );
 }

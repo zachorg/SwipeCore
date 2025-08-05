@@ -18,7 +18,7 @@ import { isAndroid } from "@/lib/utils";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
-  onSwipeAction?: (cardId: string, action: "like" | "pass") => void;
+  onSwipeAction?: (cardId: string, action: "menu" | "pass") => void;
   maxVisibleCards?: number;
   onCardTap?: (card: RestaurantCard) => void;
   swipeOptions?: UseRestaurantSwipeOptions;
@@ -31,7 +31,7 @@ export function SwipeDeck({
   onCardTap,
   swipeOptions = {},
 }: SwipeDeckProps) {
-  const [swipeDirection, setSwipeDirection] = useState<"like" | "pass" | null>(
+  const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
     null
   );
 
@@ -55,22 +55,27 @@ export function SwipeDeck({
     usingLiveData,
   } = useRestaurantSwipe(swipeOptions);
 
-  const handleSwipe = (cardId: string, action: "like" | "pass") => {
+  const handleSwipe = (cardId: string, action: "menu" | "pass") => {
     swipeCard(cardId, action);
     onSwipeAction?.(cardId, action);
   };
 
-  const handleControlAction = (action: "like" | "pass") => {
+  const handleControlAction = (action: "pass") => {
     if (currentCard) {
       handleSwipe(currentCard.id, action);
     }
+  };
+
+  const handleMenuOpen = () => {
+    // TODO: Implement menu opening logic
+    console.log("Open menu clicked");
   };
 
   const handleCardTap = (card: RestaurantCard) => {
     onCardTap?.(card);
   };
 
-  const handleSwipeDirection = (direction: "like" | "pass" | null) => {
+  const handleSwipeDirection = (direction: "menu" | "pass" | null) => {
     setSwipeDirection(direction);
   };
   
@@ -182,9 +187,9 @@ export function SwipeDeck({
   }
 
   return (
-    <div className="flex-1 relative">
-      {/* Card Stack */}
-      <div className="relative h-full pb-32">
+    <div className="flex-1 flex flex-col">
+      {/* Card Stack - Full height with padding for controls */}
+      <div className="flex-1 relative p-4">
         {visibleCards.map((card, index) => (
           <SwipeCard
             key={card.id}
@@ -199,9 +204,10 @@ export function SwipeDeck({
         ))}
       </div>
 
-      {/* Swipe Controls */}
+      {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
+        onMenuOpen={handleMenuOpen}
         swipeDirection={swipeDirection}
       />
     </div>
