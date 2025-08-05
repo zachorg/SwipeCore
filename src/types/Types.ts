@@ -167,7 +167,7 @@ export interface UserPreferences {
 // Swipe-related interfaces (updated)
 export interface SwipeAction {
   cardId: string;
-  action: 'like' | 'pass';
+  action: 'menu' | 'pass';
   timestamp: number;
   place?: PlaceBasic;
 }

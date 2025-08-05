@@ -56,7 +56,9 @@ export function SwipeCard({
   const [dragStartTime, setDragStartTime] = useState(0);
 
   const [isDragging, setIsDragging] = useState(false);
+  const [isPerformanceMode, setIsPerformanceMode] = useState(false);
   const dragMovedRef = useRef(false);
+  const lastDirectionUpdateRef = useRef(0);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
     null
   );
@@ -193,19 +195,31 @@ export function SwipeCard({
   const handleDragStart = useCallback(() => {
     setDragStartTime(Date.now());
     setIsDragging(true);
+    setIsPerformanceMode(true); // Enable performance mode during drag
     onSwipeDirection?.(null);
   }, [onSwipeDirection]);
 
   const handleDrag = useCallback(
     (_: any, info: PanInfo) => {
-      if (Math.abs(info.offset.x) > 20) {
+      // Throttle direction updates to reduce re-renders
+      const now = Date.now();
+      const throttleDelay = deviceInfo.isLowEndDevice ? 50 : 16; // ~60fps for high-end, ~20fps for low-end
+
+      if (now - lastDirectionUpdateRef.current < throttleDelay) {
+        return; // Skip this update
+      }
+
+      lastDirectionUpdateRef.current = now;
+      const threshold = deviceInfo.isLowEndDevice ? 30 : 20;
+
+      if (Math.abs(info.offset.x) > threshold) {
         const direction = info.offset.x > 0 ? "menu" : "pass";
         onSwipeDirection?.(direction);
       } else {
         onSwipeDirection?.(null);
       }
     },
-    [onSwipeDirection]
+    [onSwipeDirection, deviceInfo.isLowEndDevice]
   );
 
   const handleDragEnd = useCallback(
@@ -255,6 +269,7 @@ export function SwipeCard({
       // Reset drag state after a short delay to prevent tap trigger
       setTimeout(() => {
         setIsDragging(false);
+        setIsPerformanceMode(false); // Disable performance mode after drag
         onSwipeDirection?.(null);
       }, 100);
     },
@@ -293,7 +308,7 @@ export function SwipeCard({
 
   const MainContentOverlay = () => {
     return (
-      <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="space-y-3">
           {/* Restaurant Name and Rating with Expand Button */}
           <div className="flex items-start justify-between">
@@ -302,7 +317,7 @@ export function SwipeCard({
               {card.rating && (
                 <div className="flex items-center gap-2 mb-2">
                   {renderStars(card.rating)}
-                  <span className="text-sm text-white/80">({card.rating})</span>
+                  <span className="text-sm text-gray-600">({card.rating})</span>
                 </div>
               )}
             </div>
@@ -310,7 +325,7 @@ export function SwipeCard({
             {/* Expand/Collapse button - Right aligned and bigger */}
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition-colors ml-4 flex-shrink-0"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105"
               aria-label={isExpanded ? "Close details" : "View details"}
             >
               <ChevronUp
@@ -324,14 +339,14 @@ export function SwipeCard({
           {/* Restaurant Details */}
           <div className="space-y-2">
             {card.distance && (
-              <div className="flex items-center gap-2 text-sm text-white/80">
-                <MapPin className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="w-4 h-4 text-purple-500" />
                 <span>{card.distance}</span>
               </div>
             )}
             {card.openingHours && (
-              <div className="flex items-center gap-2 text-sm text-white/80">
-                <Clock className="w-4 h-4" />
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Clock className="w-4 h-4 text-purple-500" />
                 <span>{card.openingHours}</span>
                 {card.isOpenNow !== undefined && (
                   <span
@@ -535,15 +550,20 @@ export function SwipeCard({
       }}
       drag={isTop && !isExpanded}
       dragConstraints={{ left: -200, right: 200, top: -50, bottom: 50 }}
-      dragElastic={deviceInfo.isAndroid ? 0.5 : 0.6} // More responsive on Android
+      dragElastic={deviceInfo.isLowEndDevice ? 0.3 : (deviceInfo.isAndroid ? 0.4 : 0.5)} // Reduced elastic for better performance
       dragMomentum={false} // Disable momentum for more responsive feel
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }} // Optimized drag physics
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
-      whileDrag={{
-        scale: deviceInfo.isLowEndDevice ? 1.01 : 1.02, // Reduced scale for low-end devices
-        transition: { duration: performanceConfig.fastSnapBack ? 0.05 : 0.1 },
-      }}
+      whileDrag={
+        deviceInfo.isLowEndDevice
+          ? undefined // No scale animation on low-end devices
+          : {
+              scale: 1.01,
+              transition: { duration: 0.05, ease: "linear" },
+            }
+      }
       // Optimized touch handlers for mobile devices
       onTouchStart={!isExpanded ? handleTouchStart : undefined}
       onTouchMove={!isExpanded ? handleTouchMove : undefined}
@@ -554,9 +574,9 @@ export function SwipeCard({
       // Reduce animation complexity on low-end devices
       animate={performanceConfig.reducedAnimations ? false : undefined}
     >
-      {/* Card Container - Optimized for Android performance */}
+      {/* Card Container - Modern vibrant design */}
       <div
-        className="relative w-full h-full bg-card rounded-2xl overflow-hidden shadow-2xl border border-border/20"
+        className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50"
         style={{
           // Force hardware acceleration on Android
           transform: "translateZ(0)",
@@ -613,11 +633,15 @@ export function SwipeCard({
             </>
           )}
         </div>
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        {/* Gradient Overlay - Simplified during drag for performance */}
+        <div className={`absolute inset-0 ${
+          isPerformanceMode || deviceInfo.isLowEndDevice
+            ? 'bg-black/40' // Simple overlay during drag
+            : 'bg-gradient-to-t from-black/80 via-black/20 to-transparent'
+        }`} />
         {/* Restaurant Info Badge */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 bg-black/70 px-4 py-2 rounded-full flex items-center gap-2">
-          <span className="text-white font-semibold">{card.cuisine}</span>
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
+          <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
           {card.priceRange && (
             <div className="flex items-center">
               {renderPriceRange(card.priceRange)}
@@ -625,8 +649,6 @@ export function SwipeCard({
           )}
         </div>
 
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
         {/* Expanded Content Overlay */}
         {isExpanded && <DetailedContentContainer />}
         {/* Main Content Overlay */}

@@ -8,92 +8,85 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Mobile-first swipe app design system */
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Modern vibrant light theme design system */
+    --background: 210 40% 98%;
+    --foreground: 222 84% 4.9%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 4.9%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 4.9%;
 
-    /* Vibrant swipe colors */
-    --primary: 346 77% 49.8%;
-    --primary-foreground: 0 0% 98%;
+    /* Vibrant modern colors */
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
 
     --accent: 142 76% 36%;
-    --accent-foreground: 0 0% 98%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 346 77% 49.8%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 262 83% 58%;
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 84% 4.9%;
+    --sidebar-primary: 262 83% 58%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 262 83% 58%;
   }
 
   .dark {
-    /* Light mode for swipe app */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Alternative vibrant theme */
+    --background: 220 14% 96%;
+    --foreground: 220 9% 9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 9% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 220 9% 9%;
 
-    --primary: 346 77% 49.8%;
+    --primary: 346 77% 50%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 9%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
     --accent: 142 76% 36%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5% 84%;
-    --input: 240 5% 84%;
-    --ring: 346 77% 49.8%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 346 77% 50%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 9% 9%;
+    --sidebar-primary: 346 77% 50%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 9% 9%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 346 77% 50%;
   }
 }
 
@@ -123,5 +116,54 @@ All colors MUST be HSL.
   /* Smooth scrolling for mobile */
   html {
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Performance optimizations */
+  .transform {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* Optimize animations for better performance */
+  .transition-all {
+    transition-property: transform, opacity, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Hardware acceleration for drag elements */
+  [data-swipe-card] {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  /* Optimize gradients during animations */
+  .bg-gradient-to-r,
+  .bg-gradient-to-br {
+    background-attachment: fixed;
+  }
+
+  /* Reduce paint complexity on low-end devices - but keep important elements visible */
+  .low-end-device .bg-gradient-to-br {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  }
+
+  .low-end-device .shadow-xl,
+  .low-end-device .shadow-2xl {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+
+  /* Ensure buttons and header elements remain visible */
+  .bg-gradient-to-r.from-purple-500,
+  .bg-gradient-to-r.from-blue-500,
+  .bg-gradient-to-r.from-red-500 {
+    background: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+  }
+
+  /* Ensure gradient text remains visible */
+  .bg-clip-text {
+    background: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
   }
 }

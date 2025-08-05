@@ -33,10 +33,10 @@ export function getDeviceInfo(): DeviceInfo {
   const deviceMemory = (navigator as any).deviceMemory || 1;
   const devicePixelRatio = window.devicePixelRatio || 1;
   
-  // Consider device low-end if it has limited cores, memory, or is an older Android version
-  const isLowEndDevice = hardwareConcurrency <= 2 || 
-                        deviceMemory <= 2 || 
-                        (isAndroid && /Android [4-6]/.test(userAgent));
+  // Balanced low-end device detection - keep visual quality for most devices
+  const isLowEndDevice = hardwareConcurrency <= 2 ||
+                        deviceMemory <= 2 ||
+                        (isAndroid && /Android [4-6]/.test(userAgent)); // Only very old Android versions
 
   // Check for hardware acceleration support
   const canvas = document.createElement('canvas');

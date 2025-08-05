@@ -31,16 +31,21 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center p-4 border-b border-border/20">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">
+      <div className="flex items-center p-6 bg-white/80 backdrop-blur-sm border-b border-purple-200/50 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-purple-500 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-2xl">
               🍕
             </span>
           </div>
-          <h1 className="text-xl font-bold text-foreground">FoodSwipe</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-purple-600 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              FoodSwipe
+            </h1>
+            <p className="text-sm text-gray-600">Discover amazing restaurants</p>
+          </div>
         </div>
       </div>
 
