@@ -95,26 +95,6 @@ export const useRestaurantSwipe = (
       }
     : null;
 
-  // does not work.
-  // const {
-  //   data: nearbyPlaces,
-  //   setLocation,
-  //   refetch: refetchPlaces,
-  //   isLoading: isPlacesLoading,
-  //   error: placesError,
-  // } = useNearbyPlacesWithLocation(
-  //   {
-  //     // Optional search parameters
-  //     radius: 15000, // 1.5km radius
-  //     type: "restaurant", // Type of places to search for
-  //     keyword: "pizza", // Optional keyword search
-  //   },
-  //   {
-  //     enabled: true, // Enable the query
-  //     refetchOnWindowFocus: false, // Don't refetch when window gains focus
-  //   }
-  // );
-
   // Search configuration
   const finalSearchConfig = {
     ...defaultSearchConfig,

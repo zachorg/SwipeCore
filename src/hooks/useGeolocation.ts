@@ -68,7 +68,7 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     console.log('📍 Starting geolocation request...', { isSupported: state.isSupported });
     
     if (!state.isSupported) {
-      console.error('❌ Geolocation not supported');
+      console.error('Geolocation not supported');
       setState(prev => ({
         ...prev,
         error: 'Geolocation is not supported on this device',
@@ -81,12 +81,12 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
     try {
       // Check and request permissions
-      console.log('🔐 Requesting geolocation permissions...');
+      console.log('Requesting geolocation permissions...');
       const hasPermission = await requestPermissions();
-      console.log('🔐 Permission result:', hasPermission);
+      console.log('Permission result:', hasPermission);
       
       if (!hasPermission) {
-        console.error('❌ Location permission denied');
+        console.error('Location permission denied');
         setState(prev => ({
           ...prev,
           error: 'Location permission denied. Please enable location access in your device settings.',
@@ -95,9 +95,9 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
         return null;
       }
 
-      console.log('🌍 Getting current position...');
+      console.log('Getting current position...');
       const position = await Geolocation.getCurrentPosition(positionOptions);
-      console.log('✅ Location obtained:', {
+      console.log('Location obtained:', {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
         accuracy: position.coords.accuracy
@@ -221,39 +221,4 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     clearWatch,
     requestPermissions,
   };
-};
-
-// Utility function to calculate distance between two coordinates
-export const calculateDistance = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number => {
-  const R = 6371; // Radius of the Earth in kilometers
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in kilometers
-  return distance;
-};
-
-// Default coordinates for major cities (fallback when location is denied)
-export const defaultLocations = {
-  'New York': { latitude: 40.7128, longitude: -74.0060 },
-  'Los Angeles': { latitude: 34.0522, longitude: -118.2437 },
-  'Chicago': { latitude: 41.8781, longitude: -87.6298 },
-  'Houston': { latitude: 29.7604, longitude: -95.3698 },
-  'Phoenix': { latitude: 33.4484, longitude: -112.0740 },
-  'Philadelphia': { latitude: 39.9526, longitude: -75.1652 },
-  'San Antonio': { latitude: 29.4241, longitude: -98.4936 },
-  'San Diego': { latitude: 32.7157, longitude: -117.1611 },
-  'Dallas': { latitude: 32.7767, longitude: -96.7970 },
-  'San Jose': { latitude: 37.3382, longitude: -121.8863 },
 };
