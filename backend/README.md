@@ -1,98 +1,201 @@
-# SwipeCore Backend API
+# SwipeCore Backend
 
-A TypeScript Express proxy for Google Places API endpoints, providing secure server-side access to Google Places data for the SwipeCore application.
+Express API proxy for Google Places API with unified caching system.
 
-## Setup
+## Features
 
-### Prerequisites
-- Node.js 18 LTS or higher
-- npm or pnpm
-- Google Cloud Platform account with Places API enabled
+- **Unified Caching**: File-based development cache + NodeCache for production
+- **Google Places API Compliance**: Respects caching rules (≤30 days for coordinates, unlimited for place IDs)
+- **Development Cache Management**: Dev-only endpoints for cache inspection and clearing
+- **Environment Configuration**: Streamlined setup with dotenv-flow
 
-### Installation
+## Quick Start
+
+### 1. Install Dependencies
+
 ```bash
 npm install
 ```
 
-### Environment Configuration
-1. Copy `env.example` to `.env`
-2. Configure your Google Places API key and other settings
+### 2. Environment Configuration
 
-### Google Places API Key Setup
-
-**Important: API Key Security Configuration**
-
-To ensure security and prevent unauthorized usage:
-
-1. **Create API Key in Google Cloud Console:**
-   - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Navigate to APIs & Services > Credentials
-   - Click "Create Credentials" > "API Key"
-
-2. **Restrict the API Key:**
-   - **Application restrictions:** Set to "HTTP referrers" for web deployment or "IP addresses" for server-to-server
-   - **API restrictions:** Enable only "Places API (New)" - DO NOT leave unrestricted
-   - **For development:** Add your development server IP
-   - **For production:** Add your production server IP ranges
-
-3. **Required APIs:**
-   - Places API (New)
-   - Ensure billing is enabled on your Google Cloud project
-
-4. **Quota Management:**
-   - Monitor usage in Google Cloud Console
-   - Set up billing alerts
-   - Configure daily quotas to prevent unexpected charges
-
-### Development
+Copy the example environment file:
 ```bash
-npm run dev    # Start development server
-npm run build  # Build for production
-npm run test   # Run tests
+cp env.example .env
 ```
+
+Configure your environment variables:
+
+```env
+# Google Places API Configuration
+GOOGLE_PLACES_API_KEY=your_google_places_api_key_here
+PLACES_BASE_URL=https://places.googleapis.com/v1
+
+# Server Configuration
+PORT=4000
+NODE_ENV=development
+
+# Cache Configuration
+CACHE_TTL_DAYS=1    # keep ≤30 per Google rules
+USE_DEV_CACHE=true  # File-based cache for development
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=600000
+RATE_LIMIT_MAX_REQUESTS=100
+```
+
+## Caching System
+
+The backend uses a unified caching approach:
+- **Development**: File-based cache (`dev-cache-nearby.json`) for persistence across restarts
+- **Production**: In-memory NodeCache for optimal performance
+- **TTL Compliance**: Configurable cache duration up to 30 days per Google requirements
+
+### Cache Types
+- **Nearby Search**: Cache ≤ 30 days (coordinates-based)
+- **Place Details**: Cache unlimited (place IDs are permanent)
+- **Photos**: Follow same rules as associated place data
+
+## NPM Scripts
+
+```bash
+# Development with hot reload
+npm run dev
+
+# Production build
+npm run build
+
+# Production server
+npm start
+
+# Run tests with coverage
+npm test
+
+# Watch mode tests
+npm run test:watch
+
+# Linting
+npm run lint
+npm run lint:fix
+```
+
+## Development Cache Management
+
+The backend provides development-only endpoints for cache management:
+
+```bash
+# Clear development cache
+curl -X DELETE http://localhost:4000/api/places/dev-cache
+
+# View cache statistics
+curl http://localhost:4000/api/places/dev-cache/stats
+```
+
+These endpoints are only available when `NODE_ENV=development`.
 
 ## API Endpoints
 
-### GET /api/places/nearby
-Search for nearby places using Google Places Nearby Search (New).
+### Nearby Search
+```http
+GET /api/places/nearby?lat=40.7128&lng=-74.0060&radius=1500&keyword=restaurant
+```
 
-**Query Parameters:**
-- `lat` (required): Latitude
-- `lng` (required): Longitude  
-- `radius` (optional): Search radius in meters (default: 1500)
-- `keyword` (optional): Search keyword
-- `type` (optional): Place type filter
+### Place Details
+```http
+GET /api/places/ChIJN1t_tDeuEmsRUsoyG83frY4
+```
 
-**Response:** Array of place summaries with basic information.
+### Place Photos
+```http
+GET /api/places/photo/photo_reference?maxWidth=400&maxHeight=400
+```
 
-### GET /api/places/:placeId
-Get detailed information about a specific place.
+## Development Workflow
 
-**Parameters:**
-- `placeId`: Google Places ID
+### 1. Development
+```bash
+# Start development server
+npm run dev
 
-**Response:** Detailed place information including photos, reviews, hours, etc.
+# Test API endpoints
+curl "http://localhost:4000/api/places/nearby?lat=40.7128&lng=-74.0060&radius=1500"
+```
 
-### GET /api/places/photo/:photoReference
-Get a signed URL for a place photo.
+### 2. Testing
+```bash
+# Run all tests with coverage
+npm test
 
-**Parameters:**
-- `photoReference`: Google Places photo reference
+# Watch mode for development
+npm run test:watch
+```
 
-**Response:** Signed photo URL.
+### 3. Production
+```bash
+# Build for production
+npm run build
 
-## Architecture
-
-- **Rate Limiting:** 100 requests per 10 minutes per IP
-- **Caching:** In-memory cache with TTL (5min nearby, 30min details)
-- **Error Handling:** Standardized error responses with proper HTTP status codes
-- **Validation:** Request validation using Zod schemas
-- **Security:** Helmet for security headers, CORS configured for frontend domain
+# Start production server
+npm start
+```
 
 ## Testing
-The API includes comprehensive unit tests covering:
-- Happy path scenarios
-- Input validation
-- Error handling
-- Rate limiting
-- Cache behavior
+
+### Test Architecture
+- **Comprehensive Coverage**: Jest test suites with mocked integrations
+- **Cache Testing**: Unified cache system verification
+- **Integration Tests**: End-to-end API behavior testing
+
+### Run Tests
+```bash
+# All tests with coverage
+npm test
+
+# Specific test files
+npm test cache-core.test.ts
+npm test places.test.ts
+
+# Watch mode
+npm run test:watch
+```
+
+## Troubleshooting
+
+### API Key Issues
+```bash
+# Verify API key in environment
+echo $GOOGLE_PLACES_API_KEY
+
+# Test API key manually
+curl "https://places.googleapis.com/v1/places:searchNearby" \
+  -H "Content-Type: application/json" \
+  -d '{"locationRestriction":{"circle":{"center":{"latitude":40.7128,"longitude":-74.0060},"radius":1500}}}' \
+  -X POST \
+  --url "https://places.googleapis.com/v1/places:searchNearby?key=YOUR_API_KEY"
+```
+
+### Cache Issues
+```bash
+# Clear development cache via API
+curl -X DELETE http://localhost:4000/api/places/dev-cache
+
+# Or restart development server
+npm run dev
+```
+
+## Production Considerations
+
+### Environment Variables
+- Use proper `GOOGLE_PLACES_API_KEY` with appropriate quotas
+- Set `CACHE_TTL_DAYS` to respect Google's 30-day limit (max 30)
+- Configure rate limiting appropriately for your use case
+
+### Security
+- Never commit `.env` files with real API keys
+- Use environment-specific configuration
+- Implement proper rate limiting
+- Validate all input parameters
+
+## License
+
+ISC

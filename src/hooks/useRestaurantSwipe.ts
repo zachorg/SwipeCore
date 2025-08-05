@@ -2,10 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useGeolocation } from "./useGeolocation";
 import {
   useNearbyPlaces,
-  useNearbyPlacesWithLocation,
   usePhotoUrl,
   usePlaceDetails,
-  usePrefetchPlaceDetails,
 } from "./usePlaces";
 import {
   RestaurantCard,
@@ -68,7 +66,6 @@ export const useRestaurantSwipe = (
     searchConfig = {},
     autoStart = true,
     maxCards = 20,
-    prefetchDetails = true,
   } = options;
 
   // State management
@@ -83,7 +80,6 @@ export const useRestaurantSwipe = (
     loading: isLocationLoading,
     error: locationError,
     getCurrentPosition,
-    isSupported: isLocationSupported,
   } = useGeolocation({
     enableHighAccuracy: true,
     timeout: 10000,
@@ -109,7 +105,6 @@ export const useRestaurantSwipe = (
     data: nearbyPlaces,
     isLoading: isPlacesLoading,
     error: placesError,
-    refetch: refetchPlaces,
   } = useNearbyPlaces(
     {
       lat: location?.latitude || 0,
@@ -127,8 +122,6 @@ export const useRestaurantSwipe = (
 
   const {
     data: placeDetails,
-    isLoading: isLoadingDetails,
-    error: detailsError,
   } = usePlaceDetails(selectedPlaceId || "", {
     // Only enable the query when a place is selected
     enabled: Boolean(selectedPlaceId),
@@ -150,7 +143,6 @@ export const useRestaurantSwipe = (
 
   const {
     data: placePhotoUrls,
-    isLoading: isPhotosLoading,
     error: photosError,
   } = usePhotoUrl(
     selectedPlaceId || "",

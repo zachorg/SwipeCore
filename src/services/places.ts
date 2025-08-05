@@ -1,80 +1,5 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
-
-// Type definitions matching the backend API responses
-export interface PlaceBasic {
-  id: string;
-  displayName: {
-    text: string;
-    languageCode: string;
-  };
-  formattedAddress?: string;
-  rating?: number;
-  priceLevel?:
-    | "PRICE_LEVEL_FREE"
-    | "PRICE_LEVEL_INEXPENSIVE"
-    | "PRICE_LEVEL_MODERATE"
-    | "PRICE_LEVEL_EXPENSIVE"
-    | "PRICE_LEVEL_VERY_EXPENSIVE";
-  photos?: Array<{
-    name: string;
-    widthPx: number;
-    heightPx: number;
-    authorAttributions: Array<{
-      displayName: string;
-      uri: string;
-      photoUri: string;
-    }>;
-  }>;
-  types?: string[];
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
-}
-
-export interface PlaceDetails extends PlaceBasic {
-  nationalPhoneNumber?: string;
-  internationalPhoneNumber?: string;
-  websiteUri?: string;
-  regularOpeningHours?: {
-    openNow: boolean;
-    periods: Array<{
-      open: {
-        day: number;
-        hour: number;
-        minute: number;
-      };
-      close?: {
-        day: number;
-        hour: number;
-        minute: number;
-      };
-    }>;
-    weekdayDescriptions: string[];
-  };
-  reviews?: Array<{
-    name: string;
-    relativePublishTimeDescription: string;
-    rating: number;
-    text: {
-      text: string;
-      languageCode: string;
-    };
-    originalText: {
-      text: string;
-      languageCode: string;
-    };
-    authorAttribution: {
-      displayName: string;
-      uri: string;
-      photoUri: string;
-    };
-  }>;
-  editorialSummary?: {
-    text: string;
-    languageCode: string;
-  };
-}
+import axios, { AxiosInstance } from "axios";
+import { PlaceBasic, PlaceDetails } from "../types/places";
 
 // API Request/Response types
 export interface NearbySearchParams {
@@ -228,7 +153,7 @@ export class PlacesApiClient {
    * Get a photo URL for a place photo reference
    */
   async getPhotoUrl(
-    placeId,
+    _placeId: string,
     photoReference: string,
     maxWidth: number = 400,
     maxHeight: number = 400
@@ -271,75 +196,13 @@ export class PlacesApiClient {
 export const placesApi = new PlacesApiClient();
 
 // Utility functions for data transformation
-export const formatPriceLevel = (priceLevel?: string): string => {
-  if (!priceLevel) return "";
 
-  switch (priceLevel) {
-    case "PRICE_LEVEL_FREE":
-      return "Free";
-    case "PRICE_LEVEL_INEXPENSIVE":
-      return "$";
-    case "PRICE_LEVEL_MODERATE":
-      return "$$";
-    case "PRICE_LEVEL_EXPENSIVE":
-      return "$$$";
-    case "PRICE_LEVEL_VERY_EXPENSIVE":
-      return "$$$$";
-    default:
-      return "";
-  }
-};
 
-export const formatOpeningHours = (
-  hours?: PlaceDetails["regularOpeningHours"]
-): string => {
-  if (!hours) return "";
 
-  if (hours.openNow) {
-    const now = new Date();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
 
-    // Find today's closing time
-    const todayPeriods = hours.periods.filter(
-      (period) => period.open.day === currentDay
-    );
 
-    if (todayPeriods.length > 0) {
-      const period = todayPeriods[0];
-      if (period.close) {
-        const closeHour = period.close.hour;
-        const closeMinute = period.close.minute;
-        const closeTime = `${
-          closeHour > 12 ? closeHour - 12 : closeHour || 12
-        }:${closeMinute.toString().padStart(2, "0")} ${
-          closeHour >= 12 ? "PM" : "AM"
-        }`;
-        return `Open now · Closes ${closeTime}`;
-      } else {
-        return "Open 24 hours";
-      }
-    }
-  }
 
-  return "Closed";
-};
 
-export const getFirstPhotoUrl = (
-  place: PlaceBasic | PlaceDetails
-): string | null => {
-  if (!place.photos || place.photos.length === 0) return null;
-
-  // For now, return the photo name - in a real implementation,
-  // you would call getPhotoUrl with this reference
-  return place.photos[0].name;
-};
-
-export const formatRating = (rating?: number): string => {
-  if (!rating) return "";
-  return `${rating.toFixed(1)} ⭐`;
-};
 
 // Distance calculation utility (reused from geolocation hook)
 export const calculateDistance = (

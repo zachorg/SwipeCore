@@ -230,7 +230,6 @@ export const transformPlaceDetailsToCard = (
   placeDetails: PlaceDetails,
   options: PlaceTransformOptions = {}
 ): RestaurantCard => {
-  const { userLatitude, userLongitude, defaultImageUrl } = options;
   
   const basicCard = transformPlaceBasicToCard(placeDetails, options);
   const openingHours = formatOpeningHours(placeDetails.regularOpeningHours);
