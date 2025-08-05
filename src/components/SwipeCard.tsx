@@ -4,6 +4,7 @@ import {
   useMotionValue,
   useTransform,
   animate,
+  AnimatePresence,
 } from "framer-motion";
 import { RestaurantCard, SwipeConfig } from "@/types/Types";
 import {
@@ -54,6 +55,7 @@ export function SwipeCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
+  const shouldAnimateRef = useRef(true);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isPerformanceMode, setIsPerformanceMode] = useState(false);
@@ -86,7 +88,20 @@ export function SwipeCard({
       } else {
         url = `http://maps.apple.com/?daddr=${encoded}`;
       }
-      window.location.href = url;
+
+      // Close the dialog first for smooth UX
+      setOpenMapDialog(false);
+
+      // Small delay to ensure dialog closes smoothly
+      setTimeout(() => {
+        // Use window.open for better UX - opens in new tab/app without refreshing current page
+        const mapWindow = window.open(url, "_blank", "noopener,noreferrer");
+
+        // Fallback for mobile devices where window.open might be blocked
+        if (!mapWindow || mapWindow.closed) {
+          window.location.href = url;
+        }
+      }, 150); // Small delay for smooth animation
     },
     [openMapDialogAddress]
   );
@@ -324,7 +339,14 @@ export function SwipeCard({
 
             {/* Expand/Collapse button - Right aligned and bigger */}
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => {
+                if (!isExpanded) {
+                  shouldAnimateRef.current = true;
+                } else {
+                  shouldAnimateRef.current = false;
+                }
+                setIsExpanded(!isExpanded);
+              }}
               className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105"
               aria-label={isExpanded ? "Close details" : "View details"}
             >
@@ -370,27 +392,32 @@ export function SwipeCard({
   const DetailedContentContainer = () => {
     return (
       <motion.div
-        className="absolute inset-0 bg-black/95 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        className="absolute inset-0 bg-white/98 backdrop-blur-md border border-purple-200/50 shadow-2xl"
+        initial={shouldAnimateRef.current ? { opacity: 0, scale: 0.95 } : false}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: shouldAnimateRef.current ? 0.3 : 0, ease: "easeOut" }}
         style={{ touchAction: "auto" }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
+        onAnimationComplete={() => {
+          shouldAnimateRef.current = false; // Disable animation after first render
+        }}
       >
         <div
-          className="h-full overflow-y-auto p-6 text-white scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent"
+          className="h-full overflow-y-auto p-6 text-gray-800 scrollbar-thin scrollbar-thumb-purple-300/50 scrollbar-track-transparent"
           style={{ touchAction: "pan-y" }}
         >
           {/* Header */}
           <div className="flex items-start justify-between mb-6">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2">{card.title}</h2>
+              <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white-600 to-pink-600 bg-clip-text text-transparent">
+                {card.title}
+              </h2>
               {card.cuisine && (
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm bg-white/20 px-2 py-1 rounded">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 px-3 py-1 rounded-full font-medium">
                     {card.cuisine}
                   </span>
                   {card.priceRange && (
@@ -403,14 +430,19 @@ export function SwipeCard({
               {card.rating && (
                 <div className="flex items-center gap-2">
                   {renderStars(card.rating)}
-                  <span className="text-sm text-white/80">({card.rating})</span>
+                  <span className="text-sm text-gray-600">({card.rating})</span>
                 </div>
               )}
             </div>
             {/* Close button */}
             <button
-              onClick={() => setIsExpanded(false)}
-              className="ml-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                setIsExpanded(false);
+              }}
+              className="ml-4 p-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
               aria-label="Close details"
             >
               <ChevronUp className="w-5 h-5 text-white rotate-180" />
@@ -418,50 +450,80 @@ export function SwipeCard({
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-4 mb-8">
             {card.address && (
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-muted-foreground" />
-                <div>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200/50">
+                <MapPin className="w-5 h-5 text-purple-500" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 mb-1">Address</p>
+                  <p className="font-medium text-gray-800">{card.address}</p>
+                </div>
+                <div
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  className="isolate"
+                >
                   <Button
-                    variant="link"
-                    className="p-0 h-auto font-medium"
-                    onClick={() => {
+                    variant="outline"
+                    size="sm"
+                    className="bg-white hover:bg-purple-50 border-purple-200 text-purple-600 hover:text-purple-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
                       handleMapsClick(card?.address);
                     }}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
                   >
-                    Open in Maps
+                    Open Maps
                   </Button>
                 </div>
               </div>
             )}
 
             {card.phone && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="w-4 h-4 text-white/60" />
-                <span>{card.phone}</span>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50">
+                <Phone className="w-5 h-5 text-blue-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Phone</p>
+                  <p className="font-medium text-gray-800">{card.phone}</p>
+                </div>
               </div>
             )}
             {card.website && (
-              <div className="flex items-center gap-2 text-sm">
-                <Globe className="w-4 h-4 text-white/60" />
-                <span>{card.website}</span>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200/50">
+                <Globe className="w-5 h-5 text-green-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Website</p>
+                  <p className="font-medium text-gray-800">{card.website}</p>
+                </div>
               </div>
             )}
             {card.openingHours && (
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="w-4 h-4 text-white/60" />
-                <span>{card.openingHours}</span>
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border border-orange-200/50">
+                <Clock className="w-5 h-5 text-orange-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Hours</p>
+                  <p className="font-medium text-gray-800">
+                    {card.openingHours}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
           {/* Additional Info */}
           {card.placeDetails?.editorialSummary && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">About</h3>
-              <div className="bg-white/10 p-3 rounded-lg">
-                <p className="text-sm text-white/80">
+            <div className="mb-8">
+              <h3 className="text-xl font-bold mb-4 text-gray-800">About</h3>
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200/50">
+                <p className="text-gray-700 leading-relaxed">
                   {card.placeDetails.editorialSummary.text}
                 </p>
               </div>
@@ -471,20 +533,38 @@ export function SwipeCard({
           {/* Reviews Preview */}
           {card.reviews && card.reviews.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-3">Customer Reviews</h3>
-              <div className="space-y-3">
+              <h3 className="text-xl font-bold mb-4 text-white">
+                Customer Reviews
+              </h3>
+              <div className="space-y-4">
                 {card.reviews.map((review) => (
-                  <div key={review.id} className="bg-white/10 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{review.author}</span>
-                      <div className="flex items-center">
-                        {renderStars(review.rating)}
+                  <div
+                    key={review.id}
+                    className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">
+                          {review.author.charAt(0).toUpperCase()}
+                        </span>
                       </div>
-                      <span className="text-xs text-white/50 ml-auto">
-                        {review.relativeTime || review.date}
-                      </span>
+                      <div className="flex-1">
+                        <span className="font-semibold text-gray-800">
+                          {review.author}
+                        </span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center">
+                            {renderStars(review.rating)}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {review.relativeTime || review.date}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-white/80">{review.comment}</p>
+                    <p className="text-gray-700 leading-relaxed">
+                      {review.comment}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -503,14 +583,25 @@ export function SwipeCard({
             <DialogTitle>Open in Maps</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            <Button className="w-full" onClick={() => openMapsApp("google")}>
+            <Button
+              className="w-full"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openMapsApp("google");
+              }}
+            >
               Google Maps
             </Button>
             {isIOS() && (
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => openMapsApp("apple")}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openMapsApp("apple");
+                }}
               >
                 Apple Maps
               </Button>
@@ -550,7 +641,9 @@ export function SwipeCard({
       }}
       drag={isTop && !isExpanded}
       dragConstraints={{ left: -200, right: 200, top: -50, bottom: 50 }}
-      dragElastic={deviceInfo.isLowEndDevice ? 0.3 : (deviceInfo.isAndroid ? 0.4 : 0.5)} // Reduced elastic for better performance
+      dragElastic={
+        deviceInfo.isLowEndDevice ? 0.3 : deviceInfo.isAndroid ? 0.4 : 0.5
+      } // Reduced elastic for better performance
       dragMomentum={false} // Disable momentum for more responsive feel
       dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }} // Optimized drag physics
       onDragStart={handleDragStart}
@@ -634,14 +727,18 @@ export function SwipeCard({
           )}
         </div>
         {/* Gradient Overlay - Simplified during drag for performance */}
-        <div className={`absolute inset-0 ${
-          isPerformanceMode || deviceInfo.isLowEndDevice
-            ? 'bg-black/40' // Simple overlay during drag
-            : 'bg-gradient-to-t from-black/80 via-black/20 to-transparent'
-        }`} />
+        <div
+          className={`absolute inset-0 ${
+            isPerformanceMode || deviceInfo.isLowEndDevice
+              ? "bg-black/40" // Simple overlay during drag
+              : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
+          }`}
+        />
         {/* Restaurant Info Badge */}
         <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
-          <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
+          <span className="text-gray-800 font-bold text-sm">
+            {card.cuisine}
+          </span>
           {card.priceRange && (
             <div className="flex items-center">
               {renderPriceRange(card.priceRange)}
@@ -649,12 +746,16 @@ export function SwipeCard({
           )}
         </div>
 
-        {/* Expanded Content Overlay */}
-        {isExpanded && <DetailedContentContainer />}
-        {/* Main Content Overlay */}
-        {!isExpanded && <MainContentOverlay />}
+        {/* Content Overlays with AnimatePresence */}
+        <AnimatePresence mode="wait">
+          {isExpanded ? (
+            <DetailedContentContainer key="detailed-content" />
+          ) : (
+            <MainContentOverlay key="main-content" />
+          )}
+        </AnimatePresence>
       </div>
-      <MapsDialog />
+      {openMapDialog && <MapsDialog />}
     </motion.div>
   );
 }
