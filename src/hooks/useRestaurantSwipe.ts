@@ -309,7 +309,9 @@ export const useRestaurantSwipe = (
   );
 
   // Refresh cards (reload from API)
-  const refreshCards = useCallback(async () => {}, [location]);
+  const refreshCards = useCallback(async () => {
+    requestLocation();
+  }, []);
 
   // Request location permission
   const requestLocation = useCallback(() => {

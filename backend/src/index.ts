@@ -40,10 +40,16 @@ app.use(helmet());
 // Allow all origins for simplicity, but refine this in a production environment
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:8080',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Permit specific HTTP methods
-    allowedHeaders: ['Content-Type'], // Specify permitted headers
-    credentials: true, // Allow credentials like cookies, authorization headers
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:8080',
+      'http://10.0.2.2:8080', // Android emulator
+      'http://192.168.1.*', // Local network range (adjust as needed)
+      'capacitor://localhost', // Capacitor's internal scheme
+      'http://localhost' // Capacitor may use this
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
   })
 );
 
