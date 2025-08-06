@@ -7,9 +7,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
 import { placesRouter } from './routes/places';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: '/etc/secrets/BACKEND_ENV' });
 
 // Debug: Log environment loading
 console.log('🔧 Environment loaded:', {
