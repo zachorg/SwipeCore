@@ -29,7 +29,7 @@ import {
   getDeviceInfo,
   getOptimizedPerformanceConfig,
 } from "@/utils/deviceOptimization";
-import { isIOS } from "@/lib/utils";
+import { isIOS, isAndroid } from "@/lib/utils";
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -486,19 +486,51 @@ export function SwipeCard({
             {card.phone && (
               <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50">
                 <Phone className="w-5 h-5 text-blue-500" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-gray-600">Phone</p>
                   <p className="font-medium text-gray-800">{card.phone}</p>
                 </div>
+                {(isIOS() || isAndroid()) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600 hover:text-blue-700"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
+                      window.location.href = `tel:${card.phone}`;
+                    }}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                  >
+                    Call
+                  </Button>
+                )}
               </div>
             )}
             {card.website && (
               <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200/50">
                 <Globe className="w-5 h-5 text-green-500" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-gray-600">Website</p>
-                  <p className="font-medium text-gray-800">{card.website}</p>
+                  <p className="font-medium text-gray-800"></p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="bg-white hover:bg-green-50 border-green-200 text-green-600 hover:text-green-700"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                    window.open(card.website, '_blank', 'noopener,noreferrer');
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                >
+                  Open Website
+                </Button>
               </div>
             )}
             {card.openingHours && (
