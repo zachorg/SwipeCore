@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useGeolocation } from "./useGeolocation";
-import {
-  useNearbyPlaces,
-  usePhotoUrl,
-  usePlaceDetails,
-} from "./usePlaces";
+import { useNearbyPlaces, usePhotoUrl, usePlaceDetails } from "./usePlaces";
 import {
   RestaurantCard,
   SwipeAction,
@@ -62,11 +58,7 @@ export interface UseRestaurantSwipeReturn {
 export const useRestaurantSwipe = (
   options: UseRestaurantSwipeOptions = {}
 ): UseRestaurantSwipeReturn => {
-  const {
-    searchConfig = {},
-    autoStart = true,
-    maxCards = 20,
-  } = options;
+  const { searchConfig = {}, autoStart = true, maxCards = 20 } = options;
 
   // State management
   const [cards, setCards] = useState<RestaurantCard[]>([]);
@@ -120,9 +112,7 @@ export const useRestaurantSwipe = (
 
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
 
-  const {
-    data: placeDetails,
-  } = usePlaceDetails(selectedPlaceId || "", {
+  const { data: placeDetails } = usePlaceDetails(selectedPlaceId || "", {
     // Only enable the query when a place is selected
     enabled: Boolean(selectedPlaceId),
   });
@@ -141,10 +131,7 @@ export const useRestaurantSwipe = (
   const [selectedPhotoReference, setSelectedPhotoReference] =
     useState<PhotoReference | null>(null);
 
-  const {
-    data: placePhotoUrls,
-    error: photosError,
-  } = usePhotoUrl(
+  const { data: placePhotoUrls, error: photosError } = usePhotoUrl(
     selectedPlaceId || "",
     selectedPhotoReference?.id || "",
     selectedPhotoReference?.widthPx || 400,
@@ -162,11 +149,11 @@ export const useRestaurantSwipe = (
     setSelectedPhotoReference({ id, widthPx, heightPx });
   }
 
+  const cardsAreValid = cards && setCards && cards?.length == 0;
   if (
     (!defaultFeatureFlags.useGooglePlacesApi || !location) &&
-    cards &&
-    setCards &&
-    cards?.length == 0
+    cardsAreValid &&
+    import.meta.env.VITE_USE_MOCK_DATA !== "false"
   ) {
     console.log("SetCards with mock data");
     const mockCards: RestaurantCard[] = generateMockCards();
@@ -229,7 +216,7 @@ export const useRestaurantSwipe = (
       } else {
         console.log(`${currentCard.title} does not have any photos..`);
       }
-      
+
       // mergeCardWithDetails returns a new card object
       const updatedCard = mergeCardWithDetails(currentCard, placeDetails);
       const updatedCards = [...cards];

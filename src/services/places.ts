@@ -1,5 +1,5 @@
+import { PlaceBasic, PlaceDetails } from "@/types/Types";
 import axios, { AxiosInstance } from "axios";
-import { PlaceBasic, PlaceDetails } from "../types/places";
 
 // API Request/Response types
 export interface NearbySearchParams {
