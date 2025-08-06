@@ -1,7 +1,3 @@
-import dotenv from 'dotenv';
-
-dotenv.config({ path: './etc/secrets/BACKEND_ENV.txt' });
-
 // load();
 
 export const config = {
