@@ -363,16 +363,23 @@ export function SwipeCard({
               </div>
             )}
             {card.openingHours && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="w-4 h-4 text-purple-500" />
-                <span>{card.openingHours}</span>
+              <div className="flex items-center gap-2 text-sm text-white/90">
+                {card.openingHours !== "Closed" && (
+                  <Clock className="w-4 h-4 text-white drop-shadow-lg" />
+                )}
+                {card.openingHours !== "Closed" && (
+                  <span style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}>
+                    {card.openingHours}
+                  </span>
+                )}
                 {card.isOpenNow !== undefined && (
                   <span
-                    className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                    className={`ml-2 px-2 py-0.5 rounded text-xs text-white font-medium ${
                       card.isOpenNow
-                        ? "bg-green-500/80 text-white"
-                        : "bg-red-500/80 text-white"
+                        ? "bg-green-500/90 shadow-lg"
+                        : "bg-red-500/90 shadow-lg"
                     }`}
+                    style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
                   >
                     {card.isOpenNow ? "Open" : "Closed"}
                   </span>
@@ -392,7 +399,10 @@ export function SwipeCard({
         initial={shouldAnimateRef.current ? { opacity: 0, scale: 0.95 } : false}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: shouldAnimateRef.current ? 0.3 : 0, ease: "easeOut" }}
+        transition={{
+          duration: shouldAnimateRef.current ? 0.3 : 0,
+          ease: "easeOut",
+        }}
         style={{ touchAction: "auto" }}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
@@ -524,7 +534,7 @@ export function SwipeCard({
                     e.preventDefault();
                     e.stopPropagation();
                     e.nativeEvent.stopImmediatePropagation();
-                    window.open(card.website, '_blank', 'noopener,noreferrer');
+                    window.open(card.website, "_blank", "noopener,noreferrer");
                   }}
                   onTouchStart={(e) => e.stopPropagation()}
                   onTouchEnd={(e) => e.stopPropagation()}
@@ -549,7 +559,7 @@ export function SwipeCard({
           {/* Additional Info */}
           {card.placeDetails?.editorialSummary && (
             <div className="mb-8">
-              <h3 className="text-xl font-bold mb-4 text-gray-800">About</h3>
+              <h3 className="text-xl font-bold mb-4 text-white">About</h3>
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200/50">
                 <p className="text-gray-700 leading-relaxed">
                   {card.placeDetails.editorialSummary.text}
