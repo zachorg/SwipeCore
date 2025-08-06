@@ -40,13 +40,23 @@ app.use(helmet());
 // Allow all origins for simplicity, but refine this in a production environment
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:8080',
-      'http://10.0.2.2:8080', // Android emulator
-      'http://192.168.1.*', // Local network range (adjust as needed)
-      'capacitor://localhost', // Capacitor's internal scheme
-      'http://localhost' // Capacitor may use this
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        'http://localhost:8080',
+        'http://10.0.2.2:8080',
+        'capacitor://localhost'
+      ];
+      
+      // Allow any localhost or local network IP
+      if (origin.includes('localhost') || origin.includes('10.0.2.2') || origin.includes('192.168.')) {
+        return callback(null, true);
+      }
+      
+      callback(null, allowedOrigins.includes(origin));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type'],
     credentials: true,
