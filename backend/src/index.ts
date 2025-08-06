@@ -15,9 +15,12 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
 import { placesRouter } from './routes/places';
+import dotenv from 'dotenv'
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+dotenv.config({ path: './etc/secrets/BACKEND_ENV.txt' })
 
 // Rate limiting configuration
 const limiter = rateLimit({
