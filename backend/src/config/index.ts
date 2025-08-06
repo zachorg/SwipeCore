@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
+import { config as load } from 'dotenv-flow';
 
-dotenv.config({ path: '/etc/secrets/BACKEND_ENV' });
+load();
 
 export const config = {
   cacheTtlDays: Number(process.env.CACHE_TTL_DAYS) || 1,
