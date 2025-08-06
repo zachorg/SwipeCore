@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SwipeCard } from "./SwipeCard";
 import {
   RestaurantCard,
@@ -36,7 +36,9 @@ export function SwipeDeck({
   );
 
   // Use optimized config for Android devices
-  const baseConfig = isAndroid() ? androidOptimizedSwipeConfig : defaultSwipeConfig;
+  const baseConfig = isAndroid()
+    ? androidOptimizedSwipeConfig
+    : defaultSwipeConfig;
   const swipeConfig = { ...baseConfig, ...config };
   // Use the comprehensive restaurant swipe hook
   const {
@@ -78,7 +80,7 @@ export function SwipeDeck({
   const handleSwipeDirection = (direction: "menu" | "pass" | null) => {
     setSwipeDirection(direction);
   };
-  
+
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   // Loading state
@@ -189,7 +191,7 @@ export function SwipeDeck({
   return (
     <div className="flex-1 flex flex-col">
       {/* Card Stack - Full height with padding for controls */}
-      <div className="flex-1 relative p-4">
+      <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
         {visibleCards.map((card, index) => (
           <SwipeCard
             key={card.id}

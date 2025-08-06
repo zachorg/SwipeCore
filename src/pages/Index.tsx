@@ -31,7 +31,8 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 overflow-hidden
+                    md:bg-gradient-to-br md:from-gray-100 md:via-purple-50 md:to-blue-100">
       {/* Header */}
       <div className="flex items-center p-6 bg-white/80 backdrop-blur-sm border-b border-purple-200/50 shadow-sm">
         <div className="flex items-center gap-4">

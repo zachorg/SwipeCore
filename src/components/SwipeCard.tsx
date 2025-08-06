@@ -245,14 +245,10 @@ export function SwipeCard({
 
       // Only trigger swipe if:
       // 1. Distance is greater than threshold
-      // 2. Horizontal movement is dominant (ratio > 0.6)
-      // 3. Drag duration is reasonable (not too fast, not too slow)
-      const horizontalRatio =
-        swipeDistance / (Math.abs(info.offset.x) + Math.abs(info.offset.y));
-
+      // 2. Drag duration is reasonable (not too fast, not too slow)
+      // Note: No need to check horizontal ratio since we only allow horizontal movement
       if (
         swipeDistance > config.threshold &&
-        horizontalRatio > 0.6 &&
         dragDuration > 100 &&
         dragDuration < 2000
       ) {
@@ -619,11 +615,11 @@ export function SwipeCard({
 
   return (
     <motion.div
-      className="absolute inset-4 select-none"
+      className="absolute inset-4 select-none md:desktop-centered-card"
       data-swipe-card="true"
       style={{
         x,
-        y,
+        y: 0, // Lock vertical movement
         rotate,
         ...(opacity && { opacity }), // Only add opacity for high-end devices
         zIndex: isTop ? 5 : 5 - index,
@@ -639,8 +635,8 @@ export function SwipeCard({
           ? "hidden"
           : undefined,
       }}
-      drag={isTop && !isExpanded}
-      dragConstraints={{ left: -200, right: 200, top: -50, bottom: 50 }}
+      drag={isTop && !isExpanded ? "x" : false}
+      dragConstraints={{ left: -200, right: 200, top: 0, bottom: 0 }}
       dragElastic={
         deviceInfo.isLowEndDevice ? 0.3 : deviceInfo.isAndroid ? 0.4 : 0.5
       } // Reduced elastic for better performance
@@ -667,9 +663,10 @@ export function SwipeCard({
       // Reduce animation complexity on low-end devices
       animate={performanceConfig.reducedAnimations ? false : undefined}
     >
-      {/* Card Container - Modern vibrant design */}
+      {/* Card Container - Modern vibrant design with responsive styling */}
       <div
-        className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50"
+        className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50
+                   md:shadow-3xl md:border-purple-300/40 md:ring-2 md:ring-purple-200/30"
         style={{
           // Force hardware acceleration on Android
           transform: "translateZ(0)",
