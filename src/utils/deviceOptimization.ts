@@ -38,10 +38,25 @@ export function getDeviceInfo(): DeviceInfo {
                         deviceMemory <= 2 ||
                         (isAndroid && /Android [4-6]/.test(userAgent)); // Only very old Android versions
 
-  // Check for hardware acceleration support
-  const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-  const supportsHardwareAcceleration = !!gl;
+  // Check for hardware acceleration support - use cached result to avoid creating multiple WebGL contexts
+  let supportsHardwareAcceleration = true; // Default to true for modern browsers
+  try {
+    // Only test once and cache the result
+    if (!(window as any).__webglSupported) {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      (window as any).__webglSupported = !!gl;
+      // Clean up immediately to prevent context accumulation
+      if (gl && 'getExtension' in gl) {
+        const ext = (gl as WebGLRenderingContext).getExtension('WEBGL_lose_context');
+        if (ext) ext.loseContext();
+      }
+      canvas.remove();
+    }
+    supportsHardwareAcceleration = (window as any).__webglSupported;
+  } catch (e) {
+    supportsHardwareAcceleration = false;
+  }
 
   return {
     isAndroid,

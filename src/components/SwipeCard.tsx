@@ -623,17 +623,10 @@ export function SwipeCard({
         rotate,
         ...(opacity && { opacity }), // Only add opacity for high-end devices
         zIndex: isTop ? 5 : 5 - index,
-        // Hardware acceleration optimized for device capabilities
-        willChange:
-          isTop && performanceConfig.hardwareAcceleration
-            ? "transform"
-            : "auto",
-        transform: performanceConfig.hardwareAcceleration
-          ? "translateZ(0)"
-          : undefined,
-        backfaceVisibility: performanceConfig.hardwareAcceleration
-          ? "hidden"
-          : undefined,
+        // Minimal hardware acceleration - only for the main draggable element
+        willChange: isTop ? "transform" : "auto",
+        // Use transform3d only when actively dragging to reduce WebGL contexts
+        transform: isTop && isDragging ? "translate3d(0,0,0)" : undefined,
       }}
       drag={isTop && !isExpanded ? "x" : false}
       dragConstraints={{ left: -200, right: 200, top: 0, bottom: 0 }}
@@ -662,16 +655,18 @@ export function SwipeCard({
       layoutId={undefined}
       // Reduce animation complexity on low-end devices
       animate={performanceConfig.reducedAnimations ? false : undefined}
+      // Use 2D transforms to reduce GPU load and WebGL contexts
+      transformTemplate={({ x, y, rotate }) =>
+        `translateX(${x}) translateY(${y}) rotate(${rotate})`
+      }
     >
       {/* Card Container - Modern vibrant design with responsive styling */}
       <div
         className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50
                    md:shadow-3xl md:border-purple-300/40 md:ring-2 md:ring-purple-200/30"
         style={{
-          // Force hardware acceleration on Android
-          transform: "translateZ(0)",
-          backfaceVisibility: "hidden",
-          perspective: 1000,
+          // Minimal styling - let parent handle GPU acceleration
+          contain: "layout style",
         }}
       >
         {/* Background Image Section - Full height */}
@@ -682,9 +677,8 @@ export function SwipeCard({
               ? `url(${getCurrentImageUrl()})`
               : "none",
             backgroundColor: getCurrentImageUrl() ? "transparent" : "#f3f4f6",
-            // Optimize image rendering for mobile
+            // Optimize image rendering without GPU acceleration
             imageRendering: "auto" as const,
-            transform: "translateZ(0)",
           }}
         >
           {!getCurrentImageUrl() && (
@@ -710,7 +704,7 @@ export function SwipeCard({
                 onClick={(e) => handleImageNavigation(e, "right")}
               />
               {/* Image indicators */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1 z-10">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1 z-10">
                 {card.images.map((_: string, index: number) => (
                   <div
                     key={index}
@@ -732,7 +726,7 @@ export function SwipeCard({
           }`}
         />
         {/* Restaurant Info Badge */}
-        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
           <span className="text-gray-800 font-bold text-sm">
             {card.cuisine}
           </span>

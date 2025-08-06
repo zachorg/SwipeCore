@@ -10,23 +10,6 @@ interface SwipeControlsProps {
   swipeDirection?: "menu" | "pass" | null;
 }
 
-// Static button for high-end devices (completely isolated from swipe state)
-const HighEndMenuButton = memo(
-  ({ onMenuOpen }: { onMenuOpen?: () => void }) => {
-    return (
-      <Button
-        variant="default"
-        size="lg"
-        className="flex items-center gap-3 px-10 py-4 rounded-2xl bg-blue-500 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold shadow-lg transition-all duration-200 hover:transform hover:scale-110 hover:shadow-xl"
-        onClick={onMenuOpen}
-      >
-        <Menu className="w-5 h-5" />
-        Open Menu
-      </Button>
-    );
-  }
-);
-
 const UndoButton = memo(
   ({
     swipeDirection,
@@ -55,11 +38,9 @@ const UndoButton = memo(
 
 const PassButton = memo(
   ({
-    isLowEndDevice,
     swipeDirection,
     onAction,
   }: {
-    isLowEndDevice: boolean;
     swipeDirection?: "menu" | "pass" | null;
     onAction: (action: "pass") => void;
   }) => {
@@ -68,9 +49,9 @@ const PassButton = memo(
         variant="destructive"
         size="lg"
         className={`flex items-center gap-3 px-10 py-4 rounded-2xl bg-red-500 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold shadow-lg transition-all duration-200 ${
-          isLowEndDevice && swipeDirection === "pass"
+          swipeDirection === "pass"
             ? "transform scale-125 shadow-2xl shadow-red-500/40 ring-4 ring-red-300/50 from-red-600 to-pink-600"
-            : isLowEndDevice && swipeDirection === "menu"
+            : swipeDirection === "menu"
             ? "transform scale-90 opacity-60"
             : "hover:transform hover:scale-110 hover:shadow-xl"
         }`}
@@ -89,7 +70,7 @@ const PassButton = memo(
 );
 
 // Dynamic button for low-end devices (with swipe direction feedback)
-const LowEndMenuButton = memo(
+const MenuButton = memo(
   ({
     swipeDirection,
     onMenuOpen,
@@ -97,7 +78,6 @@ const LowEndMenuButton = memo(
     swipeDirection?: "menu" | "pass" | null;
     onMenuOpen?: () => void;
   }) => {
-    console.log("LowEndMenuButton: re-rendered");
     return (
       <Button
         variant="default"
@@ -129,8 +109,6 @@ function SwipeControls({
   onUndo,
   swipeDirection,
 }: SwipeControlsProps) {
-  const deviceInfo = getDeviceInfo();
-
   return (
     <div
       className="w-full px-4 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-border/30 shadow-lg
@@ -144,23 +122,15 @@ function SwipeControls({
 
         {/* Pass Button */}
         <PassButton
-          isLowEndDevice={deviceInfo.isLowEndDevice}
           swipeDirection={swipeDirection}
           onAction={onAction}
         />
 
         {/* Open Menu Button */}
-        {deviceInfo.isLowEndDevice ? (
-          <LowEndMenuButton
-            swipeDirection={swipeDirection}
-            onMenuOpen={onMenuOpen}
-          />
-        ) : (
-          <HighEndMenuButton onMenuOpen={onMenuOpen} />
-        )}
+        <MenuButton swipeDirection={swipeDirection} onMenuOpen={onMenuOpen} />
       </div>
     </div>
   );
-};
+}
 
 export { SwipeControls };
