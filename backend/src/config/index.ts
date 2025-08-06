@@ -13,6 +13,7 @@ export const config = {
   
   // Dev cache settings (file-based caching for development)
   useDevCache: process.env.USE_DEV_CACHE !== 'false', // Enabled by default in dev
+  cacheFeatureEnabled: process.env.ENABLE_CACHE_FEATURE !== 'false',
   
   // Rate limiting
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 600000,
