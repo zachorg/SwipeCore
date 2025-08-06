@@ -67,7 +67,7 @@ export class PlacesApiClient {
 
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 15000,
+      timeout: 55000,// render server can take up to 50s to spin up..
       headers: {
         "Content-Type": "application/json",
       },
