@@ -117,6 +117,11 @@ export function useFilteredPlaces(
       }
     : null;
 
+  // Check if there are active filters
+  const hasActiveFilters = useMemo(() => {
+    return filters.length > 0 && filters.some(f => f.enabled);
+  }, [filters]);
+
   // Enhanced search configuration with filters
   const finalSearchConfig = useMemo(() => {
     const baseConfig = {
@@ -124,10 +129,51 @@ export function useFilteredPlaces(
       ...searchConfig,
     };
 
-    // For now, just return base config to avoid infinite loops
-    // Google API filtering will be handled separately
+    // Incorporate filters into the API query parameters
+    if (enableFiltering && hasActiveFilters) {
+      // Find cuisine filters
+      const cuisineFilters = filters.find(f => f.id === 'cuisine' && f.enabled);
+      if (cuisineFilters && Array.isArray(cuisineFilters.value) && cuisineFilters.value.length > 0) {
+        // Add the first cuisine as a keyword to narrow down results
+        baseConfig.keyword = (baseConfig.keyword || '') +
+          (baseConfig.keyword ? ' ' : '') + cuisineFilters.value[0];
+      }
+
+      // Find price level filter
+      const priceFilter = filters.find(f => f.id === 'priceLevel' && f.enabled);
+      if (priceFilter && typeof priceFilter.value === 'number') {
+        // Map numeric price level to the enum values expected by the API
+        const priceLevelMap = {
+          1: 'PRICE_LEVEL_INEXPENSIVE' as 'PRICE_LEVEL_INEXPENSIVE',
+          2: 'PRICE_LEVEL_MODERATE' as 'PRICE_LEVEL_MODERATE',
+          3: 'PRICE_LEVEL_EXPENSIVE' as 'PRICE_LEVEL_EXPENSIVE',
+          4: 'PRICE_LEVEL_VERY_EXPENSIVE' as 'PRICE_LEVEL_VERY_EXPENSIVE'
+        };
+        
+        const priceLevelEnum = priceLevelMap[priceFilter.value as keyof typeof priceLevelMap];
+        if (priceLevelEnum) {
+          baseConfig.priceLevel = [priceLevelEnum];
+        }
+      }
+
+      // Find rating filter
+      const ratingFilter = filters.find(f => f.id === 'minRating' && f.enabled);
+      if (ratingFilter && typeof ratingFilter.value === 'number') {
+        baseConfig.minRating = ratingFilter.value;
+      }
+
+      // Find open now filter
+      const openNowFilter = filters.find(f => f.id === 'openNow' && f.enabled);
+      if (openNowFilter && openNowFilter.value === true) {
+        baseConfig.isOpenNow = true;
+      }
+
+      // Add any other relevant filters that can be passed to the Google Places API
+      console.log('Enhanced search config with filters:', baseConfig);
+    }
+
     return baseConfig;
-  }, [searchConfig]);
+  }, [searchConfig, filters, enableFiltering, hasActiveFilters]);
 
   // Places API integration
   const {

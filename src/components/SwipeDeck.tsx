@@ -24,6 +24,7 @@ interface SwipeDeckProps {
   swipeOptions?: UseFilteredPlacesOptions;
   enableFiltering?: boolean;
   onFilterButtonReady?: (filterButton: React.ReactNode) => void;
+  initialFilters?: Array<{ filterId: string; value: any }>;
 }
 
 export function SwipeDeck({
@@ -34,6 +35,7 @@ export function SwipeDeck({
   swipeOptions = {},
   enableFiltering = true,
   onFilterButtonReady,
+  initialFilters = [],
 }: SwipeDeckProps) {
   const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
     null
@@ -97,6 +99,21 @@ export function SwipeDeck({
       onFilterButtonReady(filterButton);
     }
   }, [enableFiltering, allFilters]);
+
+  // Apply initial filters when component mounts
+  useEffect(() => {
+    if (initialFilters.length > 0 && enableFiltering) {
+      console.log('Applying initial filters from voice input:', initialFilters);
+      
+      // Apply each filter from the voice input
+      initialFilters.forEach(filter => {
+        addFilter(filter.filterId, filter.value);
+      });
+      
+      // Trigger filters applied callback to refresh results
+      onNewFiltersApplied();
+    }
+  }, []);  // Empty dependency array ensures this runs only once on mount
 
   const handleSwipe = (cardId: string, action: "menu" | "pass") => {
     const swipeAction = {
