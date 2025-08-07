@@ -25,6 +25,7 @@ import {
   FilterValue,
 } from "@/hooks/useFilters";
 import { FilterItem } from "./FilterItem";
+import { NaturalLanguageSearch } from "./NaturalLanguageSearch";
 
 interface FilterPanelProps {
   // Filter state
@@ -164,6 +165,20 @@ export function FilterPanel({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          {/* Natural Language Search */}
+          <div className="pb-4 border-b border-gray-200">
+            <NaturalLanguageSearch
+              onFiltersApplied={(filters) => {
+                // Apply each filter from the NLP result
+                filters.forEach(filter => {
+                  addFilter(filter.filterId, filter.value);
+                });
+                // Close the panel after applying filters
+                setIsOpen(false);
+              }}
+            />
+          </div>
+
           <Accordion
             type="multiple"
             defaultValue={["basic"]}
