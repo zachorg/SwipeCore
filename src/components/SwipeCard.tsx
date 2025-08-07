@@ -318,81 +318,303 @@ export function SwipeCard({
   };
 
   const MainContentOverlay = () => {
+    const CardNameAndRating = () => {
+      return (
+        <div className="flex-1">
+          <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
+          {card.rating && (
+            <div className="flex items-center gap-2 mb-2">
+              {renderStars(card.rating)}
+              <span className="text-sm text-gray-600">({card.rating})</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const ExpandButton = () => {
+      return (
+        <button
+          onClick={() => {
+            if (!isExpanded) {
+              shouldAnimateRef.current = true;
+            } else {
+              shouldAnimateRef.current = false;
+            }
+            setIsExpanded(!isExpanded);
+          }}
+          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105"
+          aria-label={isExpanded ? "Close details" : "View details"}
+        >
+          <ChevronUp
+            className={`w-5 h-5 text-white transition-transform ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+      );
+    };
+
+    const ResturantDetails = () => {
+      return (
+        <div className="space-y-2">
+          {card.distance && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <MapPin className="w-4 h-4 text-purple-500" />
+              <span>{card.distance}</span>
+            </div>
+          )}
+          {card.openingHours && (
+            <div className="flex items-center gap-2 text-sm text-white/90">
+              {card.openingHours !== "Closed" && (
+                <Clock className="w-4 h-4 text-white drop-shadow-lg" />
+              )}
+              {card.openingHours !== "Closed" && (
+                <span style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}>
+                  {card.openingHours}
+                </span>
+              )}
+              {card.isOpenNow !== undefined && (
+                <span
+                  className={`ml-2 px-2 py-0.5 rounded text-xs text-white font-medium ${
+                    card.isOpenNow
+                      ? "bg-green-500/90 shadow-lg"
+                      : "bg-red-500/90 shadow-lg"
+                  }`}
+                  style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
+                >
+                  {card.isOpenNow ? "Open" : "Closed"}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="space-y-3">
-          {/* Restaurant Name and Rating with Expand Button */}
+          {/* Restaurant Name and Rating */}
           <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
-              {card.rating && (
-                <div className="flex items-center gap-2 mb-2">
-                  {renderStars(card.rating)}
-                  <span className="text-sm text-gray-600">({card.rating})</span>
-                </div>
-              )}
-            </div>
+            <CardNameAndRating />
 
             {/* Expand/Collapse button - Right aligned and bigger */}
-            <button
-              onClick={() => {
-                if (!isExpanded) {
-                  shouldAnimateRef.current = true;
-                } else {
-                  shouldAnimateRef.current = false;
-                }
-                setIsExpanded(!isExpanded);
-              }}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105"
-              aria-label={isExpanded ? "Close details" : "View details"}
-            >
-              <ChevronUp
-                className={`w-5 h-5 text-white transition-transform ${
-                  isExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+            <ExpandButton />
           </div>
 
           {/* Restaurant Details */}
-          <div className="space-y-2">
-            {card.distance && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4 text-purple-500" />
-                <span>{card.distance}</span>
-              </div>
-            )}
-            {card.openingHours && (
-              <div className="flex items-center gap-2 text-sm text-white/90">
-                {card.openingHours !== "Closed" && (
-                  <Clock className="w-4 h-4 text-white drop-shadow-lg" />
-                )}
-                {card.openingHours !== "Closed" && (
-                  <span style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}>
-                    {card.openingHours}
-                  </span>
-                )}
-                {card.isOpenNow !== undefined && (
-                  <span
-                    className={`ml-2 px-2 py-0.5 rounded text-xs text-white font-medium ${
-                      card.isOpenNow
-                        ? "bg-green-500/90 shadow-lg"
-                        : "bg-red-500/90 shadow-lg"
-                    }`}
-                    style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
-                  >
-                    {card.isOpenNow ? "Open" : "Closed"}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          <ResturantDetails />
         </div>
       </div>
     );
   };
 
   const DetailedContentContainer = () => {
+    const Header = () => {
+      return (
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex-1">
+            <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white-600 to-pink-600 bg-clip-text text-transparent">
+              {card.title}
+            </h2>
+            {card.cuisine && (
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-sm bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 px-3 py-1 rounded-full font-medium">
+                  {card.cuisine}
+                </span>
+                {card.priceRange && (
+                  <div className="flex items-center">
+                    {renderPriceRange(card.priceRange)}
+                  </div>
+                )}
+              </div>
+            )}
+            {card.rating && (
+              <div className="flex items-center gap-2">
+                {renderStars(card.rating)}
+                <span className="text-sm text-gray-600">({card.rating})</span>
+              </div>
+            )}
+          </div>
+          {/* Close button */}
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              setIsExpanded(false);
+            }}
+            className="ml-4 p-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+            aria-label="Close details"
+          >
+            <ChevronUp className="w-5 h-5 text-white rotate-180" />
+          </button>
+        </div>
+      );
+    };
+
+    const AddressSection = () => {
+      return (
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200/50">
+          <MapPin className="w-5 h-5 text-purple-500" />
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-1">Address</p>
+            <p className="font-medium text-gray-800">{card.address}</p>
+          </div>
+          <div
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            className="isolate"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white hover:bg-purple-50 border-purple-200 text-purple-600 hover:text-purple-700"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                handleMapsClick(card?.address);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              Open Maps
+            </Button>
+          </div>
+        </div>
+      );
+    };
+
+    const PhoneSection = () => {
+      return (
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50">
+          <Phone className="w-5 h-5 text-blue-500" />
+          <div className="flex-1">
+            <p className="text-sm text-gray-600">Phone</p>
+            <p className="font-medium text-gray-800">{card.phone}</p>
+          </div>
+          {(isIOS() || isAndroid()) && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600 hover:text-blue-700"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.nativeEvent.stopImmediatePropagation();
+                window.location.href = `tel:${card.phone}`;
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              Call
+            </Button>
+          )}
+        </div>
+      );
+    };
+
+    const WebsiteSection = () => {
+      return (
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200/50">
+          <Globe className="w-5 h-5 text-green-500" />
+          <div className="flex-1">
+            <p className="text-sm text-gray-600">Website</p>
+            <p className="font-medium text-gray-800"></p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-white hover:bg-green-50 border-green-200 text-green-600 hover:text-green-700"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.nativeEvent.stopImmediatePropagation();
+              window.open(card.website, "_blank", "noopener,noreferrer");
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            Open Website
+          </Button>
+        </div>
+      );
+    };
+
+    const OpeningHoursSection = () => {
+      return (
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border border-orange-200/50">
+          <Clock className="w-5 h-5 text-orange-500" />
+          <div>
+            <p className="text-sm text-gray-600">Hours</p>
+            <p className="font-medium text-gray-800">{card.openingHours}</p>
+          </div>
+        </div>
+      );
+    };
+
+    const AdditionalInfoSection = () => {
+      return (
+        <div className="mb-8">
+          <h3 className="text-xl font-bold mb-4 text-white">About</h3>
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200/50">
+            <p className="text-gray-700 leading-relaxed">
+              {card.placeDetails.editorialSummary.text}
+            </p>
+          </div>
+        </div>
+      );
+    };
+
+    const ReviewsSection = () => {
+      return (
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">
+            Customer Reviews
+          </h3>
+          <div className="space-y-4">
+            {card.reviews.map((review) => (
+              <div
+                key={review.id}
+                className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm"
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">
+                      {review.author.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-semibold text-gray-800">
+                      {review.author}
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center">
+                        {renderStars(review.rating)}
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {review.relativeTime || review.date}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-gray-700 leading-relaxed">
+                  {review.comment}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    };
+
     return (
       <motion.div
         className="absolute inset-0 bg-white/98 backdrop-blur-md border border-purple-200/50 shadow-2xl"
@@ -416,198 +638,21 @@ export function SwipeCard({
           style={{ touchAction: "pan-y" }}
         >
           {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h2 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white-600 to-pink-600 bg-clip-text text-transparent">
-                {card.title}
-              </h2>
-              {card.cuisine && (
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 px-3 py-1 rounded-full font-medium">
-                    {card.cuisine}
-                  </span>
-                  {card.priceRange && (
-                    <div className="flex items-center">
-                      {renderPriceRange(card.priceRange)}
-                    </div>
-                  )}
-                </div>
-              )}
-              {card.rating && (
-                <div className="flex items-center gap-2">
-                  {renderStars(card.rating)}
-                  <span className="text-sm text-gray-600">({card.rating})</span>
-                </div>
-              )}
-            </div>
-            {/* Close button */}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.nativeEvent.stopImmediatePropagation();
-                setIsExpanded(false);
-              }}
-              className="ml-4 p-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-              aria-label="Close details"
-            >
-              <ChevronUp className="w-5 h-5 text-white rotate-180" />
-            </button>
-          </div>
+          <Header />
 
           {/* Contact Info */}
           <div className="space-y-4 mb-8">
-            {card.address && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200/50">
-                <MapPin className="w-5 h-5 text-purple-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 mb-1">Address</p>
-                  <p className="font-medium text-gray-800">{card.address}</p>
-                </div>
-                <div
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                  }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                  className="isolate"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-white hover:bg-purple-50 border-purple-200 text-purple-600 hover:text-purple-700"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                      handleMapsClick(card?.address);
-                    }}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                  >
-                    Open Maps
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {card.phone && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl border border-blue-200/50">
-                <Phone className="w-5 h-5 text-blue-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600">Phone</p>
-                  <p className="font-medium text-gray-800">{card.phone}</p>
-                </div>
-                {(isIOS() || isAndroid()) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-white hover:bg-blue-50 border-blue-200 text-blue-600 hover:text-blue-700"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
-                      window.location.href = `tel:${card.phone}`;
-                    }}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    onTouchEnd={(e) => e.stopPropagation()}
-                  >
-                    Call
-                  </Button>
-                )}
-              </div>
-            )}
-            {card.website && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl border border-green-200/50">
-                <Globe className="w-5 h-5 text-green-500" />
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600">Website</p>
-                  <p className="font-medium text-gray-800"></p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white hover:bg-green-50 border-green-200 text-green-600 hover:text-green-700"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                    window.open(card.website, "_blank", "noopener,noreferrer");
-                  }}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
-                >
-                  Open Website
-                </Button>
-              </div>
-            )}
-            {card.openingHours && (
-              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border border-orange-200/50">
-                <Clock className="w-5 h-5 text-orange-500" />
-                <div>
-                  <p className="text-sm text-gray-600">Hours</p>
-                  <p className="font-medium text-gray-800">
-                    {card.openingHours}
-                  </p>
-                </div>
-              </div>
-            )}
+            {card.address && <AddressSection />}
+            {card.phone && <PhoneSection />}
+            {card.website && <WebsiteSection />}
+            {card.openingHours && <OpeningHoursSection />}
           </div>
 
           {/* Additional Info */}
-          {card.placeDetails?.editorialSummary && (
-            <div className="mb-8">
-              <h3 className="text-xl font-bold mb-4 text-white">About</h3>
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200/50">
-                <p className="text-gray-700 leading-relaxed">
-                  {card.placeDetails.editorialSummary.text}
-                </p>
-              </div>
-            </div>
-          )}
+          {card.placeDetails?.editorialSummary && <AdditionalInfoSection />}
 
           {/* Reviews Preview */}
-          {card.reviews && card.reviews.length > 0 && (
-            <div>
-              <h3 className="text-xl font-bold mb-4 text-white">
-                Customer Reviews
-              </h3>
-              <div className="space-y-4">
-                {card.reviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm"
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">
-                          {review.author.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-semibold text-gray-800">
-                          {review.author}
-                        </span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex items-center">
-                            {renderStars(review.rating)}
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {review.relativeTime || review.date}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-gray-700 leading-relaxed">
-                      {review.comment}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {card.reviews && card.reviews.length > 0 && <ReviewsSection />}
         </div>
       </motion.div>
     );
