@@ -2,11 +2,13 @@ import { Menu, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { memo, useMemo } from "react";
 import { getDeviceInfo } from "@/utils/deviceOptimization";
+import { VoiceButton } from "./VoiceButton";
 
 interface SwipeControlsProps {
   onAction: (action: "pass") => void;
   onMenuOpen?: () => void;
   onUndo?: () => void;
+  onVoiceFiltersApplied?: (filters: Array<{ filterId: string; value: any }>) => void;
   swipeDirection?: "menu" | "pass" | null;
 }
 
@@ -97,7 +99,7 @@ const MenuButton = memo(
             swipeDirection === "menu" ? "w-6 h-6" : "w-5 h-5"
           }`}
         />
-        Open Menu
+        Menu
       </Button>
     );
   }
@@ -107,6 +109,7 @@ function SwipeControls({
   onAction,
   onMenuOpen,
   onUndo,
+  onVoiceFiltersApplied,
   swipeDirection,
 }: SwipeControlsProps) {
   return (
@@ -125,6 +128,14 @@ function SwipeControls({
           swipeDirection={swipeDirection}
           onAction={onAction}
         />
+
+        {/* Voice Button */}
+        {onVoiceFiltersApplied && (
+          <VoiceButton
+            onFiltersApplied={onVoiceFiltersApplied}
+            swipeDirection={swipeDirection}
+          />
+        )}
 
         {/* Open Menu Button */}
         <MenuButton swipeDirection={swipeDirection} onMenuOpen={onMenuOpen} />

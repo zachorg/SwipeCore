@@ -12,7 +12,15 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
     allowMixedContent: true,
     captureInput: true,
-    webViewPresentationStyle: 'fullscreen'
+    webViewPresentationStyle: 'fullscreen',
+    // Audio permissions for voice search
+    permissions: [
+      'android.permission.INTERNET',
+      'android.permission.ACCESS_NETWORK_STATE',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.MODIFY_AUDIO_SETTINGS',
+      'android.permission.WRITE_EXTERNAL_STORAGE'
+    ]
   },
   plugins: {
     SplashScreen: {
@@ -23,6 +31,13 @@ const config: CapacitorConfig = {
       enableHighAccuracy: true,
       timeout: 10000,
       maximumAge: 300000
+    },
+    Permissions: {
+      // Audio permissions for voice search
+      enabled: true
+    },
+    CapacitorHttp: {
+      enabled: true
     }
   }
 };

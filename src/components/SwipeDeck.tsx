@@ -254,10 +254,20 @@ export function SwipeDeck({
         ))}
       </div>
 
+
+
       {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
         onMenuOpen={handleMenuOpen}
+        onVoiceFiltersApplied={enableFiltering ? (filters) => {
+          // Apply each filter from the voice result
+          filters.forEach(filter => {
+            addFilter(filter.filterId, filter.value);
+          });
+          // Trigger new filters applied callback
+          onNewFiltersApplied();
+        } : undefined}
         swipeDirection={swipeDirection}
       />
     </div>
