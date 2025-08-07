@@ -56,8 +56,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'minRating',
-    name: 'Minimum Rating',
-    description: 'Filter by minimum star rating',
+    name: '',
+    description: 'Minimum Rating',
     type: 'range',
     category: 'basic',
     min: 1,
@@ -69,8 +69,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'priceLevel',
-    name: 'Price Range',
-    description: 'Filter by price level',
+    name: '',
+    description: 'Price Range',
     type: 'select',
     category: 'basic',
     options: [
@@ -84,7 +84,7 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   {
     id: 'cuisine',
     name: 'Cuisine Type',
-    description: 'Filter by type of cuisine',
+    description: 'Cuisine Type',
     type: 'multiselect',
     category: 'basic',
     options: [
@@ -102,7 +102,7 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   // Advanced Filters
   {
     id: 'keyword',
-    name: 'Search Keywords',
+    name: '',
     description: 'Search for specific dishes or restaurant names',
     type: 'keyword',
     category: 'advanced',
@@ -111,8 +111,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'distance',
-    name: 'Maximum Distance',
-    description: 'Filter by distance from your location',
+    name: '',
+    description: 'Maximum distance from your location',
     type: 'range',
     category: 'advanced',
     min: 0.5,
@@ -240,11 +240,13 @@ class FilterEngine {
         );
 
       case 'distance':
-        // Note: This would need actual distance calculation in a real implementation
-        const maxDistance = Number(filter.value);
+        // Convert filter value from kilometers to meters for comparison
+        const maxDistanceKm = Number(filter.value);
+        const maxDistanceMeters = maxDistanceKm * 1000;
         return cards.filter(card => {
-          const cardDistance = typeof card.distance === 'number' ? card.distance : 0;
-          return cardDistance <= maxDistance;
+          // Use distanceInMeters for accurate comparison
+          const cardDistanceMeters = card.distanceInMeters || 0;
+          return cardDistanceMeters <= maxDistanceMeters;
         });
 
       default:

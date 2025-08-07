@@ -113,9 +113,9 @@ export function FilterPanel({
 
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl"
+        className="w-full sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl flex flex-col h-full"
       >
-        <SheetHeader className="pb-6">
+        <SheetHeader className="pb-6 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <SheetTitle className="text-gray-900 text-xl font-bold">
@@ -163,7 +163,7 @@ export function FilterPanel({
           )}
         </SheetHeader>
 
-        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           <Accordion
             type="multiple"
             defaultValue={["basic"]}
@@ -238,8 +238,8 @@ export function FilterPanel({
           </Accordion>
         </div>
 
-        {/* Apply/Reset Actions */}
-        <div className="flex gap-2 pt-6 border-t border-gray-200">
+        {/* Fixed Apply/Reset Actions Footer */}
+        <div className="flex-shrink-0 flex gap-2 pt-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
           <Button
             variant="default"
             size="sm"
