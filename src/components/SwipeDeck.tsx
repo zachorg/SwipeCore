@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { SwipeCard } from "./SwipeCard";
 import {
   RestaurantCard,
@@ -8,20 +8,22 @@ import {
 } from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
-  useRestaurantSwipe,
-  UseRestaurantSwipeOptions,
-} from "@/hooks/useRestaurantSwipe";
+  useFilteredPlaces,
+  UseFilteredPlacesOptions,
+} from "@/hooks/useFilteredPlaces";
 import { Button } from "./ui/button";
-import { RefreshCw, MapPin, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "./ui/alert";
+import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
 import { isAndroid } from "@/lib/utils";
+import { FilterPanel } from "./filters/FilterPanel";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
   onSwipeAction?: (cardId: string, action: "menu" | "pass") => void;
   maxVisibleCards?: number;
   onCardTap?: (card: RestaurantCard) => void;
-  swipeOptions?: UseRestaurantSwipeOptions;
+  swipeOptions?: UseFilteredPlacesOptions;
+  enableFiltering?: boolean;
+  onFilterButtonReady?: (filterButton: React.ReactNode) => void;
 }
 
 export function SwipeDeck({
@@ -30,6 +32,8 @@ export function SwipeDeck({
   maxVisibleCards = 3,
   onCardTap,
   swipeOptions = {},
+  enableFiltering = true,
+  onFilterButtonReady,
 }: SwipeDeckProps) {
   const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
     null
@@ -40,25 +44,67 @@ export function SwipeDeck({
     ? androidOptimizedSwipeConfig
     : defaultSwipeConfig;
   const swipeConfig = { ...baseConfig, ...config };
-  // Use the comprehensive restaurant swipe hook
+
+  // Use the enhanced filtering hook
   const {
     cards,
     currentCard,
     isLoading,
     isLocationLoading,
+    isFilterLoading,
     error,
     hasLocation,
-    location,
     swipeCard,
     refreshCards,
     requestLocation,
-    canSwipe,
-    totalCards,
     usingLiveData,
-  } = useRestaurantSwipe(swipeOptions);
+    // Filter management
+    addFilter,
+    updateFilter,
+    removeFilter,
+    clearFilters,
+    onNewFiltersApplied,
+    allFilters,
+  } = useFilteredPlaces({
+    ...swipeOptions,
+    enableFiltering,
+    maxCards: 20,
+  });
+
+  // Create and pass filter button to parent
+  useEffect(() => {
+    if (onFilterButtonReady && enableFiltering) {
+      const filterButton = (
+        <FilterPanel
+          allFilters={allFilters}
+          addFilter={addFilter}
+          updateFilter={updateFilter}
+          removeFilter={removeFilter}
+          clearFilters={clearFilters}
+          onNewFiltersApplied={onNewFiltersApplied}
+          trigger={
+            <Button
+              variant="outline"
+              size="lg"
+              className="bg-black/40 backdrop-blur-sm hover:bg-black/60 border-white/40 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 rounded-2xl p-4"
+              style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.9)' }}
+            >
+              <Settings className="w-7 h-7" />
+            </Button>
+          }
+        />
+      );
+      onFilterButtonReady(filterButton);
+    }
+  }, [enableFiltering, allFilters]);
 
   const handleSwipe = (cardId: string, action: "menu" | "pass") => {
-    swipeCard(cardId, action);
+    const swipeAction = {
+      cardId,
+      action,
+      timestamp: Date.now(),
+    };
+    swipeCard(swipeAction);
     onSwipeAction?.(cardId, action);
   };
 
@@ -84,18 +130,20 @@ export function SwipeDeck({
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   // Loading state
-  if (isLoading && cards.length === 0) {
+  if ((isLoading || isFilterLoading) && cards.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+        <div className="text-center space-y-4 bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-white drop-shadow-lg" />
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">
+            <h2 className="text-xl font-semibold text-white mb-2" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.8)' }}>
               {isLocationLoading
                 ? "Getting your location..."
+                : isFilterLoading
+                ? "Applying filters..."
                 : "Finding restaurants..."}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-white/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.6)' }}>
               {usingLiveData
                 ? "Loading restaurants near you"
                 : "Preparing your restaurant deck"}
@@ -110,12 +158,12 @@ export function SwipeDeck({
   if (error) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4 max-w-md">
-          <AlertCircle className="w-12 h-12 mx-auto text-destructive" />
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        <div className="text-center space-y-4 max-w-md bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
+          <AlertCircle className="w-12 h-12 mx-auto text-white drop-shadow-lg" />
+          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
+            <AlertCircle className="h-4 w-4 text-white inline mr-2" />
+            <span className="text-white" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{error}</span>
+          </div>
           <div className="space-y-2">
             {!hasLocation && (
               <Button
