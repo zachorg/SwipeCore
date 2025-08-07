@@ -56,8 +56,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'minRating',
-    name: '',
-    description: 'Minimum Rating',
+    name: 'Minimum Rating',
+    description: 'Filter by minimum star rating',
     type: 'range',
     category: 'basic',
     min: 1,
@@ -69,8 +69,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'priceLevel',
-    name: '',
-    description: 'Price Range',
+    name: 'Price Range',
+    description: 'Filter by price level',
     type: 'select',
     category: 'basic',
     options: [
@@ -84,7 +84,7 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   {
     id: 'cuisine',
     name: 'Cuisine Type',
-    description: 'Cuisine Type',
+    description: 'Filter by type of cuisine',
     type: 'multiselect',
     category: 'basic',
     options: [
@@ -102,7 +102,7 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   // Advanced Filters
   {
     id: 'keyword',
-    name: '',
+    name: 'Search Keywords',
     description: 'Search for specific dishes or restaurant names',
     type: 'keyword',
     category: 'advanced',
@@ -111,8 +111,8 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
   },
   {
     id: 'distance',
-    name: '',
-    description: 'Maximum distance from your location',
+    name: 'Maximum Distance',
+    description: 'Filter by distance from your location',
     type: 'range',
     category: 'advanced',
     min: 0.5,
@@ -121,6 +121,65 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
     unit: 'km',
     defaultValue: 5,
     icon: '📍'
+  },
+  {
+    id: 'dietaryRestrictions',
+    name: 'Dietary Restrictions',
+    description: 'Filter by dietary preferences and restrictions',
+    type: 'multiselect',
+    category: 'advanced',
+    options: [
+      { value: 'vegetarian', label: 'Vegetarian' },
+      { value: 'vegan', label: 'Vegan' },
+      { value: 'gluten-free', label: 'Gluten-Free' },
+      { value: 'dairy-free', label: 'Dairy-Free' },
+      { value: 'nut-free', label: 'Nut-Free' },
+      { value: 'halal', label: 'Halal' },
+      { value: 'kosher', label: 'Kosher' },
+      { value: 'keto', label: 'Keto-Friendly' },
+      { value: 'low-carb', label: 'Low-Carb' }
+    ],
+    icon: '🥗'
+  },
+  {
+    id: 'restaurantFeatures',
+    name: 'Restaurant Features',
+    description: 'Filter by available amenities and services',
+    type: 'multiselect',
+    category: 'advanced',
+    options: [
+      { value: 'outdoor-seating', label: 'Outdoor Seating' },
+      { value: 'parking', label: 'Parking Available' },
+      { value: 'delivery', label: 'Delivery' },
+      { value: 'takeout', label: 'Takeout' },
+      { value: 'reservations', label: 'Accepts Reservations' },
+      { value: 'wifi', label: 'Free WiFi' },
+      { value: 'wheelchair-accessible', label: 'Wheelchair Accessible' },
+      { value: 'live-music', label: 'Live Music' },
+      { value: 'bar', label: 'Full Bar' },
+      { value: 'happy-hour', label: 'Happy Hour' }
+    ],
+    icon: '🏪'
+  },
+  {
+    id: 'ambiance',
+    name: 'Ambiance',
+    description: 'Filter by restaurant atmosphere and style',
+    type: 'multiselect',
+    category: 'advanced',
+    options: [
+      { value: 'casual', label: 'Casual Dining' },
+      { value: 'fine-dining', label: 'Fine Dining' },
+      { value: 'family-friendly', label: 'Family-Friendly' },
+      { value: 'romantic', label: 'Romantic' },
+      { value: 'business', label: 'Business Dining' },
+      { value: 'trendy', label: 'Trendy/Hip' },
+      { value: 'quiet', label: 'Quiet/Intimate' },
+      { value: 'lively', label: 'Lively/Energetic' },
+      { value: 'sports-bar', label: 'Sports Bar' },
+      { value: 'rooftop', label: 'Rooftop/Scenic' }
+    ],
+    icon: '🎭'
   }
 ];
 
@@ -247,6 +306,90 @@ class FilterEngine {
           // Use distanceInMeters for accurate comparison
           const cardDistanceMeters = card.distanceInMeters || 0;
           return cardDistanceMeters <= maxDistanceMeters;
+        });
+
+      case 'dietaryRestrictions':
+        const dietaryRestrictions = Array.isArray(filter.value) ? filter.value : [filter.value];
+        return cards.filter(card => {
+          // Check if the restaurant supports the dietary restrictions
+          // This would typically come from restaurant data, but for now we'll use keywords
+          const cardText = `${card.title} ${card.description || ''} ${card.types?.join(' ') || ''}`.toLowerCase();
+
+          return dietaryRestrictions.some(restriction => {
+            const restrictionLower = String(restriction).toLowerCase();
+
+            // Define keywords for each dietary restriction
+            const dietaryKeywords: Record<string, string[]> = {
+              'vegetarian': ['vegetarian', 'veggie', 'plant-based', 'meat-free'],
+              'vegan': ['vegan', 'plant-based', 'dairy-free'],
+              'gluten-free': ['gluten-free', 'gluten free', 'celiac', 'gf'],
+              'dairy-free': ['dairy-free', 'dairy free', 'lactose-free', 'non-dairy'],
+              'nut-free': ['nut-free', 'nut free', 'allergy-friendly'],
+              'halal': ['halal', 'islamic', 'muslim'],
+              'kosher': ['kosher', 'jewish', 'orthodox'],
+              'keto': ['keto', 'ketogenic', 'low-carb', 'high-fat'],
+              'low-carb': ['low-carb', 'low carb', 'keto', 'atkins']
+            };
+
+            const keywords = dietaryKeywords[restrictionLower] || [restrictionLower];
+            return keywords.some(keyword => cardText.includes(keyword));
+          });
+        });
+
+      case 'restaurantFeatures':
+        const features = Array.isArray(filter.value) ? filter.value : [filter.value];
+        return cards.filter(card => {
+          // Check if the restaurant has the required features
+          const cardText = `${card.title} ${card.description || ''} ${card.types?.join(' ') || ''}`.toLowerCase();
+
+          return features.some(feature => {
+            const featureLower = String(feature).toLowerCase();
+
+            // Define keywords for each feature
+            const featureKeywords: Record<string, string[]> = {
+              'outdoor-seating': ['outdoor', 'patio', 'terrace', 'garden', 'sidewalk', 'al fresco'],
+              'parking': ['parking', 'valet', 'garage', 'lot'],
+              'delivery': ['delivery', 'delivers', 'door dash', 'uber eats', 'grubhub'],
+              'takeout': ['takeout', 'take out', 'to go', 'pickup', 'carry out'],
+              'reservations': ['reservations', 'booking', 'table', 'reserve'],
+              'wifi': ['wifi', 'wi-fi', 'internet', 'wireless'],
+              'wheelchair-accessible': ['wheelchair', 'accessible', 'ada', 'handicap'],
+              'live-music': ['live music', 'band', 'entertainment', 'acoustic'],
+              'bar': ['bar', 'cocktails', 'drinks', 'alcohol', 'wine', 'beer'],
+              'happy-hour': ['happy hour', 'happy-hour', 'specials', 'discounts']
+            };
+
+            const keywords = featureKeywords[featureLower] || [featureLower];
+            return keywords.some(keyword => cardText.includes(keyword));
+          });
+        });
+
+      case 'ambiance':
+        const ambianceTypes = Array.isArray(filter.value) ? filter.value : [filter.value];
+        return cards.filter(card => {
+          // Check if the restaurant matches the ambiance
+          const cardText = `${card.title} ${card.description || ''} ${card.types?.join(' ') || ''}`.toLowerCase();
+
+          return ambianceTypes.some(ambiance => {
+            const ambianceLower = String(ambiance).toLowerCase();
+
+            // Define keywords for each ambiance type
+            const ambianceKeywords: Record<string, string[]> = {
+              'casual': ['casual', 'relaxed', 'informal', 'laid-back', 'family'],
+              'fine-dining': ['fine dining', 'upscale', 'elegant', 'sophisticated', 'gourmet', 'michelin'],
+              'family-friendly': ['family', 'kids', 'children', 'playground', 'kid-friendly'],
+              'romantic': ['romantic', 'intimate', 'date', 'candlelit', 'cozy'],
+              'business': ['business', 'corporate', 'meeting', 'professional', 'lunch'],
+              'trendy': ['trendy', 'hip', 'modern', 'contemporary', 'stylish', 'chic'],
+              'quiet': ['quiet', 'peaceful', 'intimate', 'serene', 'calm'],
+              'lively': ['lively', 'energetic', 'vibrant', 'bustling', 'loud', 'party'],
+              'sports-bar': ['sports', 'bar', 'game', 'tv', 'screen', 'pub'],
+              'rooftop': ['rooftop', 'scenic', 'view', 'skyline', 'terrace', 'panoramic']
+            };
+
+            const keywords = ambianceKeywords[ambianceLower] || [ambianceLower];
+            return keywords.some(keyword => cardText.includes(keyword));
+          });
         });
 
       default:

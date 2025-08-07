@@ -6,7 +6,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Pizza Palace',
       subtitle: 'Authentic Italian Pizza & Pasta',
-      description: 'Family-owned Italian restaurant serving traditional wood-fired pizzas and homemade pasta since 1985',
+      description: 'Family-owned Italian restaurant serving traditional wood-fired pizzas and homemade pasta since 1985. Family-friendly atmosphere with outdoor seating and vegetarian options available. Free WiFi and parking.',
       cuisine: 'Italian',
       types: ['Italian Restaurant', 'Pizza Place', 'Family Restaurant'],
       rating: 4.5,
@@ -30,7 +30,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Sushi Express',
       subtitle: 'Fresh Sushi & Japanese Cuisine',
-      description: 'Modern Japanese restaurant specializing in fresh sushi, sashimi, and traditional Japanese dishes',
+      description: 'Modern Japanese restaurant specializing in fresh sushi, sashimi, and traditional Japanese dishes. Trendy atmosphere with a full bar and gluten-free options. Delivery and takeout available.',
       cuisine: 'Japanese',
       types: ['Japanese Restaurant', 'Sushi Bar', 'Asian Restaurant'],
       rating: 4.8,
@@ -54,7 +54,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Burger Joint',
       subtitle: 'Classic American Burgers & Fries',
-      description: 'Casual burger restaurant serving juicy burgers, crispy fries, and thick milkshakes in a retro atmosphere',
+      description: 'Casual burger restaurant serving juicy burgers, crispy fries, and thick milkshakes in a retro atmosphere. Sports bar with live games on TV, happy hour specials, and wheelchair accessible.',
       cuisine: 'American',
       types: ['American Restaurant', 'Burger Joint', 'Fast Casual'],
       rating: 4.2,
@@ -78,7 +78,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Taco Fiesta',
       subtitle: 'Authentic Mexican Street Food',
-      description: 'Vibrant Mexican restaurant serving authentic street tacos, fresh guacamole, and traditional dishes',
+      description: 'Vibrant Mexican restaurant serving authentic street tacos, fresh guacamole, and traditional dishes. Lively atmosphere with vegan and vegetarian options. Outdoor patio seating available.',
       cuisine: 'Mexican',
       types: ['Mexican Restaurant', 'Taco Shop', 'Latin American'],
       rating: 4.6,
@@ -102,7 +102,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Thai Garden',
       subtitle: 'Authentic Thai Cuisine',
-      description: 'Traditional Thai restaurant offering aromatic curries, fresh pad thai, and authentic Thai flavors',
+      description: 'Traditional Thai restaurant offering aromatic curries, fresh pad thai, and authentic Thai flavors. Quiet and intimate setting perfect for romantic dinners. Vegan and gluten-free options available.',
       cuisine: 'Thai',
       types: ['Thai Restaurant', 'Asian Restaurant', 'Curry House'],
       rating: 4.7,
@@ -127,7 +127,7 @@ export function generateMockCards(count: number = 10): RestaurantCard[] {
     {
       title: 'Curry Palace',
       subtitle: 'Authentic Indian Cuisine',
-      description: 'Traditional Indian restaurant serving aromatic curries, fresh naan, and tandoori specialties',
+      description: 'Traditional Indian restaurant serving aromatic curries, fresh naan, and tandoori specialties. Halal certified with vegetarian and dairy-free options. Accepts reservations.',
       cuisine: 'Indian',
       types: ['Indian Restaurant', 'Curry House', 'Tandoori Grill'],
       rating: 4.4,
