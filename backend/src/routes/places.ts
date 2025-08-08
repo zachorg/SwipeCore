@@ -8,6 +8,8 @@ import {
   placeIdSchema,
   photoReferenceSchema,
   NearbySearchParams,
+  TextSearchParams,
+  textSearchSchema,
 } from '../types/places';
 
 const router = Router();
@@ -31,6 +33,36 @@ router.get('/nearby', asyncHandler(async (req: Request, res: Response) => {
   const validatedParams = nearbySearchSchema.parse(cleanParams);
 
   const response = await places.nearby(validatedParams);
+  const placesArray = response?.places || [];
+
+  res.json({
+    success: true,
+    data: placesArray,
+    count: placesArray.length,
+    timestamp: new Date().toISOString(),
+  });
+}));
+
+router.get('/nearbyAdvanced', asyncHandler(async (req: Request, res: Response) => {
+  // Validate query parameters
+  const queryParams = {
+    lat: parseFloat(req.query.lat as string),
+    lng: parseFloat(req.query.lng as string),
+    radius: req.query.radius ? parseInt(req.query.radius as string) : undefined,
+    query: req.query.keyword as string,
+    type: req.query.type as string,
+  };
+
+  // Remove undefined values
+  const cleanParams = Object.fromEntries(
+    Object.entries(queryParams).filter(([_, value]) => value !== undefined && !Number.isNaN(value))
+  ) as TextSearchParams;
+
+  const validatedParams = textSearchSchema.parse(cleanParams);
+
+  console.log(`validatedParams: ${validatedParams}`);
+
+  const response = await places.textSearch(validatedParams);
   const placesArray = response?.places || [];
 
   res.json({

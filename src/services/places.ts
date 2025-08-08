@@ -117,11 +117,11 @@ export class PlacesApiClient {
   /**
    * Search for nearby places
    */
-  async searchNearby(params: NearbySearchParams): Promise<PlaceBasic[]> {
+  async searchNearby(params: NearbySearchParams, advancedSearch: boolean): Promise<PlaceBasic[]> {
     try {
       console.log("🔍 Searching nearby places:", params);
       const response = await this.client.get<NearbySearchResponse>(
-        "/api/places/nearby",
+        `/api/places/${advancedSearch ? 'nearbyAdvanced' : 'nearby'}`,
         {
           params,
         }

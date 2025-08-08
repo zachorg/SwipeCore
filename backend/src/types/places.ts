@@ -9,6 +9,14 @@ export const nearbySearchSchema = z.object({
   type: z.string().optional(),
 });
 
+export const textSearchSchema = z.object({
+  query: z.string().min(1),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  radius: z.number().min(1).max(50000).optional().default(1500),
+  type: z.string().optional(),
+});
+
 export const placeIdSchema = z.object({
   placeId: z.string().min(1),
 });
@@ -91,3 +99,5 @@ export interface PlaceDetails extends PlaceBasic {
 }
 
 export type NearbySearchParams = z.infer<typeof nearbySearchSchema>;
+
+export type TextSearchParams = z.infer<typeof textSearchSchema>;

@@ -25,7 +25,7 @@ const CACHE_CONFIG = {
   DETAILS_STALE_TIME: 30 * 60 * 1000, // 30 minutes (matches backend cache)
   PHOTO_STALE_TIME: 60 * 60 * 1000, // 1 hour (matches backend cache)
 
-  RETRY_COUNT: 3,
+  RETRY_COUNT: 0,
   RETRY_DELAY: (attemptIndex: number) =>
     Math.min(1000 * 2 ** attemptIndex, 30000),
 };
@@ -49,7 +49,7 @@ export const useNearbyPlaces = (
 
   return useQuery({
     queryKey: PLACES_QUERY_KEYS.nearby(params),
-    queryFn: () => placesApi.searchNearby(params),
+    queryFn: () => placesApi.searchNearby(params, true),
     enabled: enabled && Boolean(params.lat && params.lng),
     staleTime: CACHE_CONFIG.NEARBY_STALE_TIME,
     gcTime: CACHE_CONFIG.NEARBY_STALE_TIME * 2, // Keep in cache for double the stale time
