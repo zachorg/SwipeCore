@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useGeolocation } from "./useGeolocation";
-import { useNearbyPlaces } from "./usePlaces";
+import { useNearbyPlaces, usePhotoUrl, usePlaceDetails } from "./usePlaces";
 import {
   RestaurantCard,
   SwipeAction,
@@ -13,6 +13,7 @@ import {
 import {
   transformPlacesToCards,
   getDefaultRestaurantImage,
+  mergeCardWithDetails,
 } from "../utils/placeTransformers";
 import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
@@ -119,7 +120,7 @@ export function useFilteredPlaces(
 
   // Check if there are active filters
   const hasActiveFilters = useMemo(() => {
-    return filters.length > 0 && filters.some(f => f.enabled);
+    return filters.length > 0 && filters.some((f) => f.enabled);
   }, [filters]);
 
   // Enhanced search configuration with filters
@@ -132,44 +133,59 @@ export function useFilteredPlaces(
     // Incorporate filters into the API query parameters
     if (enableFiltering && hasActiveFilters) {
       // Find cuisine filters
-      const cuisineFilters = filters.find(f => f.id === 'cuisine' && f.enabled);
-      if (cuisineFilters && Array.isArray(cuisineFilters.value) && cuisineFilters.value.length > 0) {
+      const cuisineFilters = filters.find(
+        (f) => f.id === "cuisine" && f.enabled
+      );
+      if (
+        cuisineFilters &&
+        Array.isArray(cuisineFilters.value) &&
+        cuisineFilters.value.length > 0
+      ) {
         // Add the first cuisine as a keyword to narrow down results
-        baseConfig.keyword = (baseConfig.keyword || '') +
-          (baseConfig.keyword ? ' ' : '') + cuisineFilters.value[0];
+        baseConfig.keyword =
+          (baseConfig.keyword || "") +
+          (baseConfig.keyword ? " " : "") +
+          cuisineFilters.value[0];
       }
 
       // Find price level filter
-      const priceFilter = filters.find(f => f.id === 'priceLevel' && f.enabled);
-      if (priceFilter && typeof priceFilter.value === 'number') {
+      const priceFilter = filters.find(
+        (f) => f.id === "priceLevel" && f.enabled
+      );
+      if (priceFilter && typeof priceFilter.value === "number") {
         // Map numeric price level to the enum values expected by the API
         const priceLevelMap = {
-          1: 'PRICE_LEVEL_INEXPENSIVE' as 'PRICE_LEVEL_INEXPENSIVE',
-          2: 'PRICE_LEVEL_MODERATE' as 'PRICE_LEVEL_MODERATE',
-          3: 'PRICE_LEVEL_EXPENSIVE' as 'PRICE_LEVEL_EXPENSIVE',
-          4: 'PRICE_LEVEL_VERY_EXPENSIVE' as 'PRICE_LEVEL_VERY_EXPENSIVE'
+          1: "PRICE_LEVEL_INEXPENSIVE" as "PRICE_LEVEL_INEXPENSIVE",
+          2: "PRICE_LEVEL_MODERATE" as "PRICE_LEVEL_MODERATE",
+          3: "PRICE_LEVEL_EXPENSIVE" as "PRICE_LEVEL_EXPENSIVE",
+          4: "PRICE_LEVEL_VERY_EXPENSIVE" as "PRICE_LEVEL_VERY_EXPENSIVE",
         };
-        
-        const priceLevelEnum = priceLevelMap[priceFilter.value as keyof typeof priceLevelMap];
+
+        const priceLevelEnum =
+          priceLevelMap[priceFilter.value as keyof typeof priceLevelMap];
         if (priceLevelEnum) {
           baseConfig.priceLevel = [priceLevelEnum];
         }
       }
 
       // Find rating filter
-      const ratingFilter = filters.find(f => f.id === 'minRating' && f.enabled);
-      if (ratingFilter && typeof ratingFilter.value === 'number') {
+      const ratingFilter = filters.find(
+        (f) => f.id === "minRating" && f.enabled
+      );
+      if (ratingFilter && typeof ratingFilter.value === "number") {
         baseConfig.minRating = ratingFilter.value;
       }
 
       // Find open now filter
-      const openNowFilter = filters.find(f => f.id === 'openNow' && f.enabled);
+      const openNowFilter = filters.find(
+        (f) => f.id === "openNow" && f.enabled
+      );
       if (openNowFilter && openNowFilter.value === true) {
         baseConfig.isOpenNow = true;
       }
 
       // Add any other relevant filters that can be passed to the Google Places API
-      console.log('Enhanced search config with filters:', baseConfig);
+      console.log("Enhanced search config with filters:", baseConfig);
     }
 
     return baseConfig;
@@ -193,6 +209,47 @@ export function useFilteredPlaces(
       enabled: Boolean(location) && defaultFeatureFlags.useGooglePlacesApi,
     }
   );
+
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  // Handle selecting a place
+  const handleSelectPlace = (placeId: string) => {
+    setSelectedPlaceId(placeId);
+  };
+
+  const { data: selectedPlaceDetails } = usePlaceDetails(
+    selectedPlaceId || "",
+    {
+      // Only enable the query when a place is selected
+      enabled: Boolean(selectedPlaceId),
+    }
+  );
+
+  interface PhotoReference {
+    id: string;
+    widthPx: number;
+    heightPx: number;
+  }
+
+  const [selectedPhotoReference, setSelectedPhotoReference] =
+    useState<PhotoReference | null>(null);
+
+  const { data: placePhotoUrls, error: photosError } = usePhotoUrl(
+    selectedPlaceId || "",
+    selectedPhotoReference?.id || "",
+    selectedPhotoReference?.widthPx || 400,
+    selectedPhotoReference?.heightPx || 400,
+    {
+      enabled: Boolean(selectedPhotoReference?.id),
+    }
+  );
+
+  function handleSelectPhotoReference(
+    id: string,
+    widthPx: number,
+    heightPx: number
+  ) {
+    setSelectedPhotoReference({ id, widthPx, heightPx });
+  }
 
   // Computed values
   const isLoading = isPlacesLoading && cards.length === 0;
@@ -246,6 +303,7 @@ export function useFilteredPlaces(
         const result = await applyFiltersToCards(transformedCards);
         setFilterResult(result);
         setCards(result.filteredCards.slice(0, maxCards));
+        handleSelectPlace(result.filteredCards[0].id);
       } else {
         setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);
@@ -257,6 +315,43 @@ export function useFilteredPlaces(
       );
     }
   };
+
+  //
+  useEffect(() => {
+    if (selectedPlaceDetails) {
+      const currentCard = cards[0];
+      if (selectedPlaceDetails.photos) {
+        const { name, widthPx, heightPx } = selectedPlaceDetails.photos[0];
+        console.log(`fetching photos for ${currentCard.title}:${name} ..`);
+        handleSelectPhotoReference(name, widthPx, heightPx);
+      } else {
+        console.log(`${currentCard.title} does not have any photos..`);
+      }
+
+      // mergeCardWithDetails returns a new card object
+      const updatedCard = mergeCardWithDetails(currentCard, selectedPlaceDetails);
+      const updatedCards = [...cards];
+      updatedCards[0] = updatedCard;
+      setCards(updatedCards);
+      console.log("Place details for current card fetched!");
+    }
+  }, [selectedPlaceDetails]);
+
+  useEffect(() => {
+    if (placePhotoUrls) {
+      // Create a new card object and new array to ensure React detects changes
+      const updatedCard = { ...cards[0], imageUrl: placePhotoUrls };
+      const updatedCards = [...cards];
+      updatedCards[0] = updatedCard;
+      setCards(updatedCards);
+      console.log(`Place photos for current card fetched: ${placePhotoUrls}`);
+    }
+  }, [placePhotoUrls]);
+
+  useEffect(() => {
+    console.log("Selected Photo Reference:", selectedPhotoReference);
+    console.log("Is Photo URL Enabled:", Boolean(selectedPhotoReference?.id));
+  }, [selectedPhotoReference]);
 
   // Apply filters manually
   const applyFilters = useCallback(

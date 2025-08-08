@@ -140,4 +140,3 @@ export const usePhotoUrl = (
 
 // Type exports for convenience
 export type { NearbySearchParams, PlacesApiError } from "../services/places";
-export type { PlaceBasic, PlaceDetails } from "../types/places";
