@@ -224,7 +224,7 @@ class FilterEngine {
 
     switch (filter.id) {
       case 'openNow':
-        return filter.value ? cards.filter(card => card.isOpen) : cards;
+        return filter.value ? cards.filter(card => card.isOpenNow === true) : cards;
 
       case 'minRating':
         return cards.filter(card => (card.rating || 0) >= Number(filter.value));

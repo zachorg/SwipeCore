@@ -30,7 +30,7 @@ export async function nearby(p: NearbySearchParams) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': config.googlePlacesApiKey,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location',
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location,places.regularOpeningHours.openNow',
         },
       });
 
@@ -115,7 +115,7 @@ export async function textSearch(p: TextSearchParams) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': config.googlePlacesApiKey,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location',
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location,places.regularOpeningHours.openNow',
         },
       });
 

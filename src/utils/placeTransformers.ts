@@ -216,6 +216,7 @@ export const transformPlaceBasicToCard = (
     distance,
     distanceInMeters,
     address: place.formattedAddress,
+    isOpenNow: place.regularOpeningHours?.openNow,
     photos: photoUrls,
     photoReferences,
     location: place.location,

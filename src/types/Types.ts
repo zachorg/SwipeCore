@@ -24,6 +24,10 @@ export interface PlaceBasic {
     latitude: number;
     longitude: number;
   };
+  // Minimal opening hours info available on basic search responses
+  regularOpeningHours?: {
+    openNow: boolean;
+  };
 }
 
 export interface PlaceDetails extends PlaceBasic {
