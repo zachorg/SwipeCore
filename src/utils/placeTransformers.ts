@@ -218,6 +218,7 @@ export const transformPlaceBasicToCard = (
     address: place.formattedAddress,
     isOpenNow: place.regularOpeningHours?.openNow,
     photos: photoUrls,
+    photoUrls: [],
     photoReferences,
     location: place.location,
     reviews: [], // Will be populated when details are loaded
@@ -271,7 +272,7 @@ export const mergeCardWithDetails = (
     ...basicCard,
     ...detailedCard,
     // Keep the original image URL if it was already loaded
-    imageUrl: basicCard.imageUrl || detailedCard.imageUrl,
+    // imageUrl: basicCard.imageUrl || detailedCard.imageUrl,
   };
 };
 

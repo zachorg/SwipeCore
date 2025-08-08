@@ -127,11 +127,11 @@ export function SwipeCard({
 
   // Get current image URL
   const getCurrentImageUrl = useCallback(() => {
-    if (card.images && card.images.length > 0) {
-      return card.images[currentImageIndex];
+    if (card.photoUrls && card.photoUrls.length > 0) {
+      return card.photoUrls[currentImageIndex];
     }
-    return card.imageUrl;
-  }, [card.images, card.imageUrl, currentImageIndex]);
+    return null;
+  }, [card.images, card.photoUrls, currentImageIndex]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(

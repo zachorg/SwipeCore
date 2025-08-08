@@ -60,8 +60,6 @@ router.get('/nearbyAdvanced', asyncHandler(async (req: Request, res: Response) =
 
   const validatedParams = textSearchSchema.parse(cleanParams);
 
-  console.log(`validatedParams: ${validatedParams}`);
-
   const response = await places.textSearch(validatedParams);
   const placesArray = response?.places || [];
 

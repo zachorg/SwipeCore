@@ -97,6 +97,7 @@ export interface RestaurantCard {
   
   // Photo data
   photos?: string[];
+  photoUrls: string[]; // url to the actual photo for display
   photoReferences?: Array<{
     name: string;
     widthPx: number;

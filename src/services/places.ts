@@ -117,11 +117,11 @@ export class PlacesApiClient {
   /**
    * Search for nearby places
    */
-  async searchNearby(params: NearbySearchParams, advancedSearch: boolean): Promise<PlaceBasic[]> {
+  async searchNearby(params: NearbySearchParams): Promise<PlaceBasic[]> {
     try {
       console.log("🔍 Searching nearby places:", params);
       const response = await this.client.get<NearbySearchResponse>(
-        `/api/places/${advancedSearch ? 'nearbyAdvanced' : 'nearby'}`,
+        "/api/places/nearby",
         {
           params,
         }
@@ -157,7 +157,7 @@ export class PlacesApiClient {
     photoReference: string,
     maxWidth: number = 400,
     maxHeight: number = 400
-  ): Promise<string> {
+  ): Promise<any> {
     try {
       const response = await this.client.get<PhotoResponse>(
         `/api/places/photo/givememyphoto`,
@@ -166,7 +166,7 @@ export class PlacesApiClient {
         }
       );
 
-      return response.data.data.photoUrl;
+      return {placeId: _placeId, photoUrl: response.data.data.photoUrl};
     } catch (error) {
       throw error; // Re-throw the PlacesApiError from interceptor
     }

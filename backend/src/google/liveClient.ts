@@ -84,21 +84,21 @@ export async function photo(photoReference: string, maxWidth: number = 400, maxH
   );
 }
 
-export async function textSearch(p: TextSearchParams) {
+export async function nearbyAdvanced(p: TextSearchParams) {
   return withCache(
     textSearchKey(p),
     config.cacheTtlDays * 86400,
     async () => {
       const requestBody: any = {
         textQuery: p.query,
-        includedType: p.type ?? "",
+        includedTypes: p.type ? [p.type] : undefined,
         maxResultCount: 20,
         languageCode: 'en',
       };
 
       // Add location restriction if lat/lng are provided
       if (p.lat !== undefined && p.lng !== undefined) {
-        requestBody.locationBias = {
+        requestBody.locationRestriction = {
           circle: {
             center: {
               latitude: p.lat,
@@ -108,8 +108,6 @@ export async function textSearch(p: TextSearchParams) {
           },
         };
       }
-
-      console.log("requestBody: ", JSON.stringify(requestBody));
 
       const response = await axios.post(`${base}/places:searchText`, requestBody, {
         headers: {

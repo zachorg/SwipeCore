@@ -1,14 +1,18 @@
 // Enhanced Restaurant Hook with Filtering System Integration
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useGeolocation } from "./useGeolocation";
-import { useNearbyPlaces, usePhotoUrl, usePlaceDetails } from "./usePlaces";
+import {
+  CACHE_CONFIG,
+  useNearbyPlaces,
+} from "./usePlaces";
 import {
   RestaurantCard,
   SwipeAction,
   PlaceSearchConfig,
   defaultSearchConfig,
   defaultFeatureFlags,
+  PlaceDetails,
 } from "../types/Types";
 import {
   transformPlacesToCards,
@@ -17,6 +21,8 @@ import {
 } from "../utils/placeTransformers";
 import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
+import { useQueryClient } from "@tanstack/react-query";
+import { placesApi } from "@/services/places";
 
 export interface UseFilteredPlacesOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -67,6 +73,29 @@ export interface UseFilteredPlacesReturn {
   canSwipe: boolean;
   usingLiveData: boolean;
 }
+
+const createQueue = () => {
+  const items: any[] = [];
+
+  return {
+    enqueue: (item: any) => {
+      items.push(item);
+    },
+    dequeue: () => {
+      if (items.length === 0) return undefined;
+      return items.shift();
+    },
+    peek: () => {
+      return items.length > 0 ? items[0] : undefined;
+    },
+    isEmpty: () => {
+      return items.length === 0;
+    },
+    get length() {
+      return items.length;
+    },
+  };
+};
 
 export function useFilteredPlaces(
   options: UseFilteredPlacesOptions = {}
@@ -219,53 +248,19 @@ export function useFilteredPlaces(
     }
   );
 
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
-  // Handle selecting a place
-  const handleSelectPlace = (placeId: string) => {
-    setSelectedPlaceId(placeId);
-  };
-
-  const { data: selectedPlaceDetails } = usePlaceDetails(
-    selectedPlaceId || "",
-    {
-      // Only enable the query when a place is selected
-      enabled: Boolean(selectedPlaceId),
-    }
-  );
-
-  interface PhotoReference {
-    id: string;
-    widthPx: number;
-    heightPx: number;
-  }
-
-  const [selectedPhotoReference, setSelectedPhotoReference] =
-    useState<PhotoReference | null>(null);
-
-  const { data: placePhotoUrls, error: photosError } = usePhotoUrl(
-    selectedPlaceId || "",
-    selectedPhotoReference?.id || "",
-    selectedPhotoReference?.widthPx || 400,
-    selectedPhotoReference?.heightPx || 400,
-    {
-      enabled: Boolean(selectedPhotoReference?.id),
-    }
-  );
-
-  function handleSelectPhotoReference(
-    id: string,
-    widthPx: number,
-    heightPx: number
-  ) {
-    setSelectedPhotoReference({ id, widthPx, heightPx });
-  }
-
   // Computed values
   const isLoading = isPlacesLoading && cards.length === 0;
   const hasLocation = Boolean(location);
   const usingLiveData = defaultFeatureFlags.useGooglePlacesApi && hasLocation;
   const currentCard = cards.length > 0 ? cards[0] : null;
   const canSwipe = cards.length > 0;
+
+  const cardsRef = useRef<RestaurantCard[]>([]);
+
+  // Update the ref whenever cards change
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
 
   // Initialize with mock data if not using live data
   useEffect(() => {
@@ -312,21 +307,25 @@ export function useFilteredPlaces(
       setBaseCards(transformedCards);
 
       // Apply filters if enabled and active
+      let newCards = null;
       if (enableFiltering && hasActiveFilters) {
         const result = await applyFiltersToCards(transformedCards);
+        newCards = result.filteredCards;
         setFilterResult(result);
         setCards(result.filteredCards.slice(0, maxCards));
-        if(result.filteredCards.length > 0){
-          handleSelectPlace(result.filteredCards[0].id);
-        }
       } else {
-        const limited = transformedCards.slice(0, maxCards);
-        setCards(limited);
+        newCards = transformedCards;
+        setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);
         // Ensure details/photos pipeline starts for first card even without active filters
         if (limited.length > 0) {
           handleSelectPlace(limited[0].id);
         }
+      }
+
+      // Process place details for the visible cards
+      if (newCards && newCards.length > 0) {
+        processPlaceDetails(newCards.slice(0, maxCards));
       }
     } catch (err) {
       console.error("Error processing places:", err);
@@ -336,43 +335,117 @@ export function useFilteredPlaces(
     }
   };
 
-  //
-  useEffect(() => {
-    if (selectedPlaceDetails) {
-      const currentCard = cards[0];
-      if (selectedPlaceDetails.photos) {
-        const { name, widthPx, heightPx } = selectedPlaceDetails.photos[0];
-        console.log(`fetching photos for ${currentCard.title}:${name} ..`);
-        handleSelectPhotoReference(name, widthPx, heightPx);
-      } else {
-        console.log(`${currentCard.title} does not have any photos..`);
-      }
+  // Inside your component
+  const queryClient = useQueryClient();
+  const prefetchPhotoUrls = async (place: PlaceDetails) => {
+    try {
+      // Only proceed if the place has photos
+      if (!place.photos || place.photos.length === 0) return;
 
-      // mergeCardWithDetails returns a new card object
-      const updatedCard = mergeCardWithDetails(currentCard, selectedPlaceDetails);
-      const updatedCards = [...cards];
-      updatedCards[0] = updatedCard;
-      setCards(updatedCards);
-      console.log("Place details for current card fetched!");
+      // Prefetch the photo
+      queryClient
+        .fetchQuery({
+          queryKey: ["places", "photos", place.id],
+          queryFn: () =>
+            placesApi.getPhotoUrl(
+              place.id,
+              place.photos[0].name,
+              place.photos[0].widthPx,
+              place.photos[0].heightPx
+            ),
+          staleTime: CACHE_CONFIG.DETAILS_STALE_TIME,
+        })
+        .then(() => {
+          const photoData = queryClient.getQueryData([
+            "places",
+            "photos",
+            place.id,
+          ]) as any;
+          
+          // Directly update the card state with the photo URL
+          if (photoData) {
+            setCards((prevCards) => {
+              const cardIndex = prevCards.findIndex(
+                (card) => card.id === place.id
+              );
+              if (cardIndex === -1) return prevCards;
+
+              const updatedCards = [...prevCards];
+              updatedCards[cardIndex] = {
+                ...updatedCards[cardIndex],
+                photoUrls: [photoData.photoUrl],
+              };
+
+              return updatedCards;
+            });
+
+            console.log(`Photo prefetched and updated for ${place.id}`);
+          }
+        });
+    } catch (error) {
+      console.error(`Error prefetching photo for ${place.id}:`, error);
     }
-  }, [selectedPlaceDetails]);
+  };
 
-  useEffect(() => {
-    if (placePhotoUrls) {
-      // Create a new card object and new array to ensure React detects changes
-      const updatedCard = { ...cards[0], imageUrl: placePhotoUrls };
-      const updatedCards = [...cards];
-      updatedCards[0] = updatedCard;
-      setCards(updatedCards);
-      console.log(`Place photos for current card fetched: ${placePhotoUrls}`);
+  const prefetchPlaceDetails = async (placeId: string) => {
+    try {
+      // Prefetch the place details
+      queryClient
+        .fetchQuery({
+          queryKey: ["places", "details", placeId],
+          queryFn: () => placesApi.getPlaceDetails(placeId),
+          staleTime: CACHE_CONFIG.DETAILS_STALE_TIME,
+        })
+        .then(() => {
+          const data = queryClient.getQueryData([
+            "places",
+            "details",
+            placeId,
+          ]) as PlaceDetails;
+
+          // Directly update the card state with the details
+          if (data) {
+            setCards((prevCards) => {
+              const cardIndex = prevCards.findIndex(
+                (card) => card.id === placeId
+              );
+              if (cardIndex === -1) return prevCards;
+
+              const updatedCard = mergeCardWithDetails(
+                prevCards[cardIndex],
+                data
+              );
+
+              const updatedCards = [...prevCards];
+              updatedCards[cardIndex] = updatedCard;
+
+              return updatedCards;
+            });
+
+            console.log(`Details prefetched and updated for ${placeId}`);
+
+            // After updating with details, prefetch the photos
+            setTimeout(() => {
+              prefetchPhotoUrls(data);
+            }, 500);
+          }
+        });
+    } catch (error) {
+      console.error(`Error prefetching details for ${placeId}:`, error);
     }
-  }, [placePhotoUrls]);
+  };
 
-  useEffect(() => {
-    console.log("Selected Photo Reference:", selectedPhotoReference);
-    console.log("Is Photo URL Enabled:", Boolean(selectedPhotoReference?.id));
-  }, [selectedPhotoReference]);
+  const processPlaceDetails = async (cards: RestaurantCard[]) => {
+    // Process a limited number of cards at a time to avoid overwhelming the API
+    const cardsToProcess = cards.slice(0, 5);
 
+    cardsToProcess.forEach((card, index) => {
+      // Stagger the requests to avoid overwhelming the API
+      setTimeout(() => {
+        prefetchPlaceDetails(card.id);
+      }, index * 300);
+    });
+  };
   // Apply filters manually
   const applyFilters = useCallback(
     async (cards: RestaurantCard[]) => {
