@@ -42,6 +42,8 @@ interface FilterPanelProps {
   // UI props
   trigger?: React.ReactNode;
   className?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function FilterPanel({
@@ -53,8 +55,12 @@ export function FilterPanel({
   onNewFiltersApplied,
   trigger,
   className = "",
+  isOpen: controlledOpen,
+  onOpenChange,
 }: FilterPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = controlledOpen ?? internalOpen;
+  const setIsOpen = onOpenChange ?? setInternalOpen;
 
   const currentFilters = Array.isArray(allFilters) ? allFilters : [];
   const activeFilters =

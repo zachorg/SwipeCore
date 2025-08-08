@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SwipeCard } from "./SwipeCard";
 import {
   RestaurantCard,
@@ -15,6 +15,9 @@ import { Button } from "./ui/button";
 import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
 import { isAndroid } from "@/lib/utils";
 import { FilterPanel } from "./filters/FilterPanel";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "./ui/toast";
+import { useNavigate } from "react-router-dom";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -40,6 +43,21 @@ export function SwipeDeck({
   const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
     null
   );
+  const { toast, toasts } = useToast();
+  const navigate = useNavigate();
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const exhaustedToastGuardRef = useRef(false);
+  const guardTimerRef = useRef<number | null>(null);
+  const lastExhaustedToastIdRef = useRef<string | null>(null);
+
+  const releaseExhaustedGuard = useCallback(() => {
+    exhaustedToastGuardRef.current = false;
+    if (guardTimerRef.current) {
+      clearTimeout(guardTimerRef.current);
+      guardTimerRef.current = null;
+    }
+    lastExhaustedToastIdRef.current = null;
+  }, []);
 
   // Use optimized config for Android devices
   const baseConfig = isAndroid()
@@ -84,6 +102,8 @@ export function SwipeDeck({
           removeFilter={removeFilter}
           clearFilters={clearFilters}
           onNewFiltersApplied={onNewFiltersApplied}
+          isOpen={isFilterPanelOpen}
+          onOpenChange={setIsFilterPanelOpen}
           trigger={
             <Button
               variant="outline"
@@ -98,7 +118,27 @@ export function SwipeDeck({
       );
       onFilterButtonReady(filterButton);
     }
-  }, [enableFiltering, allFilters]);
+  }, [enableFiltering, allFilters, isFilterPanelOpen]);
+
+  // Listen for global request to open filters panel (from toast action)
+  useEffect(() => {
+    const handler = () => setIsFilterPanelOpen(true);
+    // @ts-ignore - custom event for simple cross-component signal
+    document.addEventListener("openFiltersPanel", handler);
+    return () => {
+      // @ts-ignore
+      document.removeEventListener("openFiltersPanel", handler);
+    };
+  }, []);
+
+  // If the user closes the toast via the X button, release the guard (detect open=false)
+  useEffect(() => {
+    if (!exhaustedToastGuardRef.current) return;
+    const currentId = lastExhaustedToastIdRef.current;
+    if (!currentId) return;
+    const entry = (toasts as any[]).find((t: any) => t.id === currentId);
+    if (entry && entry.open === false) releaseExhaustedGuard();
+  }, [toasts, releaseExhaustedGuard]);
 
   // Apply initial filters when component mounts
   useEffect(() => {
@@ -145,6 +185,58 @@ export function SwipeDeck({
   };
 
   const visibleCards = cards.slice(0, maxVisibleCards);
+
+  const hasActiveFilters = Array.isArray(allFilters)
+    ? allFilters.some((f: any) => f?.enabled)
+    : false;
+
+  const handleRefreshClick = () => {
+    if (cards.length === 0 && hasActiveFilters) {
+      // Guard against repeated clicks while the toast is visible
+      if (exhaustedToastGuardRef.current) {
+        return;
+      }
+      exhaustedToastGuardRef.current = true;
+      guardTimerRef.current = window.setTimeout(releaseExhaustedGuard, 5000);
+
+      let dismissToast: (() => void) | null = null;
+
+      const created = toast({
+        title: "No more matches for your filters",
+        description: "Please update your filters for a wider search.",
+        action: (
+          <div className="flex gap-2">
+            <ToastAction
+              altText="Expand Filters"
+              onClick={() => {
+                navigate("/"); // ensure we are on home
+                // Open the filter panel by triggering a custom event the panel listens for
+                document.dispatchEvent(new CustomEvent("openFiltersPanel"));
+                releaseExhaustedGuard();
+                dismissToast && dismissToast();
+              }}
+            >
+              Expand Filters
+            </ToastAction>
+            <ToastAction
+              altText="Ok"
+              onClick={() => {
+                releaseExhaustedGuard();
+                dismissToast && dismissToast();
+              }}
+            >
+              OK
+            </ToastAction>
+          </div>
+        ),
+      });
+      dismissToast = created.dismiss;
+      lastExhaustedToastIdRef.current = created.id;
+      // Do not trigger a refresh when exhausted with active filters; wait for user action
+      return;
+    }
+    refreshCards();
+  };
 
   // Loading state
   if ((isLoading || isFilterLoading) && cards.length === 0) {
@@ -243,7 +335,7 @@ export function SwipeDeck({
             </p>
           </div>
           {usingLiveData && (
-            <Button onClick={refreshCards} variant="outline">
+            <Button onClick={handleRefreshClick} variant="outline">
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh Results
             </Button>
