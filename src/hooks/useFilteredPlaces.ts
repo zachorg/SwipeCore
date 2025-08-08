@@ -303,7 +303,9 @@ export function useFilteredPlaces(
         const result = await applyFiltersToCards(transformedCards);
         setFilterResult(result);
         setCards(result.filteredCards.slice(0, maxCards));
-        handleSelectPlace(result.filteredCards[0].id);
+        if(result.filteredCards.length > 0){
+          handleSelectPlace(result.filteredCards[0].id);
+        }
       } else {
         setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);

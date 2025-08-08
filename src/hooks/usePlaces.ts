@@ -49,7 +49,7 @@ export const useNearbyPlaces = (
 
   return useQuery({
     queryKey: PLACES_QUERY_KEYS.nearby(params),
-    queryFn: () => placesApi.searchNearby(params, true),
+    queryFn: () => placesApi.searchNearby(params, params.keyword ? true : false),
     enabled: enabled && Boolean(params.lat && params.lng),
     staleTime: CACHE_CONFIG.NEARBY_STALE_TIME,
     gcTime: CACHE_CONFIG.NEARBY_STALE_TIME * 2, // Keep in cache for double the stale time
