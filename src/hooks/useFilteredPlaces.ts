@@ -80,6 +80,8 @@ export function useFilteredPlaces(
 
   // State
   const [cards, setCards] = useState<RestaurantCard[]>([]);
+  // Base, unfiltered cards derived from the latest nearbyPlaces
+  const [baseCards, setBaseCards] = useState<RestaurantCard[]>([]);
   const [swipeHistory, setSwipeHistory] = useState<SwipeAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
@@ -118,9 +120,16 @@ export function useFilteredPlaces(
       }
     : null;
 
-  // Check if there are active filters
+  // Check if there are active filters with meaningful values
   const hasActiveFilters = useMemo(() => {
-    return filters.length > 0 && filters.some((f) => f.enabled);
+    const hasMeaningfulValue = (value: any): boolean => {
+      if (typeof value === "boolean") return value === true;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "string") return value.trim().length > 0;
+      if (typeof value === "number") return !Number.isNaN(value);
+      return false;
+    };
+    return Array.isArray(filters) && filters.some((f) => f.enabled && hasMeaningfulValue(f.value));
   }, [filters]);
 
   // Enhanced search configuration with filters
@@ -263,6 +272,7 @@ export function useFilteredPlaces(
     if (!defaultFeatureFlags.useGooglePlacesApi && autoStart) {
       console.log("SetCards with mock data");
       const mockCards = generateMockCards(8);
+      setBaseCards(mockCards);
       applyFilters(mockCards);
     }
   }, [filters]);
@@ -298,6 +308,9 @@ export function useFilteredPlaces(
         defaultImageUrl: getDefaultRestaurantImage(),
       });
 
+      // Keep a snapshot of the full, unfiltered list for future re-filtering
+      setBaseCards(transformedCards);
+
       // Apply filters if enabled and active
       if (enableFiltering && hasActiveFilters) {
         const result = await applyFiltersToCards(transformedCards);
@@ -307,8 +320,13 @@ export function useFilteredPlaces(
           handleSelectPlace(result.filteredCards[0].id);
         }
       } else {
-        setCards(transformedCards.slice(0, maxCards));
+        const limited = transformedCards.slice(0, maxCards);
+        setCards(limited);
         setFilterResult(null);
+        // Ensure details/photos pipeline starts for first card even without active filters
+        if (limited.length > 0) {
+          handleSelectPlace(limited[0].id);
+        }
       }
     } catch (err) {
       console.error("Error processing places:", err);
@@ -361,10 +379,15 @@ export function useFilteredPlaces(
       if (!enableFiltering) return;
 
       try {
-        const currentCards = cards.length > 0 ? cards : [];
+        // Always filter from the base, unfiltered list to avoid compounding filters
+        const currentCards = baseCards.length > 0 ? baseCards : cards;
         const result = await applyFiltersToCards(currentCards);
         setFilterResult(result);
-        setCards(result.filteredCards);
+        const limited = result.filteredCards.slice(0, maxCards);
+        setCards(limited);
+        if (limited.length > 0) {
+          handleSelectPlace(limited[0].id);
+        }
       } catch (err) {
         console.error("Error applying filters:", err);
         setError(
@@ -372,21 +395,31 @@ export function useFilteredPlaces(
         );
       }
     },
-    [enableFiltering, applyFiltersToCards]
+    [enableFiltering, applyFiltersToCards, baseCards, maxCards]
   );
 
   useEffect(() => {
     console.log("Filtered cards: ", filterResult);
   }, [filterResult]);
 
-  // Watch for refilter flag and trigger re-filtering
+  // Watch for refilter flag and trigger re-filtering from base list
   useEffect(() => {
-    if (shouldRefilter && cards.length > 0) {
-      console.log("Re-filtering cards due to new filters applied...");
-      applyFilters(cards);
-      setShouldRefilter(false);
+    if (!shouldRefilter) return;
+    console.log("Re-filtering due to filters change...");
+    if (enableFiltering && hasActiveFilters) {
+      applyFilters(baseCards);
+    } else {
+      // No active filters: restore unfiltered base list
+      const source = baseCards.length > 0 ? baseCards : cards;
+      const limited = source.slice(0, maxCards);
+      setCards(limited);
+      setFilterResult(null);
+      if (limited.length > 0) {
+        handleSelectPlace(limited[0].id);
+      }
     }
-  }, [shouldRefilter, cards.length]);
+    setShouldRefilter(false);
+  }, [shouldRefilter, baseCards, cards, applyFilters, enableFiltering, hasActiveFilters, maxCards]);
 
   // Swipe card action
   const swipeCard = useCallback((action: SwipeAction) => {
@@ -405,9 +438,19 @@ export function useFilteredPlaces(
       refetchPlaces();
     } else {
       const mockCards = generateMockCards(maxCards);
-      setCards(mockCards);
+      setBaseCards(mockCards);
+      if (enableFiltering && hasActiveFilters) {
+        // Reuse filtering pipeline
+        applyFilters(mockCards);
+      } else {
+        const limited = mockCards.slice(0, maxCards);
+        setCards(limited);
+        if (limited.length > 0) {
+          handleSelectPlace(limited[0].id);
+        }
+      }
     }
-  }, [usingLiveData]);
+  }, [usingLiveData, enableFiltering, hasActiveFilters, maxCards, applyFilters]);
 
   // Request location permission
   const requestLocation = useCallback(() => {

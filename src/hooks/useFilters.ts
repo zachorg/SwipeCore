@@ -230,7 +230,14 @@ class FilterEngine {
         return cards.filter(card => (card.rating || 0) >= Number(filter.value));
 
       case 'priceLevel':
-        return cards.filter(card => card.priceLevel === Number(filter.value));
+        // Map numeric selection (1-4) to RestaurantCard.priceRange ('$'..'$$$$')
+        const levelToSymbol: Record<number, '$' | '$$' | '$$$' | '$$$$'> = {
+          1: '$',
+          2: '$$',
+          3: '$$$',
+          4: '$$$$',
+        };
+        return cards.filter(card => card.priceRange === levelToSymbol[Number(filter.value)]);
 
       case 'cuisine':
         const cuisines = Array.isArray(filter.value) ? filter.value : [filter.value];
@@ -469,14 +476,19 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
     }
   }, [enablePersistence, storageKey]);
 
-  // Persist filters when they change
+  // Persist filters when they change (including empty clears)
   useEffect(() => {
-    if (enablePersistence && Array.isArray(filters) && filters.length > 0) {
-      try {
+    if (!enablePersistence) return;
+    try {
+      if (Array.isArray(filters)) {
+        // Persist current snapshot, even when empty, so clears stick across reloads
         localStorage.setItem(storageKey, JSON.stringify(filters));
-      } catch (err) {
-        console.warn('Failed to persist filters:', err);
+      } else {
+        // Fallback: remove invalid state
+        localStorage.removeItem(storageKey);
       }
+    } catch (err) {
+      console.warn('Failed to persist filters:', err);
     }
   }, [filters, enablePersistence, storageKey]);
 
@@ -536,6 +548,18 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
       return [];
     });
     setError(null);
+    // Ensure persistence clears immediately
+    try {
+      localStorage.setItem(storageKey, JSON.stringify([]));
+    } catch {}
+    // Proactively notify the consumer to re-filter immediately
+    try {
+      setTimeout(() => {
+        if (onNewFiltersAppliedCallback) {
+          onNewFiltersAppliedCallback();
+        }
+      }, 0);
+    } catch {}
   }, []);
 
   const applyFilters = useCallback(async (cards: RestaurantCard[]): Promise<FilterResult> => {
