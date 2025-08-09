@@ -19,7 +19,7 @@ import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
-import { SponsoredCard } from "./SponsoredCard";
+// SponsoredCard is rendered via SwipeCard; keep import only if needed elsewhere
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -217,6 +217,11 @@ export function SwipeDeck({
   };
 
   const handleCardTap = (card: RestaurantCard) => {
+    if (card.isSponsored && (card as any).adClickUrl) {
+      const url = (card as any).adClickUrl as string;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
     onCardTap?.(card);
   };
 
@@ -360,18 +365,33 @@ export function SwipeDeck({
 
   // No cards available state
   if (cards.length === 0 && !isLoading) {
+    const sponsoredCard = shouldInjectSponsored
+      ? (inDeckSponsoredRef.current ||= {
+          id: `sponsored-${Math.random().toString(36).slice(2)}`,
+          imageUrl: null,
+          title: "Sponsored",
+          subtitle: "",
+          isSponsored: true,
+          photoUrls: [],
+        } as unknown as RestaurantCard)
+      : null;
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4">
-          {shouldInjectSponsored && (
-            <div className="mx-auto max-w-md w-full">
-              {/* Exhausted sponsored placement */}
-              <div className="border rounded-2xl p-6 bg-white/90 shadow-xl">
-                <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
-                <div className="h-32 bg-gray-200 rounded-xl mb-4" />
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
-              </div>
+        <div className="text-center space-y-4 w-full max-w-md">
+          {shouldInjectSponsored && sponsoredCard && !dismissedSponsoredIds.has(sponsoredCard.id) && (
+            <div className="relative h-[480px]">
+              <SwipeCard
+                key={sponsoredCard.id}
+                card={sponsoredCard}
+                onSwipe={() => {
+                  dismissSponsored();
+                }}
+                config={swipeConfig}
+                isTop={true}
+                index={0}
+                onCardTap={handleCardTap}
+                onSwipeDirection={setSwipeDirection as any}
+              />
             </div>
           )}
 
@@ -403,13 +423,19 @@ export function SwipeDeck({
         {visibleCards.map((card, index) => {
           if (card.isSponsored) {
             return (
-              <div
+              <SwipeCard
                 key={card.id}
-                className="absolute inset-4 select-none md:desktop-centered-card"
-                style={{ zIndex: index === 0 ? 5 : 5 - index }}
-              >
-                <SponsoredCard onContinue={dismissSponsored} />
-              </div>
+                card={card}
+                onSwipe={() => {
+                  dismissSponsored();
+                  onSwipeAction?.(card.id, "pass");
+                }}
+                config={swipeConfig}
+                isTop={index === 0}
+                index={index}
+                onCardTap={handleCardTap}
+                onSwipeDirection={handleSwipeDirection}
+              />
             );
           }
           return (

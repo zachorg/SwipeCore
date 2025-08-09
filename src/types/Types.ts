@@ -85,6 +85,7 @@ export interface RestaurantCard {
   subtitle?: string;
   // Ads
   isSponsored?: boolean;
+  adClickUrl?: string;
   
   // Restaurant-specific fields (transformed from Google Places data)
   cuisine?: string;

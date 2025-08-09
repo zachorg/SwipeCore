@@ -2,11 +2,17 @@ import { Button } from "./ui/button";
 
 interface SponsoredCardProps {
   onContinue?: () => void;
+  href?: string;
 }
 
-export function SponsoredCard({ onContinue }: SponsoredCardProps) {
+export function SponsoredCard({ onContinue, href }: SponsoredCardProps) {
   return (
-    <div className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50">
+    <a
+      href={href || '#'}
+      target={href ? '_blank' : undefined}
+      rel={href ? 'noopener noreferrer' : undefined}
+      className="relative block w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50"
+    >
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
@@ -21,7 +27,7 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
           </div>
         )}
       </div>
-    </div>
+    </a>
   );
 }
 

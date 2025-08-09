@@ -50,25 +50,6 @@ export function SwipeCard({
   onCardTap,
   onSwipeDirection,
 }: SwipeCardProps) {
-  // If this is a sponsored placeholder, render a lightweight, non-draggable card
-  if ((card as any).isSponsored) {
-    return (
-      <motion.div
-        className="absolute inset-4 select-none md:desktop-centered-card"
-        style={{ zIndex: isTop ? 5 : 5 - index }}
-      >
-        <div className="relative w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
-            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
-            <div className="h-28 bg-gray-200 rounded-xl mb-4" />
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-            <div className="h-4 bg-gray-200 rounded w-1/2" />
-          </div>
-        </div>
-      </motion.div>
-    );
-  }
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -217,7 +198,12 @@ export function SwipeCard({
 
     // Only consider as a tap if not dragging and finger didn't move much
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
-      setIsExpanded((value) => !value);
+      // Sponsored cards: tap opens link via onCardTap
+      if ((card as any).isSponsored) {
+        onCardTap?.(card);
+      } else {
+        setIsExpanded((value) => !value);
+      }
     }
 
     touchStartRef.current = null;
@@ -756,6 +742,12 @@ export function SwipeCard({
       onTouchStart={!isExpanded ? handleTouchStart : undefined}
       onTouchMove={!isExpanded ? handleTouchMove : undefined}
       onTouchEnd={!isExpanded ? handleTouchEnd : undefined}
+      onClick={() => {
+        // Desktop click support for sponsored cards
+        if (!isDragging && (card as any).isSponsored) {
+          onCardTap?.(card);
+        }
+      }}
       // Performance optimizations
       layout={false}
       layoutId={undefined}
@@ -831,21 +823,23 @@ export function SwipeCard({
               : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
           }`}
         />
-        {/* Restaurant Info Badge */}
+        {/* Info Badge: show "Sponsored" label for ads */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
-          <span className="text-gray-800 font-bold text-sm">
-            {card.cuisine}
-          </span>
-          {card.priceRange && (
-            <div className="flex items-center">
-              {renderPriceRange(card.priceRange)}
-            </div>
+          {Boolean((card as any).isSponsored) ? (
+            <span className="text-xs uppercase tracking-wide text-gray-700">Sponsored</span>
+          ) : (
+            <>
+              <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
+              {card.priceRange && (
+                <div className="flex items-center">{renderPriceRange(card.priceRange)}</div>
+              )}
+            </>
           )}
         </div>
 
         {/* Content Overlays with AnimatePresence */}
         <AnimatePresence mode="wait">
-          {isExpanded ? (
+          {isExpanded && !(card as any).isSponsored ? (
             <DetailedContentContainer key="detailed-content" />
           ) : (
             <MainContentOverlay key="main-content" />
