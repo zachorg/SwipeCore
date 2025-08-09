@@ -318,8 +318,8 @@ export function useFilteredPlaces(
         setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);
         // Ensure details/photos pipeline starts for first card even without active filters
-        if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
+        if (transformedCards.length > 0) {
+          prefetchPlaceDetails(transformedCards[0].id);
         }
       }
 
@@ -459,7 +459,7 @@ export function useFilteredPlaces(
         const limited = result.filteredCards.slice(0, maxCards);
         setCards(limited);
         if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
+          prefetchPlaceDetails(limited[0].id);
         }
       } catch (err) {
         console.error("Error applying filters:", err);
@@ -488,7 +488,7 @@ export function useFilteredPlaces(
       setCards(limited);
       setFilterResult(null);
       if (limited.length > 0) {
-        handleSelectPlace(limited[0].id);
+        prefetchPlaceDetails(limited[0].id);
       }
     }
     setShouldRefilter(false);
@@ -519,7 +519,7 @@ export function useFilteredPlaces(
         const limited = mockCards.slice(0, maxCards);
         setCards(limited);
         if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
+          prefetchPlaceDetails(limited[0].id);
         }
       }
     }
