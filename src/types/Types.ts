@@ -83,6 +83,8 @@ export interface RestaurantCard {
   imageUrl: string | null;
   title: string;
   subtitle?: string;
+  // Ads
+  isSponsored?: boolean;
   
   // Restaurant-specific fields (transformed from Google Places data)
   cuisine?: string;
@@ -242,6 +244,9 @@ export interface FeatureFlags {
   enablePhotoPreloading: boolean;
   enableSwipeAnalytics: boolean;
   enableOfflineMode: boolean;
+  // Ads
+  adsEnabled: boolean;
+  adsNativeInDeck: boolean;
 }
 
 export const defaultFeatureFlags: FeatureFlags = {
@@ -250,4 +255,6 @@ export const defaultFeatureFlags: FeatureFlags = {
   enablePhotoPreloading: true,
   enableSwipeAnalytics: import.meta.env.VITE_DEBUG_MODE === 'true',
   enableOfflineMode: false,
+  adsEnabled: import.meta.env.VITE_ADS_ENABLED === 'true',
+  adsNativeInDeck: import.meta.env.VITE_ADS_NATIVE_IN_DECK === 'true',
 };

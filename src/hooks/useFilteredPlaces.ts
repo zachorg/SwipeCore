@@ -105,6 +105,7 @@ export function useFilteredPlaces(
     autoStart = true,
     maxCards = 20,
     enableFiltering = true,
+    prefetchDetails = true,
   } = options;
 
   // State
@@ -317,14 +318,10 @@ export function useFilteredPlaces(
         newCards = transformedCards;
         setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);
-        // Ensure details/photos pipeline starts for first card even without active filters
-        if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
-        }
       }
 
-      // Process place details for the visible cards
-      if (newCards && newCards.length > 0) {
+      // Process place details for the visible cards (only when using live data and enabled)
+      if (newCards && newCards.length > 0 && usingLiveData && prefetchDetails) {
         processPlaceDetails(newCards.slice(0, maxCards));
       }
     } catch (err) {
@@ -339,6 +336,10 @@ export function useFilteredPlaces(
   const queryClient = useQueryClient();
   const prefetchPhotoUrls = async (place: PlaceDetails) => {
     try {
+      // Skip for mock IDs to avoid 500s from backend expecting Google Place IDs
+      if (!place || !place.id || place.id.startsWith('restaurant-') || place.id.startsWith('sponsored-')) {
+        return;
+      }
       // Only proceed if the place has photos
       if (!place.photos || place.photos.length === 0) return;
 
@@ -389,6 +390,10 @@ export function useFilteredPlaces(
 
   const prefetchPlaceDetails = async (placeId: string) => {
     try {
+      // Skip prefetch for mock or non-Places IDs
+      if (!placeId || placeId.startsWith('restaurant-') || placeId.startsWith('sponsored-')) {
+        return;
+      }
       // Prefetch the place details
       queryClient
         .fetchQuery({
@@ -458,8 +463,8 @@ export function useFilteredPlaces(
         setFilterResult(result);
         const limited = result.filteredCards.slice(0, maxCards);
         setCards(limited);
-        if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
+        if (limited.length > 0 && usingLiveData && prefetchDetails) {
+          processPlaceDetails(limited);
         }
       } catch (err) {
         console.error("Error applying filters:", err);
@@ -487,8 +492,8 @@ export function useFilteredPlaces(
       const limited = source.slice(0, maxCards);
       setCards(limited);
       setFilterResult(null);
-      if (limited.length > 0) {
-        handleSelectPlace(limited[0].id);
+      if (limited.length > 0 && usingLiveData && prefetchDetails) {
+        processPlaceDetails(limited);
       }
     }
     setShouldRefilter(false);
@@ -518,8 +523,8 @@ export function useFilteredPlaces(
       } else {
         const limited = mockCards.slice(0, maxCards);
         setCards(limited);
-        if (limited.length > 0) {
-          handleSelectPlace(limited[0].id);
+        if (limited.length > 0 && usingLiveData && prefetchDetails) {
+          processPlaceDetails(limited);
         }
       }
     }

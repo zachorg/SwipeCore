@@ -5,6 +5,7 @@ import {
   SwipeConfig,
   defaultSwipeConfig,
   androidOptimizedSwipeConfig,
+  defaultFeatureFlags,
 } from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
@@ -18,6 +19,7 @@ import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
+import { SponsoredCard } from "./SponsoredCard";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -49,6 +51,8 @@ export function SwipeDeck({
   const exhaustedToastGuardRef = useRef(false);
   const guardTimerRef = useRef<number | null>(null);
   const lastExhaustedToastIdRef = useRef<string | null>(null);
+  const inDeckSponsoredRef = useRef<RestaurantCard | null>(null);
+  const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<Set<string>>(new Set());
 
   const releaseExhaustedGuard = useCallback(() => {
     exhaustedToastGuardRef.current = false;
@@ -90,6 +94,42 @@ export function SwipeDeck({
     enableFiltering,
     maxCards: 20,
   });
+
+  // Sponsored card injection logic
+  const shouldInjectSponsored =
+    defaultFeatureFlags.adsEnabled && defaultFeatureFlags.adsNativeInDeck;
+
+  const injectedCards = (() => {
+    if (!shouldInjectSponsored || cards.length === 0) return cards;
+
+    const clone = [...cards];
+    // Insert a sponsored placeholder between 5th and 7th position when available
+    const insertIndex = Math.min(Math.max(4, Math.floor(clone.length / 2)), 6);
+    const alreadyHasSponsored = clone.some((c) => c.isSponsored);
+    if (!alreadyHasSponsored && clone.length > insertIndex) {
+      if (!inDeckSponsoredRef.current) {
+        inDeckSponsoredRef.current = {
+          id: `sponsored-${Math.random().toString(36).slice(2)}`,
+          imageUrl: null,
+          title: "Sponsored",
+          subtitle: "",
+          isSponsored: true,
+          photoUrls: [],
+        } as unknown as RestaurantCard;
+      }
+      const sponsoredCard = inDeckSponsoredRef.current!;
+      if (!dismissedSponsoredIds.has(sponsoredCard.id)) {
+        clone.splice(insertIndex, 0, sponsoredCard);
+      }
+    }
+    return clone;
+  })();
+
+  const dismissSponsored = useCallback(() => {
+    const sponsored = inDeckSponsoredRef.current;
+    if (!sponsored) return;
+    setDismissedSponsoredIds((prev) => new Set(prev).add(sponsored.id));
+  }, []);
 
   // Create and pass filter button to parent
   useEffect(() => {
@@ -184,7 +224,7 @@ export function SwipeDeck({
     setSwipeDirection(direction);
   };
 
-  const visibleCards = cards.slice(0, maxVisibleCards);
+  const visibleCards = injectedCards.slice(0, maxVisibleCards);
 
   const hasActiveFilters = Array.isArray(allFilters)
     ? allFilters.some((f: any) => f?.enabled)
@@ -323,7 +363,18 @@ export function SwipeDeck({
     return (
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center space-y-4">
-          <div className="text-6xl">🍽️</div>
+          {shouldInjectSponsored && (
+            <div className="mx-auto max-w-md w-full">
+              {/* Exhausted sponsored placement */}
+              <div className="border rounded-2xl p-6 bg-white/90 shadow-xl">
+                <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
+                <div className="h-32 bg-gray-200 rounded-xl mb-4" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            </div>
+          )}
+
           <div>
             <h2 className="text-2xl font-bold text-foreground mb-2">
               No more restaurants!
@@ -349,18 +400,31 @@ export function SwipeDeck({
     <div className="flex-1 flex flex-col">
       {/* Card Stack - Full height with padding for controls */}
       <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
-        {visibleCards.map((card, index) => (
-          <SwipeCard
-            key={card.id}
-            card={card}
-            onSwipe={handleSwipe}
-            config={swipeConfig}
-            isTop={index === 0}
-            index={index}
-            onCardTap={handleCardTap}
-            onSwipeDirection={handleSwipeDirection}
-          />
-        ))}
+        {visibleCards.map((card, index) => {
+          if (card.isSponsored) {
+            return (
+              <div
+                key={card.id}
+                className="absolute inset-4 select-none md:desktop-centered-card"
+                style={{ zIndex: index === 0 ? 5 : 5 - index }}
+              >
+                <SponsoredCard onContinue={dismissSponsored} />
+              </div>
+            );
+          }
+          return (
+            <SwipeCard
+              key={card.id}
+              card={card}
+              onSwipe={handleSwipe}
+              config={swipeConfig}
+              isTop={index === 0}
+              index={index}
+              onCardTap={handleCardTap}
+              onSwipeDirection={handleSwipeDirection}
+            />
+          );
+        })}
       </div>
 
 
@@ -368,7 +432,7 @@ export function SwipeDeck({
       {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
-        onMenuOpen={handleMenuOpen}
+        onMenuOpen={currentCard?.isSponsored ? undefined : handleMenuOpen}
         onVoiceFiltersApplied={enableFiltering ? (filters) => {
           // Apply each filter from the voice result
           filters.forEach(filter => {
