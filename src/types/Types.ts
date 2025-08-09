@@ -24,6 +24,10 @@ export interface PlaceBasic {
     latitude: number;
     longitude: number;
   };
+  // Minimal opening hours info available on basic search responses
+  regularOpeningHours?: {
+    openNow: boolean;
+  };
 }
 
 export interface PlaceDetails extends PlaceBasic {
@@ -93,6 +97,7 @@ export interface RestaurantCard {
   
   // Photo data
   photos?: string[];
+  photoUrls: string[]; // url to the actual photo for display
   photoReferences?: Array<{
     name: string;
     widthPx: number;
@@ -140,7 +145,7 @@ export interface PlaceSearchConfig {
 
 // Default search configuration
 export const defaultSearchConfig: PlaceSearchConfig = {
-  radius: 5000, // 5km
+  radius: 20000, // 5km
   type: 'restaurant',
   minRating: 0.0,
 };

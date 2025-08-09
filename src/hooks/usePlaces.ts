@@ -20,7 +20,7 @@ export const PLACES_QUERY_KEYS = {
 };
 
 // Cache configuration
-const CACHE_CONFIG = {
+export const CACHE_CONFIG = {
   NEARBY_STALE_TIME: 5 * 60 * 1000, // 5 minutes (matches backend cache)
   DETAILS_STALE_TIME: 30 * 60 * 1000, // 30 minutes (matches backend cache)
   PHOTO_STALE_TIME: 60 * 60 * 1000, // 1 hour (matches backend cache)
@@ -137,16 +137,6 @@ export const usePhotoUrl = (
     // retryDelay: CACHE_CONFIG.RETRY_DELAY,
   });
 };
-
-
-
-
-
-
-
-
-
-
 
 // Type exports for convenience
 export type { NearbySearchParams, PlacesApiError } from "../services/places";

@@ -13,3 +13,7 @@ export function isAndroid() {
 export function isIOS() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
+
+export function isMobile() {
+  return isIOS() || isAndroid();
+}

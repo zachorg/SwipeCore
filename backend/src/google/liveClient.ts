@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { withCache } from '../cache';
-import { nearbyKey, detailsKey } from './key';
+import { nearbyKey, detailsKey, textSearchKey } from './key';
 import { config } from '../config';
-import { NearbySearchParams } from '../types/places';
+import { NearbySearchParams, TextSearchParams } from '../types/places';
 
 const base = 'https://places.googleapis.com/v1';
 
@@ -30,7 +30,7 @@ export async function nearby(p: NearbySearchParams) {
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': config.googlePlacesApiKey,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location',
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location,places.regularOpeningHours.openNow',
         },
       });
 
@@ -80,6 +80,44 @@ export async function photo(photoReference: string, maxWidth: number = 400, maxH
 
       // The response should contain the photoUri
       return response.data.photoUri || response.request.res.responseUrl;
+    }
+  );
+}
+
+export async function nearbyAdvanced(p: TextSearchParams) {
+  return withCache(
+    textSearchKey(p),
+    config.cacheTtlDays * 86400,
+    async () => {
+      const requestBody: any = {
+        textQuery: p.query,
+        includedTypes: p.type ? [p.type] : undefined,
+        maxResultCount: 20,
+        languageCode: 'en',
+      };
+
+      // Add location restriction if lat/lng are provided
+      if (p.lat !== undefined && p.lng !== undefined) {
+        requestBody.locationRestriction = {
+          circle: {
+            center: {
+              latitude: p.lat,
+              longitude: p.lng,
+            },
+            radius: p.radius,
+          },
+        };
+      }
+
+      const response = await axios.post(`${base}/places:searchText`, requestBody, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': config.googlePlacesApiKey,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.rating,places.priceLevel,places.photos,places.types,places.location,places.regularOpeningHours.openNow',
+        },
+      });
+
+      return response.data;
     }
   );
 }

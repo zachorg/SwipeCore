@@ -157,7 +157,7 @@ export class PlacesApiClient {
     photoReference: string,
     maxWidth: number = 400,
     maxHeight: number = 400
-  ): Promise<string> {
+  ): Promise<any> {
     try {
       const response = await this.client.get<PhotoResponse>(
         `/api/places/photo/givememyphoto`,
@@ -166,7 +166,7 @@ export class PlacesApiClient {
         }
       );
 
-      return response.data.data.photoUrl;
+      return {placeId: _placeId, photoUrl: response.data.data.photoUrl};
     } catch (error) {
       throw error; // Re-throw the PlacesApiError from interceptor
     }
