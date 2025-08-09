@@ -54,6 +54,10 @@ export function SwipeDeck({
   const inDeckSponsoredRef = useRef<RestaurantCard | null>(null);
   const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<Set<string>>(new Set());
 
+  const resetSponsored = useCallback(() => {
+    setDismissedSponsoredIds(new Set());
+  }, []);
+
   const releaseExhaustedGuard = useCallback(() => {
     exhaustedToastGuardRef.current = false;
     if (guardTimerRef.current) {
@@ -195,6 +199,11 @@ export function SwipeDeck({
     }
   }, []);  // Empty dependency array ensures this runs only once on mount
 
+  // When filters set changes, re-allow sponsored insertion
+  useEffect(() => {
+    resetSponsored();
+  }, [JSON.stringify(allFilters)]);
+
   const handleSwipe = (cardId: string, action: "menu" | "pass") => {
     const swipeAction = {
       cardId,
@@ -236,6 +245,8 @@ export function SwipeDeck({
     : false;
 
   const handleRefreshClick = () => {
+    // Ensure sponsored card can reappear after refresh
+    resetSponsored();
     if (cards.length === 0 && hasActiveFilters) {
       // Guard against repeated clicks while the toast is visible
       if (exhaustedToastGuardRef.current) {
