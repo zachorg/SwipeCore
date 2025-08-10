@@ -30,6 +30,7 @@ import {
   getOptimizedPerformanceConfig,
 } from "@/utils/deviceOptimization";
 import { isIOS, isAndroid } from "@/lib/utils";
+import { NativeAds } from "@/utils/nativeAds";
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -50,6 +51,7 @@ export function SwipeCard({
   onCardTap,
   onSwipeDirection,
 }: SwipeCardProps) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -239,8 +241,20 @@ export function SwipeCard({
       } else {
         onSwipeDirection?.(null);
       }
+      // Keep native ad overlay aligned while dragging the sponsored top card
+      if (isTop && (card as any).isSponsored && isAndroid()) {
+        const el = cardRef.current;
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const x = rect.left + window.scrollX;
+          const y = rect.top + window.scrollY;
+          const width = rect.width;
+          const height = rect.height;
+          NativeAds.attach({ x, y, width, height }).catch(() => {});
+        }
+      }
     },
-    [onSwipeDirection, deviceInfo.isLowEndDevice]
+    [onSwipeDirection, deviceInfo.isLowEndDevice, isTop, card]
   );
 
   const handleDragEnd = useCallback(
@@ -711,6 +725,7 @@ export function SwipeCard({
 
   return (
     <motion.div
+      ref={cardRef}
       className="absolute inset-4 select-none md:desktop-centered-card"
       data-swipe-card="true"
       style={{

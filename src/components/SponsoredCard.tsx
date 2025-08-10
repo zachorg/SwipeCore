@@ -22,7 +22,9 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
 
     const updatePosition = async () => {
       if (!el) return;
-      const rect = el.getBoundingClientRect();
+      // Align to the actual swipe card container instead of inner content,
+      // so the native overlay exactly matches position and size
+      const rect = el.closest('[data-swipe-card="true"]')?.getBoundingClientRect() || el.getBoundingClientRect();
       const x = rect.left + window.scrollX;
       const y = rect.top + window.scrollY;
       const width = rect.width;
@@ -52,16 +54,19 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
     const onResize = () => updatePosition();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
+    const observer = new ResizeObserver(() => updatePosition());
+    observer.observe(document.body);
 
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
+      observer.disconnect();
       NativeAds.detach().catch(() => {});
     };
   }, []);
 
   return (
-    <div ref={containerRef} className="relative block w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50">
+    <div ref={containerRef} className="relative block w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50" data-swipe-card="true">
       <img
         src={PLACEHOLDER_IMAGE}
         alt="Sponsored"
