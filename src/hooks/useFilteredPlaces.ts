@@ -1,18 +1,17 @@
-// Enhanced Restaurant Hook with Filtering System Integration
+// Enhanced Restaurant Hook with Filtering System Integration and Heuristic Prefetching
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useGeolocation } from "./useGeolocation";
-import {
-  CACHE_CONFIG,
-  useNearbyPlaces,
-} from "./usePlaces";
+import { CACHE_CONFIG, useNearbyPlaces } from "./usePlaces";
 import {
   RestaurantCard,
   SwipeAction,
   PlaceSearchConfig,
   defaultSearchConfig,
   defaultFeatureFlags,
-  PlaceDetails,
+  GooglePlacesApiAdvDetails,
+  UserPreferences,
+  ExpandAction,
 } from "../types/Types";
 import {
   transformPlacesToCards,
@@ -21,8 +20,11 @@ import {
 } from "../utils/placeTransformers";
 import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
-import { useQueryClient } from "@tanstack/react-query";
-import { placesApi } from "@/services/places";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { GooglePhotoResponse, placesApi } from "@/services/places";
+import { usePrefetcher } from "./usePrefetcher";
+import { useBehaviorTracking } from "./useBehaviorTracking";
+import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
 
 export interface UseFilteredPlacesOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -52,6 +54,7 @@ export interface UseFilteredPlacesReturn {
 
   // Actions
   swipeCard: (action: SwipeAction) => void;
+  expandCard: (action: ExpandAction) => void;
   refreshCards: () => void;
   requestLocation: () => void;
 
@@ -72,31 +75,11 @@ export interface UseFilteredPlacesReturn {
   // Utilities
   canSwipe: boolean;
   usingLiveData: boolean;
+
+  // Prefetching (new)
+  prefetchAnalytics: PrefetchAnalytics;
+  isPrefetchingEnabled: boolean;
 }
-
-const createQueue = () => {
-  const items: any[] = [];
-
-  return {
-    enqueue: (item: any) => {
-      items.push(item);
-    },
-    dequeue: () => {
-      if (items.length === 0) return undefined;
-      return items.shift();
-    },
-    peek: () => {
-      return items.length > 0 ? items[0] : undefined;
-    },
-    isEmpty: () => {
-      return items.length === 0;
-    },
-    get length() {
-      return items.length;
-    },
-  };
-};
-
 export function useFilteredPlaces(
   options: UseFilteredPlacesOptions = {}
 ): UseFilteredPlacesReturn {
@@ -105,6 +88,7 @@ export function useFilteredPlaces(
     autoStart = true,
     maxCards = 20,
     enableFiltering = true,
+    prefetchDetails = true,
   } = options;
 
   // State
@@ -115,6 +99,75 @@ export function useFilteredPlaces(
   const [error, setError] = useState<string | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
   const [shouldRefilter, setShouldRefilter] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  // Prefetching integration
+  const {
+    prefetchCards,
+    requestImmediateFetch,
+    isEnabled: isPrefetchingEnabled,
+    analytics: prefetchAnalytics,
+  } = usePrefetcher({
+    enabled: prefetchDetails ?? true,
+    debugMode: true,
+    onPrefetchEvent: (event: PrefetchEvent) => {
+      if (event.type === "prefetch_completed") {
+        setCards((prevCards) => {
+          const cardIndex = prevCards.findIndex(
+            (card) => card.id === event.cardId
+          );
+          if (cardIndex === -1) return prevCards;
+
+          let updatedCards = [...cards];
+
+          const detailsData = queryClient.getQueryData([
+            "places",
+            "details",
+            event.cardId,
+          ]) as GooglePlacesApiAdvDetails;
+
+          const photoData = queryClient.getQueryData([
+            "places",
+            "photos",
+            event.cardId,
+          ]) as {
+            photoUrl: string;
+            photoReference: string;
+          };
+
+          // Prefetched Details
+          if (detailsData) {
+            const updatedCard = mergeCardWithDetails(
+              cards[cardIndex],
+              detailsData
+            );
+
+            // Prefetched photos
+            if (photoData) {
+              updatedCard.photos[0].url = photoData.photoUrl;
+              console.log(
+                `Photo prefetched and updated for ${updatedCard.title}`
+              );
+            }
+
+            // console.log(`${JSON.stringify(updatedCard)}`);
+            updatedCards[cardIndex] = updatedCard;
+          }
+
+          return updatedCards;
+        });
+      }
+    },
+  });
+
+  // Behavior tracking integration
+  const { trackCardView, trackSwipeAction, trackDetailView } =
+    useBehaviorTracking({
+      enabled: true,
+      autoTrackCardViews: false, // We'll track manually
+      autoTrackSwipes: false, // We'll track manually
+    });
 
   // Hooks
   const {
@@ -158,7 +211,10 @@ export function useFilteredPlaces(
       if (typeof value === "number") return !Number.isNaN(value);
       return false;
     };
-    return Array.isArray(filters) && filters.some((f) => f.enabled && hasMeaningfulValue(f.value));
+    return (
+      Array.isArray(filters) &&
+      filters.some((f) => f.enabled && hasMeaningfulValue(f.value))
+    );
   }, [filters]);
 
   // Enhanced search configuration with filters
@@ -317,15 +373,6 @@ export function useFilteredPlaces(
         newCards = transformedCards;
         setCards(transformedCards.slice(0, maxCards));
         setFilterResult(null);
-        // Ensure details/photos pipeline starts for first card even without active filters
-        if (transformedCards.length > 0) {
-          prefetchPlaceDetails(transformedCards[0].id);
-        }
-      }
-
-      // Process place details for the visible cards
-      if (newCards && newCards.length > 0) {
-        processPlaceDetails(newCards.slice(0, maxCards));
       }
     } catch (err) {
       console.error("Error processing places:", err);
@@ -335,117 +382,22 @@ export function useFilteredPlaces(
     }
   };
 
-  // Inside your component
-  const queryClient = useQueryClient();
-  const prefetchPhotoUrls = async (place: PlaceDetails) => {
-    try {
-      // Only proceed if the place has photos
-      if (!place.photos || place.photos.length === 0) return;
+  // Add card view tracking effect
+  useEffect(() => {
+    if (currentCard && isPrefetchingEnabled) {
+      const startTime = Date.now();
 
-      // Prefetch the photo
-      queryClient
-        .fetchQuery({
-          queryKey: ["places", "photos", place.id],
-          queryFn: () =>
-            placesApi.getPhotoUrl(
-              place.id,
-              place.photos[0].name,
-              place.photos[0].widthPx,
-              place.photos[0].heightPx
-            ),
-          staleTime: CACHE_CONFIG.DETAILS_STALE_TIME,
-        })
-        .then(() => {
-          const photoData = queryClient.getQueryData([
-            "places",
-            "photos",
-            place.id,
-          ]) as any;
-          
-          // Directly update the card state with the photo URL
-          if (photoData) {
-            setCards((prevCards) => {
-              const cardIndex = prevCards.findIndex(
-                (card) => card.id === place.id
-              );
-              if (cardIndex === -1) return prevCards;
+      // Return cleanup function to track view duration
+      return () => {
+        const endTime = Date.now();
+        const duration = endTime - startTime;
 
-              const updatedCards = [...prevCards];
-              updatedCards[cardIndex] = {
-                ...updatedCards[cardIndex],
-                photoUrls: [photoData.photoUrl],
-              };
-
-              return updatedCards;
-            });
-
-            console.log(`Photo prefetched and updated for ${place.id}`);
-          }
-        });
-    } catch (error) {
-      console.error(`Error prefetching photo for ${place.id}:`, error);
+        // Track view duration for analytics
+        trackCardView(currentCard, duration / 1000);
+      };
     }
-  };
+  }, [currentCard, trackCardView, isPrefetchingEnabled]);
 
-  const prefetchPlaceDetails = async (placeId: string) => {
-    try {
-      // Prefetch the place details
-      queryClient
-        .fetchQuery({
-          queryKey: ["places", "details", placeId],
-          queryFn: () => placesApi.getPlaceDetails(placeId),
-          staleTime: CACHE_CONFIG.DETAILS_STALE_TIME,
-        })
-        .then(() => {
-          const data = queryClient.getQueryData([
-            "places",
-            "details",
-            placeId,
-          ]) as PlaceDetails;
-
-          // Directly update the card state with the details
-          if (data) {
-            setCards((prevCards) => {
-              const cardIndex = prevCards.findIndex(
-                (card) => card.id === placeId
-              );
-              if (cardIndex === -1) return prevCards;
-
-              const updatedCard = mergeCardWithDetails(
-                prevCards[cardIndex],
-                data
-              );
-
-              const updatedCards = [...prevCards];
-              updatedCards[cardIndex] = updatedCard;
-
-              return updatedCards;
-            });
-
-            console.log(`Details prefetched and updated for ${placeId}`);
-
-            // After updating with details, prefetch the photos
-            setTimeout(() => {
-              prefetchPhotoUrls(data);
-            }, 500);
-          }
-        });
-    } catch (error) {
-      console.error(`Error prefetching details for ${placeId}:`, error);
-    }
-  };
-
-  const processPlaceDetails = async (cards: RestaurantCard[]) => {
-    // Process a limited number of cards at a time to avoid overwhelming the API
-    const cardsToProcess = cards.slice(0, 5);
-
-    cardsToProcess.forEach((card, index) => {
-      // Stagger the requests to avoid overwhelming the API
-      setTimeout(() => {
-        prefetchPlaceDetails(card.id);
-      }, index * 300);
-    });
-  };
   // Apply filters manually
   const applyFilters = useCallback(
     async (cards: RestaurantCard[]) => {
@@ -458,9 +410,6 @@ export function useFilteredPlaces(
         setFilterResult(result);
         const limited = result.filteredCards.slice(0, maxCards);
         setCards(limited);
-        if (limited.length > 0) {
-          prefetchPlaceDetails(limited[0].id);
-        }
       } catch (err) {
         console.error("Error applying filters:", err);
         setError(
@@ -487,17 +436,97 @@ export function useFilteredPlaces(
       const limited = source.slice(0, maxCards);
       setCards(limited);
       setFilterResult(null);
-      if (limited.length > 0) {
-        prefetchPlaceDetails(limited[0].id);
-      }
     }
     setShouldRefilter(false);
-  }, [shouldRefilter, baseCards, cards, applyFilters, enableFiltering, hasActiveFilters, maxCards]);
+  }, [
+    shouldRefilter,
+    baseCards,
+    cards,
+    applyFilters,
+    enableFiltering,
+    hasActiveFilters,
+    maxCards,
+  ]);
 
-  // Swipe card action
-  const swipeCard = useCallback((action: SwipeAction) => {
-    setCards((prev) => prev.slice(1));
-    setSwipeHistory((prev) => [...prev, action]);
+  // Swipe card action with behavior tracking and prefetching
+  const swipeCard = useCallback(
+    (action: SwipeAction) => {
+      setCards((prev) => prev.slice(1));
+      setSwipeHistory((prev) => [...prev, action]);
+
+      // Track the swipe action for behavior analysis
+      trackSwipeAction(action);
+
+      // Trigger intelligent prefetching for remaining cards
+      if (isPrefetchingEnabled && cards.length > 1) {
+        const remainingCards = cards.slice(1);
+        // Create user preferences from current filters
+        const userPreferences: UserPreferences = {
+          maxDistance: 5000, // 5km default
+          preferredPriceRange: [],
+          preferredCuisines: [],
+          onlyOpenNow: false,
+          minRating: 0,
+        };
+
+        // Extract preferences from active filters
+        if (Array.isArray(filters)) {
+          filters.forEach((filter) => {
+            if (!filter.enabled) return;
+
+            switch (filter.id) {
+              case "priceLevel":
+                if (typeof filter.value === "number") {
+                  const priceMap = {
+                    1: "$",
+                    2: "$$",
+                    3: "$$$",
+                    4: "$$$$",
+                  } as const;
+                  const priceRange =
+                    priceMap[filter.value as keyof typeof priceMap];
+                  if (priceRange)
+                    userPreferences.preferredPriceRange = [priceRange];
+                }
+                break;
+              case "cuisine":
+                if (Array.isArray(filter.value)) {
+                  userPreferences.preferredCuisines = filter.value;
+                }
+                break;
+              case "minRating":
+                if (typeof filter.value === "number") {
+                  userPreferences.minRating = filter.value;
+                }
+                break;
+              case "openNow":
+                if (filter.value === true) {
+                  userPreferences.onlyOpenNow = true;
+                }
+                break;
+              case "distance":
+                if (typeof filter.value === "number") {
+                  userPreferences.maxDistance = filter.value * 1000; // Convert km to meters
+                }
+                break;
+            }
+          });
+        }
+
+        prefetchCards(remainingCards, 0, userPreferences);
+      }
+    },
+    [trackSwipeAction, isPrefetchingEnabled, cards, prefetchCards, filters]
+  );
+
+  const expandCard = useCallback(() => {
+    if (isPrefetchingEnabled) {
+      trackDetailView(cardsRef.current[0].id);
+
+      if (!cardsRef.current[0].advDetails) {
+        requestImmediateFetch(cardsRef.current[0]);
+      }
+    }
   }, []);
 
   // Refresh cards
@@ -518,12 +547,15 @@ export function useFilteredPlaces(
       } else {
         const limited = mockCards.slice(0, maxCards);
         setCards(limited);
-        if (limited.length > 0) {
-          prefetchPlaceDetails(limited[0].id);
-        }
       }
     }
-  }, [usingLiveData, enableFiltering, hasActiveFilters, maxCards, applyFilters]);
+  }, [
+    usingLiveData,
+    enableFiltering,
+    hasActiveFilters,
+    maxCards,
+    applyFilters,
+  ]);
 
   // Request location permission
   const requestLocation = useCallback(() => {
@@ -561,6 +593,7 @@ export function useFilteredPlaces(
 
     // Actions
     swipeCard,
+    expandCard,
     refreshCards,
     requestLocation,
 
@@ -579,5 +612,7 @@ export function useFilteredPlaces(
     // Utilities
     canSwipe,
     usingLiveData,
+    prefetchAnalytics,
+    isPrefetchingEnabled,
   };
 }

@@ -1,6 +1,6 @@
 // Domain models for the SwipeCore app - integrating Google Places API data
 
-export interface PlaceBasic {
+export interface GooglePlacesApiBasicDetails {
   id: string;
   displayName: {
     text: string;
@@ -8,7 +8,12 @@ export interface PlaceBasic {
   };
   formattedAddress?: string;
   rating?: number;
-  priceLevel?: 'PRICE_LEVEL_FREE' | 'PRICE_LEVEL_INEXPENSIVE' | 'PRICE_LEVEL_MODERATE' | 'PRICE_LEVEL_EXPENSIVE' | 'PRICE_LEVEL_VERY_EXPENSIVE';
+  priceLevel?:
+    | "PRICE_LEVEL_FREE"
+    | "PRICE_LEVEL_INEXPENSIVE"
+    | "PRICE_LEVEL_MODERATE"
+    | "PRICE_LEVEL_EXPENSIVE"
+    | "PRICE_LEVEL_VERY_EXPENSIVE";
   photos?: Array<{
     name: string;
     widthPx: number;
@@ -30,7 +35,7 @@ export interface PlaceBasic {
   };
 }
 
-export interface PlaceDetails extends PlaceBasic {
+export interface GooglePlacesApiAdvDetails {
   nationalPhoneNumber?: string;
   internationalPhoneNumber?: string;
   websiteUri?: string;
@@ -74,51 +79,54 @@ export interface PlaceDetails extends PlaceBasic {
   };
 }
 
+export interface PhotoReference {
+  googleUrl?: string;
+  url?: string;
+  name?: string;
+  widthPx: number;
+  heightPx: number;
+}
+
 // Unified SwipeCard interface that works with Google Places data
 export interface RestaurantCard {
   // Core identification
   id: string;
+
+  // Basic Details 
+  basicDetails: GooglePlacesApiBasicDetails; 
   
-  // Display data (computed from PlaceBasic/PlaceDetails)
-  imageUrl: string | null;
   title: string;
   subtitle?: string;
   
-  // Restaurant-specific fields (transformed from Google Places data)
+  // Restaurant-specific fields 
   cuisine?: string;
   rating?: number;
-  priceRange?: '$' | '$$' | '$$$' | '$$$$';
+  priceRange?: "$" | "$$" | "$$$" | "$$$$";
   distance?: string;
   address?: string;
-  phone?: string;
-  website?: string;
-  openingHours?: string;
   isOpenNow?: boolean;
-  
+
   // Photo data
-  photos?: string[];
-  photoUrls: string[]; // url to the actual photo for display
-  photoReferences?: Array<{
-    name: string;
-    widthPx: number;
-    heightPx: number;
-  }>;
-  
-  // Reviews (transformed from Google Places reviews)
-  reviews?: AppReview[];
-  
+  photos: PhotoReference[];
+
   // Location data
   location?: {
     latitude: number;
     longitude: number;
   };
-  
-  // Google Places raw data (for detail view)
-  placeDetails?: PlaceDetails;
-  
-  // Additional computed fields
+
   distanceInMeters?: number;
   
+  // Adv Details
+  advDetails?: GooglePlacesApiAdvDetails;
+
+  // Restaurant-specific fields 
+  phone?: string;
+  website?: string;
+  openingHours?: string;
+
+  reviews?: AppReview[];
+
   // Legacy fields for backward compatibility
   [key: string]: any;
 }
@@ -139,14 +147,20 @@ export interface PlaceSearchConfig {
   keyword?: string;
   type?: string;
   minRating?: number;
-  priceLevel?: Array<'PRICE_LEVEL_FREE' | 'PRICE_LEVEL_INEXPENSIVE' | 'PRICE_LEVEL_MODERATE' | 'PRICE_LEVEL_EXPENSIVE' | 'PRICE_LEVEL_VERY_EXPENSIVE'>;
+  priceLevel?: Array<
+    | "PRICE_LEVEL_FREE"
+    | "PRICE_LEVEL_INEXPENSIVE"
+    | "PRICE_LEVEL_MODERATE"
+    | "PRICE_LEVEL_EXPENSIVE"
+    | "PRICE_LEVEL_VERY_EXPENSIVE"
+  >;
   isOpenNow?: boolean;
 }
 
 // Default search configuration
 export const defaultSearchConfig: PlaceSearchConfig = {
   radius: 20000, // 5km
-  type: 'restaurant',
+  type: "restaurant",
   minRating: 0.0,
 };
 
@@ -163,7 +177,7 @@ export interface LocationContext {
 // User preferences
 export interface UserPreferences {
   maxDistance: number; // in meters
-  preferredPriceRange: Array<'$' | '$$' | '$$$' | '$$$$'>;
+  preferredPriceRange: Array<"$" | "$$" | "$$$" | "$$$$">;
   preferredCuisines: string[];
   onlyOpenNow: boolean;
   minRating: number;
@@ -172,9 +186,13 @@ export interface UserPreferences {
 // Swipe-related interfaces (updated)
 export interface SwipeAction {
   cardId: string;
-  action: 'menu' | 'pass';
+  action: "menu" | "pass";
   timestamp: number;
-  place?: PlaceBasic;
+}
+
+export interface ExpandAction {
+  cardId: string;
+  timestamp: number;
 }
 
 export interface SwipeConfig {
@@ -203,7 +221,6 @@ export const androidOptimizedSwipeConfig: SwipeConfig = {
 export interface PlaceTransformOptions {
   userLatitude?: number;
   userLongitude?: number;
-  defaultImageUrl?: string;
 }
 
 // App state interfaces
@@ -218,7 +235,12 @@ export interface AppState {
 
 // Error handling
 export interface PlaceError {
-  code: 'LOCATION_DENIED' | 'API_ERROR' | 'NO_RESULTS' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+  code:
+    | "LOCATION_DENIED"
+    | "API_ERROR"
+    | "NO_RESULTS"
+    | "NETWORK_ERROR"
+    | "UNKNOWN_ERROR";
   message: string;
   details?: any;
 }
@@ -245,9 +267,10 @@ export interface FeatureFlags {
 }
 
 export const defaultFeatureFlags: FeatureFlags = {
-  useGooglePlacesApi: import.meta.env.VITE_USE_LIVE_DATA === 'true',
-  enableLocationServices: import.meta.env.VITE_ENABLE_LOCATION_SERVICES === 'true',
+  useGooglePlacesApi: import.meta.env.VITE_USE_LIVE_DATA === "true",
+  enableLocationServices:
+    import.meta.env.VITE_ENABLE_LOCATION_SERVICES === "true",
   enablePhotoPreloading: true,
-  enableSwipeAnalytics: import.meta.env.VITE_DEBUG_MODE === 'true',
+  enableSwipeAnalytics: import.meta.env.VITE_DEBUG_MODE === "true",
   enableOfflineMode: false,
 };

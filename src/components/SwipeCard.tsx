@@ -38,6 +38,7 @@ interface SwipeCardProps {
   isTop: boolean;
   index: number;
   onCardTap?: (card: RestaurantCard) => void;
+  handleOnExpand?: (cardId: string) => void;
   onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
 }
 
@@ -48,6 +49,7 @@ export function SwipeCard({
   isTop,
   index,
   onCardTap,
+  handleOnExpand,
   onSwipeDirection,
 }: SwipeCardProps) {
   const x = useMotionValue(0);
@@ -127,11 +129,11 @@ export function SwipeCard({
 
   // Get current image URL
   const getCurrentImageUrl = useCallback(() => {
-    if (card.photoUrls && card.photoUrls.length > 0) {
-      return card.photoUrls[currentImageIndex];
+    if (card.photos && card.photos.length > 0) {
+      return card.photos[currentImageIndex].url;
     }
     return null;
-  }, [card.images, card.photoUrls, currentImageIndex]);
+  }, [card.images, card.photos, currentImageIndex]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
@@ -338,6 +340,7 @@ export function SwipeCard({
           onClick={() => {
             if (!isExpanded) {
               shouldAnimateRef.current = true;
+              handleOnExpand(card.id);
             } else {
               shouldAnimateRef.current = false;
             }

@@ -1,4 +1,4 @@
-import { PlaceBasic, PlaceDetails } from "@/types/Types";
+import { GooglePlacesApiBasicDetails, GooglePlacesApiAdvDetails } from "@/types/Types";
 import axios, { AxiosInstance } from "axios";
 
 // API Request/Response types
@@ -17,13 +17,13 @@ export interface ApiResponse<T> {
   count?: number;
 }
 
-export interface NearbySearchResponse extends ApiResponse<PlaceBasic[]> {
+export interface NearbySearchResponse extends ApiResponse<GooglePlacesApiBasicDetails[]> {
   count: number;
 }
 
-export interface PlaceDetailsResponse extends ApiResponse<PlaceDetails> {}
+export interface GooglePlaceDetailsResponse extends ApiResponse<GooglePlacesApiAdvDetails> {}
 
-export interface PhotoResponse
+export interface GooglePhotoResponse
   extends ApiResponse<{
     photoUrl: string;
     photoReference: string;
@@ -35,7 +35,7 @@ export interface ApiError {
 }
 
 // Custom error class for API errors
-export class PlacesApiError extends Error {
+export class GooglePlacesApiError extends Error {
   public statusCode: number;
   public details?: string;
 
@@ -117,7 +117,7 @@ export class PlacesApiClient {
   /**
    * Search for nearby places
    */
-  async searchNearby(params: NearbySearchParams): Promise<PlaceBasic[]> {
+  async searchNearby(params: NearbySearchParams): Promise<GooglePlacesApiBasicDetails[]> {
     try {
       console.log("🔍 Searching nearby places:", params);
       const response = await this.client.get<NearbySearchResponse>(
@@ -137,9 +137,9 @@ export class PlacesApiClient {
   /**
    * Get detailed information about a specific place
    */
-  async getPlaceDetails(placeId: string): Promise<PlaceDetails> {
+  async getPlaceDetails(placeId: string): Promise<GooglePlacesApiAdvDetails> {
     try {
-      const response = await this.client.get<PlaceDetailsResponse>(
+      const response = await this.client.get<GooglePlaceDetailsResponse>(
         `/api/places/${placeId}`
       );
 
@@ -159,7 +159,7 @@ export class PlacesApiClient {
     maxHeight: number = 400
   ): Promise<any> {
     try {
-      const response = await this.client.get<PhotoResponse>(
+      const response = await this.client.get<GooglePhotoResponse>(
         `/api/places/photo/givememyphoto`,
         {
           params: { photoReference, maxWidth, maxHeight },
@@ -196,14 +196,6 @@ export class PlacesApiClient {
 export const placesApi = new PlacesApiClient();
 
 // Utility functions for data transformation
-
-
-
-
-
-
-
-
 // Distance calculation utility (reused from geolocation hook)
 export const calculateDistance = (
   lat1: number,

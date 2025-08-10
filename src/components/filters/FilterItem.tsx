@@ -102,18 +102,6 @@ export function FilterItem({ definition, value, isActive, onChange }: FilterItem
       case 'multiselect':
         const selectedValues = Array.isArray(currentValue) ? currentValue : [];
 
-        // Debug logging for multiselect
-        if (id === 'cuisine') {
-          console.log('FilterItem rendering cuisine multiselect:', {
-            id,
-            name,
-            options,
-            currentValue,
-            selectedValues,
-            type
-          });
-        }
-
         return (
           <div className="space-y-4">
             <Label className="text-gray-800 font-medium">

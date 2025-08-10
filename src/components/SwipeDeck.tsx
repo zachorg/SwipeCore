@@ -75,6 +75,7 @@ export function SwipeDeck({
     error,
     hasLocation,
     swipeCard,
+    expandCard,
     refreshCards,
     requestLocation,
     usingLiveData,
@@ -165,6 +166,14 @@ export function SwipeDeck({
     onSwipeAction?.(cardId, action);
   };
 
+  const handleExpand = (cardId: string) => {
+    const expandAction = {
+      cardId,
+      timestamp: Date.now(),
+    };
+    expandCard?.(expandAction);
+  };
+
   const handleControlAction = (action: "pass") => {
     if (currentCard) {
       handleSwipe(currentCard.id, action);
@@ -172,7 +181,6 @@ export function SwipeDeck({
   };
 
   const handleMenuOpen = () => {
-    // TODO: Implement menu opening logic
     console.log("Open menu clicked");
   };
 
@@ -358,6 +366,7 @@ export function SwipeDeck({
             isTop={index === 0}
             index={index}
             onCardTap={handleCardTap}
+            handleOnExpand={handleExpand}
             onSwipeDirection={handleSwipeDirection}
           />
         ))}
