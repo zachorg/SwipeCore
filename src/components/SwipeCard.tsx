@@ -200,6 +200,7 @@ export function SwipeCard({
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
       // Sponsored cards: tap opens link via onCardTap
       if ((card as any).isSponsored) {
+        console.log('[Sponsored] Sponsored card tapped', { cardId: card.id });
         onCardTap?.(card);
       } else {
         setIsExpanded((value) => !value);
@@ -259,6 +260,9 @@ export function SwipeCard({
       ) {
         // Map menu direction back to like for the actual swipe action
         const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
+        if ((card as any).isSponsored) {
+          console.log('[Sponsored] Sponsored card swiped', { cardId: card.id, direction: actualDirection });
+        }
         onSwipe(card.id, actualDirection);
       } else {
         // Animate card back to center with device-optimized settings

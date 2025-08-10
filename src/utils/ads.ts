@@ -22,11 +22,10 @@ export async function initMobileAds(config: AdsConfig): Promise<boolean> {
       return true;
     }
 
-    // Require platform-specific app id from provided config
+    // Optional platform-specific app id (recommended to set in production)
     const appId = platform === 'android' ? config.androidAppId : platform === 'ios' ? config.iosAppId : undefined;
     if (!appId) {
-      console.warn(`Ads init skipped: missing app id for platform "${platform}"`);
-      return false;
+      console.warn(`[AdMob] No app id provided for platform "${platform}". Proceeding with initialize for testing.`);
     }
 
     // If a Capacitor AdMob plugin is present, attempt initialization
@@ -41,10 +40,12 @@ export async function initMobileAds(config: AdsConfig): Promise<boolean> {
 
     // Initialize via Capacitor plugin when present
     if (AdMob?.initialize) {
+      console.log('[AdMob] Initializing Mobile Ads SDK');
       await AdMob.initialize({
         testingDevices: [],
-        initializeForTesting: Boolean(import.meta.env.DEV),
+        initializeForTesting: true,
       });
+      console.log('[AdMob] Initialization complete');
       initialized = true;
       return true;
     }
@@ -53,7 +54,7 @@ export async function initMobileAds(config: AdsConfig): Promise<boolean> {
     initialized = true;
     return true;
   } catch (e) {
-    console.warn('Ads init failed:', e);
+    console.warn('[AdMob] Ads init failed:', e);
     return false;
   }
 }

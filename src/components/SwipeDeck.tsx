@@ -118,11 +118,15 @@ export function SwipeDeck({
           title: "Sponsored",
           subtitle: "",
           isSponsored: true,
-          photoUrls: [],
+          photoUrls: [
+            'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+          ],
+          adClickUrl: 'https://www.google.com',
         } as unknown as RestaurantCard;
       }
       const sponsoredCard = inDeckSponsoredRef.current!;
       if (!dismissedSponsoredIds.has(sponsoredCard.id)) {
+        console.log('[Sponsored] Injecting sponsored card into deck', { insertIndex, cardId: sponsoredCard.id });
         clone.splice(insertIndex, 0, sponsoredCard);
       }
     }
@@ -134,6 +138,8 @@ export function SwipeDeck({
     if (!sponsored) return;
     setDismissedSponsoredIds((prev) => new Set(prev).add(sponsored.id));
   }, []);
+
+  // Interstitial ads removed per requirement; sponsored cards now reserved for native ads overlay only
 
   // Create and pass filter button to parent
   useEffect(() => {
@@ -226,9 +232,14 @@ export function SwipeDeck({
   };
 
   const handleCardTap = (card: RestaurantCard) => {
-    if (card.isSponsored && (card as any).adClickUrl) {
-      const url = (card as any).adClickUrl as string;
-      window.open(url, "_blank", "noopener,noreferrer");
+    if (card.isSponsored) {
+      const url = (card as any).adClickUrl as string | undefined;
+      if (url) {
+        console.log('[Sponsored] Opening sponsored click URL', { url });
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        console.log('[Sponsored] Tap ignored (no click URL)');
+      }
       return;
     }
     onCardTap?.(card);
@@ -383,7 +394,10 @@ export function SwipeDeck({
           title: "Sponsored",
           subtitle: "",
           isSponsored: true,
-          photoUrls: [],
+          photoUrls: [
+            'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+          ],
+          adClickUrl: 'https://www.google.com',
         } as unknown as RestaurantCard)
       : null;
     return (
