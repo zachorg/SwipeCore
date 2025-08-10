@@ -3,6 +3,7 @@ package com.swipecore.app;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -33,6 +34,7 @@ public class NativeAdsPlugin extends Plugin {
     private NativeAdView nativeAdView;
     private NativeAd currentAd;
     private AdLoader adLoader;
+    private static final String TAG = "NativeAds";
 
     @Override
     public void load() {
@@ -56,17 +58,25 @@ public class NativeAdsPlugin extends Plugin {
             if (adLoader != null) {
                 adLoader = null;
             }
+            Log.d(TAG, "Loading native ad | adUnitId=" + adUnitId);
             AdLoader.Builder builder = new AdLoader.Builder(context, adUnitId);
             builder.forNativeAd(nativeAd -> {
                 destroyAd();
                 currentAd = nativeAd;
                 ensureNativeAdView(activity);
                 populateNativeAdView(nativeAd, nativeAdView);
+                try {
+                    String headline = nativeAd.getHeadline();
+                    String cta = nativeAd.getCallToAction();
+                    String advertiser = nativeAd.getAdvertiser();
+                    Log.d(TAG, "Native ad loaded | headline=" + headline + ", cta=" + cta + ", advertiser=" + advertiser);
+                } catch (Exception ignored) {}
                 call.resolve();
             });
             builder.withAdListener(new AdListener() {
                 @Override
                 public void onAdFailedToLoad(LoadAdError adError) {
+                    Log.w(TAG, "Native ad failed to load | code=" + adError.getCode() + ", message=" + adError.getMessage());
                     call.reject("Failed to load native ad: " + adError.getMessage());
                 }
             });
@@ -88,6 +98,7 @@ public class NativeAdsPlugin extends Plugin {
                 call.reject("Native ad not loaded yet");
                 return;
             }
+            Log.d(TAG, "Attaching native ad overlay | x=" + x + ", y=" + y + ", width=" + width + ", height=" + height);
             ensureOverlayContainer(activity);
             if (nativeAdView.getParent() != overlayContainer) {
                 if (nativeAdView.getParent() instanceof ViewGroup) {
@@ -111,6 +122,7 @@ public class NativeAdsPlugin extends Plugin {
     public void detach(PluginCall call) {
         getBridge().executeOnMainThread(() -> {
             if (overlayContainer != null && nativeAdView != null) {
+                Log.d(TAG, "Detaching native ad overlay");
                 overlayContainer.removeView(nativeAdView);
                 nativeAdView.setVisibility(View.GONE);
             }
@@ -126,6 +138,7 @@ public class NativeAdsPlugin extends Plugin {
                 FrameLayout.LayoutParams.MATCH_PARENT
             ));
             ((ViewGroup) activity.findViewById(android.R.id.content)).addView(overlayContainer);
+            Log.d(TAG, "Created overlay container");
         }
     }
 
@@ -206,6 +219,7 @@ public class NativeAdsPlugin extends Plugin {
 
     private void destroyAd() {
         if (currentAd != null) {
+            Log.d(TAG, "Destroying existing native ad");
             currentAd.destroy();
             currentAd = null;
         }

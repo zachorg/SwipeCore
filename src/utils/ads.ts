@@ -1,14 +1,10 @@
-// Lightweight AdMob init wired to Capacitor plugin; reads config per platform
+// Lightweight Mobile Ads init; now oriented around Native Ads
 import { Capacitor } from '@capacitor/core';
 import { AdMob } from '@capacitor-community/admob';
-export interface AdsConfig {
-  androidAppId?: string;
-  iosAppId?: string;
-}
-
+import { NativeAds } from '@/utils/nativeAds';
 let initialized = false;
 
-export async function initMobileAds(config: AdsConfig): Promise<boolean> {
+export async function initMobileAds(): Promise<boolean> {
   if (initialized) return true;
   try {
     const enabled = import.meta.env.VITE_ADS_ENABLED === 'true';
@@ -20,12 +16,6 @@ export async function initMobileAds(config: AdsConfig): Promise<boolean> {
     if (platform === 'web') {
       initialized = true;
       return true;
-    }
-
-    // Optional platform-specific app id (recommended to set in production)
-    const appId = platform === 'android' ? config.androidAppId : platform === 'ios' ? config.iosAppId : undefined;
-    if (!appId) {
-      console.warn(`[AdMob] No app id provided for platform "${platform}". Proceeding with initialize for testing.`);
     }
 
     // If a Capacitor AdMob plugin is present, attempt initialization
@@ -47,11 +37,23 @@ export async function initMobileAds(config: AdsConfig): Promise<boolean> {
       });
       console.log('[AdMob] Initialization complete');
       initialized = true;
-      return true;
     }
 
-    // No-op before plugin install
-    initialized = true;
+    const nativeAdUnitId = platform === 'android'
+      ? (import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID)
+      : (import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS);
+
+    // Attempt a preload only on Android, since our NativeAds bridge is Android-only right now
+    if (platform === 'android') {
+      try {
+        console.log('[NativeAds][Init] Preloading native ad', { nativeAdUnitId });
+        await NativeAds.load({ adUnitId: nativeAdUnitId });
+        console.log('[NativeAds][Init] Preload success');
+      } catch (e) {
+        console.warn('[NativeAds][Init] Preload failed', e);
+      }
+    }
+
     return true;
   } catch (e) {
     console.warn('[AdMob] Ads init failed:', e);

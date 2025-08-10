@@ -11,10 +11,7 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    initMobileAds({
-      androidAppId: import.meta.env.VITE_ADMOB_APP_ID_ANDROID,
-      iosAppId: import.meta.env.VITE_ADMOB_APP_ID_IOS,
-    });
+    initMobileAds();
   }, []);
 
   return (

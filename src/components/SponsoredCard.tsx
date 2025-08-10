@@ -18,7 +18,7 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
     const el = containerRef.current;
     if (!el) return;
 
-    const adUnitId = 'ca-app-pub-3940256099942544/2247696110'; // Android Native Advanced test unit
+    const adUnitId = import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID || 'ca-app-pub-3940256099942544/2247696110';
 
     const updatePosition = async () => {
       if (!el) return;
@@ -37,8 +37,9 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
 
     const loadAndAttach = async () => {
       try {
-        console.log('[NativeAds] Loading native ad');
+        console.log('[NativeAds] Loading native ad', { adUnitId });
         await NativeAds.load({ adUnitId });
+        console.log('[NativeAds] Loaded successfully');
         await updatePosition();
       } catch (e) {
         console.warn('[NativeAds] Load failed', e);
