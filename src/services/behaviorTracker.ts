@@ -1,5 +1,6 @@
 import { UserBehaviorMetrics, CurrentSessionMetrics, PredictiveSignals } from '@/types/prefetching';
 import { RestaurantCard, SwipeAction } from '@/types/Types';
+import { CrossPlatformStorage } from '@/utils/crossPlatformStorage';
 
 export class BehaviorTracker {
   private static readonly STORAGE_KEY = 'swipecore_behavior_metrics';
@@ -10,25 +11,25 @@ export class BehaviorTracker {
   private eventListeners: Array<(event: string, data: any) => void> = [];
   
   constructor() {
-    this.metrics = this.loadMetrics();
+    this.metrics = this.getDefaultMetrics();
     this.currentSession = this.initializeSession();
+    this.initializeMetrics();
     this.setupEventListeners();
   }
   
-  // Initialize or load existing metrics
-  private loadMetrics(): UserBehaviorMetrics {
+  // Initialize metrics asynchronously
+  private async initializeMetrics(): Promise<void> {
     try {
-      const stored = localStorage.getItem(BehaviorTracker.STORAGE_KEY);
+      const stored = await CrossPlatformStorage.getItem(BehaviorTracker.STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         // Validate and migrate if necessary
-        return this.validateAndMigrateMetrics(parsed);
+        this.metrics = this.validateAndMigrateMetrics(parsed);
       }
     } catch (error) {
       console.warn('Failed to load behavior metrics:', error);
+      // Keep default metrics if loading fails
     }
-    
-    return this.getDefaultMetrics();
   }
   
   private getDefaultMetrics(): UserBehaviorMetrics {
@@ -352,9 +353,9 @@ export class BehaviorTracker {
     return currentAvg * (1 - learningRate) + newValue * learningRate;
   }
   
-  private saveMetrics(): void {
+  private async saveMetrics(): Promise<void> {
     try {
-      localStorage.setItem(BehaviorTracker.STORAGE_KEY, JSON.stringify(this.metrics));
+      await CrossPlatformStorage.setItem(BehaviorTracker.STORAGE_KEY, JSON.stringify(this.metrics));
     } catch (error) {
       console.warn('Failed to save behavior metrics:', error);
     }
