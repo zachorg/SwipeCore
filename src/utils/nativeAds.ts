@@ -29,13 +29,11 @@ export interface MockNativeAdData {
 }
 
 export function isNativeAdsTestMode(): boolean {
-  // Enable mock/test mode with VITE_ADS_NATIVE_TEST_MODE=true
-  // Defaults to false
+  // Enable mock/native-UI-only mode explicitly with VITE_ADS_NATIVE_TEST_MODE=true
+  // Defaults to false so we load real AdMob (using Google's test unit if no prod unit specified)
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   const env = (import.meta as any)?.env || {};
-  if (env?.VITE_ADS_NATIVE_TEST_MODE === 'true') return true;
-  // Default to test mode for non-production builds to make emulator/dev testing easy
-  return env?.MODE && env.MODE !== 'production';
+  return env?.VITE_ADS_NATIVE_TEST_MODE === 'true';
 }
 
 export function getAndroidTestNativeAdUnitId(): string {

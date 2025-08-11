@@ -3,11 +3,13 @@ package com.swipecore.app;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.MotionEvent;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -27,6 +29,7 @@ import com.google.android.gms.ads.MediaContent;
 import com.google.android.gms.ads.nativead.MediaView;
 import com.google.android.gms.ads.nativead.NativeAd;
 import com.google.android.gms.ads.nativead.NativeAdView;
+import android.webkit.WebView;
 
 @CapacitorPlugin(name = "NativeAds")
 public class NativeAdsPlugin extends Plugin {
@@ -35,8 +38,26 @@ public class NativeAdsPlugin extends Plugin {
     private NativeAdView nativeAdView;
     private NativeAd currentAd;
     private AdLoader adLoader;
+    private Button ctaButton;
+    private MediaView mediaViewRef;
+    private TextView headlineViewRef;
     private static final String TAG = "NativeAds";
     private static final String TEST_NATIVE_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110";
+
+    // Forward a MotionEvent to the underlying WebView, translating to its local coordinates
+    private void forwardTouchToWebView(MotionEvent event) {
+        if (getBridge() == null) return;
+        WebView webView = getBridge().getWebView();
+        if (webView == null) return;
+        int[] webLoc = new int[2];
+        webView.getLocationOnScreen(webLoc);
+        float localX = event.getRawX() - webLoc[0];
+        float localY = event.getRawY() - webLoc[1];
+        MotionEvent cloned = MotionEvent.obtain(event);
+        cloned.setLocation(localX, localY);
+        webView.dispatchTouchEvent(cloned);
+        cloned.recycle();
+    }
 
     @Override
     public void load() {
@@ -186,6 +207,16 @@ public class NativeAdsPlugin extends Plugin {
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             ));
+            // Ensure the overlay container itself does not intercept or consume touch events
+            overlayContainer.setClickable(false);
+            overlayContainer.setFocusable(false);
+            overlayContainer.setFocusableInTouchMode(false);
+            overlayContainer.setClipChildren(false);
+            overlayContainer.setClipToPadding(false);
+            overlayContainer.setOnTouchListener((v, e) -> {
+                forwardTouchToWebView(e);
+                return true;
+            });
             ((ViewGroup) activity.findViewById(android.R.id.content)).addView(overlayContainer);
             Log.d(TAG, "Created overlay container");
         }
@@ -195,6 +226,10 @@ public class NativeAdsPlugin extends Plugin {
         if (nativeAdView != null) return;
         nativeAdView = new NativeAdView(context);
         nativeAdView.setBackgroundColor(Color.TRANSPARENT);
+        // Make the ad view itself non-interactive except for explicitly clickable children (e.g., CTA)
+        nativeAdView.setClickable(false);
+        nativeAdView.setFocusable(false);
+        nativeAdView.setFocusableInTouchMode(false);
 
         // Create simple layout programmatically
         FrameLayout container = new FrameLayout(context);
@@ -210,6 +245,7 @@ public class NativeAdsPlugin extends Plugin {
             FrameLayout.LayoutParams.MATCH_PARENT
         );
         mediaView.setLayoutParams(mediaLp);
+        mediaView.setClickable(false);
 
         TextView headlineView = new TextView(context);
         headlineView.setId(View.generateViewId());
@@ -224,6 +260,7 @@ public class NativeAdsPlugin extends Plugin {
         headlineLp.leftMargin = dp(context, 16);
         headlineLp.bottomMargin = dp(context, 16);
         headlineView.setLayoutParams(headlineLp);
+        headlineView.setClickable(false);
 
         Button ctaView = new Button(context);
         ctaView.setId(View.generateViewId());
@@ -235,6 +272,8 @@ public class NativeAdsPlugin extends Plugin {
         ctaLp.rightMargin = dp(context, 16);
         ctaLp.bottomMargin = dp(context, 16);
         ctaView.setLayoutParams(ctaLp);
+        // Only CTA is explicitly clickable so other areas can pass touches through to the WebView
+        ctaView.setClickable(true);
 
         container.addView(mediaView);
         container.addView(headlineView);
@@ -244,6 +283,28 @@ public class NativeAdsPlugin extends Plugin {
         nativeAdView.setHeadlineView(headlineView);
         nativeAdView.setCallToActionView(ctaView);
         nativeAdView.addView(container);
+
+        // Keep refs for touch routing
+        this.ctaButton = ctaView;
+        this.mediaViewRef = mediaView;
+        this.headlineViewRef = headlineView;
+
+        // Route non-CTA touches to the underlying WebView so the card remains swipeable
+        nativeAdView.setOnTouchListener((v, event) -> {
+            // Allow CTA region to handle its own clicks
+            if (ctaButton != null && ctaButton.getVisibility() == View.VISIBLE) {
+                int[] loc = new int[2];
+                ctaButton.getLocationOnScreen(loc);
+                Rect ctaRect = new Rect(loc[0], loc[1], loc[0] + ctaButton.getWidth(), loc[1] + ctaButton.getHeight());
+                float rx = event.getRawX();
+                float ry = event.getRawY();
+                if (ctaRect.contains((int) rx, (int) ry)) {
+                    return false; // don't consume; let CTA handle
+                }
+            }
+            forwardTouchToWebView(event);
+            return true; // consume so the ad view doesn't interfere
+        });
     }
 
     private void populateNativeAdView(NativeAd nativeAd, NativeAdView adView) {
@@ -281,6 +342,9 @@ public class NativeAdsPlugin extends Plugin {
             nativeAdView.destroy();
             nativeAdView = null;
         }
+        ctaButton = null;
+        mediaViewRef = null;
+        headlineViewRef = null;
     }
 
     @Override

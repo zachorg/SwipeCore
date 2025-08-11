@@ -15,6 +15,7 @@ import {
 import { Button } from "./ui/button";
 import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
 import { isAndroid } from "@/lib/utils";
+import { NativeAds } from "@/utils/nativeAds";
 import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
@@ -319,6 +320,19 @@ export function SwipeDeck({
     }
     refreshCards();
   };
+
+  // Ensure settings/filter panel can open over top of native ad by detaching overlay while open
+  useEffect(() => {
+    if (!isAndroid()) return;
+    const isTopSponsored = Boolean(topCard?.isSponsored);
+    if (!isTopSponsored) return;
+    if (isFilterPanelOpen) {
+      NativeAds.detach().catch(() => {});
+    } else {
+      // Re-attach by triggering SwipeCard's resize handler to recompute position
+      setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+    }
+  }, [isFilterPanelOpen, topCard]);
 
   // Track results after refresh or filters applied; suppress sponsored if no new real cards
   useEffect(() => {

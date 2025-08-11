@@ -67,6 +67,7 @@ export function SwipeCard({
     null
   );
   const mockAd = getMockNativeAd();
+  const isNativeTestMode = isNativeAdsTestMode();
 
   // Get device-optimized settings (moved outside useMemo to avoid hook rules violation)
   const deviceInfo = getDeviceInfo();
@@ -131,16 +132,21 @@ export function SwipeCard({
   // Get current image URL
   const getCurrentImageUrl = useCallback(() => {
     if ((card as any).isSponsored) {
-      if (card.photoUrls && card.photoUrls.length > 0) {
-        return card.photoUrls[Math.min(currentImageIndex, card.photoUrls.length - 1)];
+      // For sponsored cards, only render mock imagery in explicit test mode
+      if (isNativeTestMode) {
+        if (card.photoUrls && card.photoUrls.length > 0) {
+          return card.photoUrls[Math.min(currentImageIndex, card.photoUrls.length - 1)];
+        }
+        return mockAd.imageUrl;
       }
-      return mockAd.imageUrl;
+      // In real/native mode, don't render our own image background; native overlay will supply visuals
+      return null;
     }
     if (card.photoUrls && card.photoUrls.length > 0) {
       return card.photoUrls[currentImageIndex];
     }
     return null;
-  }, [card.photoUrls, currentImageIndex, (card as any).isSponsored]);
+  }, [card.photoUrls, currentImageIndex, (card as any).isSponsored, isNativeTestMode]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
@@ -916,13 +922,16 @@ export function SwipeCard({
           )}
         </div>
         {/* Gradient Overlay - Simplified during drag for performance */}
-        <div
-          className={`absolute inset-0 ${
-            isPerformanceMode || deviceInfo.isLowEndDevice
-              ? "bg-black/40" // Simple overlay during drag
-              : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
-          }`}
-        />
+        {/* Gradient overlay: suppress for sponsored in real/native mode so the ad remains fully visible */}
+        {(!((card as any).isSponsored) || isNativeTestMode) && (
+          <div
+            className={`absolute inset-0 ${
+              isPerformanceMode || deviceInfo.isLowEndDevice
+                ? "bg-black/40"
+                : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
+            }`}
+          />
+        )}
         {/* Info Badge: show "Sponsored" label for ads */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
           {Boolean((card as any).isSponsored) ? (
@@ -947,7 +956,10 @@ export function SwipeCard({
           {isExpanded && !(card as any).isSponsored ? (
             <DetailedContentContainer key="detailed-content" />
           ) : (
-            <MainContentOverlay key="main-content" />
+            // For sponsored cards in real/native mode, do not render our overlay content so the native ad is unobstructed
+            (!((card as any).isSponsored) || isNativeTestMode) ? (
+              <MainContentOverlay key="main-content" />
+            ) : null
           )}
         </AnimatePresence>
       </div>

@@ -13,6 +13,7 @@ interface SponsoredCardProps {
 export function SponsoredCard({ onContinue }: SponsoredCardProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mock = getMockNativeAd();
+  const isTestMode = isNativeAdsTestMode();
 
   useEffect(() => {
     if (!isAndroid()) return;
@@ -43,8 +44,7 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
 
     const loadAndAttach = async () => {
       try {
-        const testMode = isNativeAdsTestMode();
-        if (testMode) {
+        if (isTestMode) {
           console.log('[NativeAds] Test mode enabled - skipping native load, using mock overlay');
           return;
         }
@@ -81,28 +81,32 @@ export function SponsoredCard({ onContinue }: SponsoredCardProps) {
       className="relative block w-full h-full bg-white rounded-3xl overflow-hidden shadow-2xl border border-purple-200/30 ring-1 ring-purple-100/50"
       data-swipe-card="true"
     >
-      <img
-        src={mock.imageUrl || PLACEHOLDER_IMAGE}
-        alt="Sponsored"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
-        <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
-        <div className="text-base font-semibold text-gray-900 mb-1 line-clamp-1">
-          {mock.headline}
-        </div>
-        <div className="text-sm text-gray-600 line-clamp-2">
-          {mock.body}
-        </div>
-        {onContinue && (
-          <div className="mt-4 flex justify-end">
-            <Button variant="outline" onClick={onContinue}>
-              Continue
-            </Button>
+      {isTestMode ? (
+        <>
+          <img
+            src={mock.imageUrl || PLACEHOLDER_IMAGE}
+            alt="Sponsored"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
+            <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Sponsored</div>
+            <div className="text-base font-semibold text-gray-900 mb-1 line-clamp-1">
+              {mock.headline}
+            </div>
+            <div className="text-sm text-gray-600 line-clamp-2">
+              {mock.body}
+            </div>
+            {onContinue && (
+              <div className="mt-4 flex justify-end">
+                <Button variant="outline" onClick={onContinue}>
+                  Continue
+                </Button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : null}
     </div>
   );
 }
