@@ -16,7 +16,7 @@ import {
   Phone,
   Globe,
 } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -30,6 +30,7 @@ import {
   getOptimizedPerformanceConfig,
 } from "@/utils/deviceOptimization";
 import { isIOS, isAndroid } from "@/lib/utils";
+import { NativeAds, getAndroidTestNativeAdUnitId, isNativeAdsTestMode, getMockNativeAd } from "@/utils/nativeAds";
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -52,6 +53,7 @@ export function SwipeCard({
   handleOnExpand,
   onSwipeDirection,
 }: SwipeCardProps) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -66,6 +68,7 @@ export function SwipeCard({
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
     null
   );
+  const mockAd = getMockNativeAd();
 
   // Get device-optimized settings (moved outside useMemo to avoid hook rules violation)
   const deviceInfo = getDeviceInfo();
@@ -129,11 +132,17 @@ export function SwipeCard({
 
   // Get current image URL
   const getCurrentImageUrl = useCallback(() => {
+    if ((card as any).isSponsored) {
+      if (card.photoUrls && card.photoUrls.length > 0) {
+        return card.photoUrls[Math.min(currentImageIndex, card.photoUrls.length - 1)];
+      }
+      return mockAd.imageUrl;
+    }
     if (card.photos && card.photos.length > 0) {
       return card.photos[currentImageIndex].url;
     }
     return null;
-  }, [card.images, card.photos, currentImageIndex]);
+  }, [card.photos, currentImageIndex, (card as any).isSponsored]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
@@ -200,7 +209,13 @@ export function SwipeCard({
 
     // Only consider as a tap if not dragging and finger didn't move much
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
-      setIsExpanded((value) => !value);
+      // Sponsored cards: tap opens link via onCardTap
+      if ((card as any).isSponsored) {
+        console.log('[Sponsored] Sponsored card tapped', { cardId: card.id });
+        onCardTap?.(card);
+      } else {
+        setIsExpanded((value) => !value);
+      }
     }
 
     touchStartRef.current = null;
@@ -235,8 +250,20 @@ export function SwipeCard({
       } else {
         onSwipeDirection?.(null);
       }
+      // Keep native ad overlay aligned while dragging the sponsored top card
+      if (isTop && (card as any).isSponsored && isAndroid()) {
+        const el = cardRef.current;
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const x = rect.left + window.scrollX;
+          const y = rect.top + window.scrollY;
+          const width = rect.width;
+          const height = rect.height;
+          NativeAds.attach({ x, y, width, height }).catch(() => {});
+        }
+      }
     },
-    [onSwipeDirection, deviceInfo.isLowEndDevice]
+    [onSwipeDirection, deviceInfo.isLowEndDevice, isTop, card]
   );
 
   const handleDragEnd = useCallback(
@@ -256,6 +283,9 @@ export function SwipeCard({
       ) {
         // Map menu direction back to like for the actual swipe action
         const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
+        if ((card as any).isSponsored) {
+          console.log('[Sponsored] Sponsored card swiped', { cardId: card.id, direction: actualDirection });
+        }
         onSwipe(card.id, actualDirection);
       } else {
         // Animate card back to center with device-optimized settings
@@ -298,6 +328,61 @@ export function SwipeCard({
     ]
   );
 
+  // Native ads: load and attach when a sponsored card is the top card on Android
+  useEffect(() => {
+    const isSponsored = Boolean((card as any).isSponsored);
+    if (!isSponsored || !isTop || !isAndroid()) return;
+    const el = cardRef.current;
+    if (!el) return;
+
+    const adUnitId = (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID || getAndroidTestNativeAdUnitId();
+
+    const updatePosition = async () => {
+      const rect = el.getBoundingClientRect();
+      const x = rect.left + window.scrollX;
+      const y = rect.top + window.scrollY;
+      const width = rect.width;
+      const height = rect.height;
+      try {
+        await NativeAds.attach({ x, y, width, height });
+      } catch (_) {
+        // ignore
+      }
+    };
+
+    const loadAndAttach = async () => {
+      try {
+        const testMode = isNativeAdsTestMode();
+        console.log('[Sponsored] Top sponsored card; test mode =', testMode, '| adUnitId =', adUnitId);
+        if (testMode) {
+          // In test mode, do not call native; rely on mock card UI
+          return;
+        }
+        await NativeAds.load({ adUnitId });
+        await updatePosition();
+      } catch (_) {
+        // keep mock/ui only
+      }
+    };
+
+    loadAndAttach();
+
+    const onScroll = () => updatePosition();
+    const onResize = () => updatePosition();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    const observer = new ResizeObserver(() => updatePosition());
+    observer.observe(document.body);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+      observer.disconnect();
+      // Only detach if we were top sponsored
+      NativeAds.detach().catch(() => {});
+    };
+  }, [isTop, card]);
+
   const renderStars = (rating: number) => {
     if (!rating || isNaN(rating)) return null;
     return Array.from({ length: 5 }, (_, i) => (
@@ -319,19 +404,27 @@ export function SwipeCard({
       .map((_, i) => <DollarSign key={i} className="w-3 h-3 text-green-500" />);
   };
 
-  const MainContentOverlay = () => {
+    const MainContentOverlay = () => {
     const CardNameAndRating = () => {
-      return (
-        <div className="flex-1">
-          <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
-          {card.rating && (
-            <div className="flex items-center gap-2 mb-2">
-              {renderStars(card.rating)}
-              <span className="text-sm text-gray-600">({card.rating})</span>
+        if ((card as any).isSponsored) {
+          return (
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold mb-1 text-gray-900">{mockAd.headline}</h2>
+              <p className="text-sm text-gray-700">{mockAd.body}</p>
             </div>
-          )}
-        </div>
-      );
+          );
+        }
+        return (
+          <div className="flex-1">
+            <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
+            {card.rating && (
+              <div className="flex items-center gap-2 mb-2">
+                {renderStars(card.rating)}
+                <span className="text-sm text-gray-600">({card.rating})</span>
+              </div>
+            )}
+          </div>
+        );
     };
 
     const ExpandButton = () => {
@@ -395,7 +488,7 @@ export function SwipeCard({
       );
     };
 
-    return (
+      return (
       <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="space-y-3">
           {/* Restaurant Name and Rating */}
@@ -403,11 +496,22 @@ export function SwipeCard({
             <CardNameAndRating />
 
             {/* Expand/Collapse button - Right aligned and bigger */}
-            <ExpandButton />
+              {!(card as any).isSponsored ? (
+                <ExpandButton />
+              ) : (
+                <a
+                  href={mockAd.clickUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105 text-white text-sm font-semibold"
+                >
+                  {mockAd.cta}
+                </a>
+              )}
           </div>
 
           {/* Restaurant Details */}
-          <ResturantDetails />
+            {!(card as any).isSponsored && <ResturantDetails />}
         </div>
       </div>
     );
@@ -705,6 +809,7 @@ export function SwipeCard({
 
   return (
     <motion.div
+      ref={cardRef}
       className="absolute inset-4 select-none md:desktop-centered-card"
       data-swipe-card="true"
       style={{
@@ -740,6 +845,12 @@ export function SwipeCard({
       onTouchStart={!isExpanded ? handleTouchStart : undefined}
       onTouchMove={!isExpanded ? handleTouchMove : undefined}
       onTouchEnd={!isExpanded ? handleTouchEnd : undefined}
+      onClick={() => {
+        // Desktop click support for sponsored cards
+        if (!isDragging && (card as any).isSponsored) {
+          onCardTap?.(card);
+        }
+      }}
       // Performance optimizations
       layout={false}
       layoutId={undefined}
@@ -815,21 +926,28 @@ export function SwipeCard({
               : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
           }`}
         />
-        {/* Restaurant Info Badge */}
+        {/* Info Badge: show "Sponsored" label for ads */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
-          <span className="text-gray-800 font-bold text-sm">
-            {card.cuisine}
-          </span>
-          {card.priceRange && (
-            <div className="flex items-center">
-              {renderPriceRange(card.priceRange)}
-            </div>
+          {Boolean((card as any).isSponsored) ? (
+            <>
+              <span className="text-xs uppercase tracking-wide text-gray-700">Sponsored</span>
+              {isNativeAdsTestMode() && (
+                <span className="text-[10px] uppercase tracking-wide text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">Test</span>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
+              {card.priceRange && (
+                <div className="flex items-center">{renderPriceRange(card.priceRange)}</div>
+              )}
+            </>
           )}
         </div>
 
         {/* Content Overlays with AnimatePresence */}
         <AnimatePresence mode="wait">
-          {isExpanded ? (
+          {isExpanded && !(card as any).isSponsored ? (
             <DetailedContentContainer key="detailed-content" />
           ) : (
             <MainContentOverlay key="main-content" />

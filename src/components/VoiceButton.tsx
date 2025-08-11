@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { speechToTextService } from "@/utils/speechToText";
@@ -16,7 +16,6 @@ interface VoiceButtonProps {
 export function VoiceButton({
   onFiltersApplied,
   swipeDirection,
-  className = "",
 }: VoiceButtonProps) {
   const [isSupported, setIsSupported] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");

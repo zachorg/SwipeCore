@@ -52,10 +52,35 @@ export class PlacesApiClient {
   private baseURL: string;
 
   constructor(baseURL?: string) {
-    // Temporary: Use network IP for Android development
-    const defaultBackendUrl = "http://192.168.1.152:4000";
-    this.baseURL =
-      baseURL || import.meta.env.VITE_BACKEND_URL || defaultBackendUrl;
+    // Choose sensible defaults per platform (Android emulator cannot reach host via localhost)
+    const isAndroid =
+      typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+    const emulatorHost = "10.0.2.2"; // Android emulator host loopback
+    const defaultBackendUrl = isAndroid
+      ? `http://${emulatorHost}:4000`
+      : "http://localhost:4000";
+
+    const envUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
+
+    let resolvedUrl = baseURL || envUrl || defaultBackendUrl;
+
+    // If env or provided URL points to localhost but we're on Android, rewrite to 10.0.2.2
+    if (isAndroid && /^(http:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?/i.test(resolvedUrl)) {
+      try {
+        const url = new URL(resolvedUrl);
+        url.hostname = emulatorHost;
+        resolvedUrl = url.toString();
+        console.warn(
+          "⚠️ Overriding localhost backend URL for Android emulator:",
+          resolvedUrl
+        );
+      } catch {
+        // Fallback simple replace if URL constructor fails
+        resolvedUrl = resolvedUrl.replace("localhost", emulatorHost).replace("127.0.0.1", emulatorHost);
+      }
+    }
+
+    this.baseURL = resolvedUrl;
 
     // Debug logging
     console.log("🔧 PlacesApiClient Configuration:", {

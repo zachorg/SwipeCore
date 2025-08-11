@@ -5,6 +5,7 @@ import {
   SwipeConfig,
   defaultSwipeConfig,
   androidOptimizedSwipeConfig,
+  defaultFeatureFlags,
 } from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
@@ -18,6 +19,7 @@ import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
+// SponsoredCard is rendered via SwipeCard; keep import only if needed elsewhere
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -49,6 +51,15 @@ export function SwipeDeck({
   const exhaustedToastGuardRef = useRef(false);
   const guardTimerRef = useRef<number | null>(null);
   const lastExhaustedToastIdRef = useRef<string | null>(null);
+  const inDeckSponsoredRef = useRef<RestaurantCard | null>(null);
+  const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<Set<string>>(new Set());
+  const suppressSponsoredRef = useRef<boolean>(false);
+  const refreshRequestedRef = useRef<boolean>(false);
+  const filtersAppliedRef = useRef<boolean>(false);
+
+  const resetSponsored = useCallback(() => {
+    setDismissedSponsoredIds(new Set());
+  }, []);
 
   const releaseExhaustedGuard = useCallback(() => {
     exhaustedToastGuardRef.current = false;
@@ -91,6 +102,56 @@ export function SwipeDeck({
     enableFiltering,
     maxCards: 20,
   });
+
+  // Sponsored card injection logic
+  const shouldInjectSponsored =
+    defaultFeatureFlags.adsEnabled && defaultFeatureFlags.adsNativeInDeck;
+
+  const injectedCards = (() => {
+    const clone = [...cards];
+    if (!shouldInjectSponsored) return clone;
+
+    // Ensure a single sponsored placeholder instance
+    if (!inDeckSponsoredRef.current) {
+      inDeckSponsoredRef.current = {
+        id: `sponsored-${Math.random().toString(36).slice(2)}`,
+        imageUrl: null,
+        title: "Sponsored",
+        subtitle: "",
+        isSponsored: true,
+        photoUrls: [
+          'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+        ],
+        adClickUrl: 'https://www.google.com',
+      } as unknown as RestaurantCard;
+    }
+    const sponsoredCard = inDeckSponsoredRef.current!;
+
+    if (clone.length > 0) {
+      // Insert a sponsored placeholder between 5th and 7th when available
+      const insertIndex = Math.min(Math.max(4, Math.floor(clone.length / 2)), 6);
+      const alreadyHasSponsored = clone.some((c) => c.isSponsored);
+      if (!suppressSponsoredRef.current && !alreadyHasSponsored && clone.length > insertIndex && !dismissedSponsoredIds.has(sponsoredCard.id)) {
+        console.log('[Sponsored] Injecting sponsored card into deck', { insertIndex, cardId: sponsoredCard.id });
+        clone.splice(insertIndex, 0, sponsoredCard);
+      }
+      return clone;
+    }
+
+    // No normal cards left; treat sponsored as a real card so the deck UI remains active
+    if (!suppressSponsoredRef.current && !dismissedSponsoredIds.has(sponsoredCard.id)) {
+      return [sponsoredCard];
+    }
+    return clone;
+  })();
+
+  const dismissSponsored = useCallback(() => {
+    const sponsored = inDeckSponsoredRef.current;
+    if (!sponsored) return;
+    setDismissedSponsoredIds((prev) => new Set(prev).add(sponsored.id));
+  }, []);
+
+  // Interstitial ads removed per requirement; sponsored cards now reserved for native ads overlay only
 
   // Create and pass filter button to parent
   useEffect(() => {
@@ -153,8 +214,15 @@ export function SwipeDeck({
       
       // Trigger filters applied callback to refresh results
       onNewFiltersApplied();
+      // Mark that a filter change was applied, used to suppress sponsored when no real results return
+      filtersAppliedRef.current = true;
     }
   }, []);  // Empty dependency array ensures this runs only once on mount
+
+  // When filters set changes, re-allow sponsored insertion
+  useEffect(() => {
+    resetSponsored();
+  }, [JSON.stringify(allFilters)]);
 
   const handleSwipe = (cardId: string, action: "menu" | "pass") => {
     const swipeAction = {
@@ -185,6 +253,16 @@ export function SwipeDeck({
   };
 
   const handleCardTap = (card: RestaurantCard) => {
+    if (card.isSponsored) {
+      const url = (card as any).adClickUrl as string | undefined;
+      if (url) {
+        console.log('[Sponsored] Opening sponsored click URL', { url });
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else {
+        console.log('[Sponsored] Tap ignored (no click URL)');
+      }
+      return;
+    }
     onCardTap?.(card);
   };
 
@@ -192,13 +270,17 @@ export function SwipeDeck({
     setSwipeDirection(direction);
   };
 
-  const visibleCards = cards.slice(0, maxVisibleCards);
+  const visibleCards = injectedCards.slice(0, maxVisibleCards);
+  const topCard = visibleCards[0];
 
   const hasActiveFilters = Array.isArray(allFilters)
     ? allFilters.some((f: any) => f?.enabled)
     : false;
 
   const handleRefreshClick = () => {
+    // Ensure sponsored card can reappear after refresh
+    resetSponsored();
+    refreshRequestedRef.current = true;
     if (cards.length === 0 && hasActiveFilters) {
       // Guard against repeated clicks while the toast is visible
       if (exhaustedToastGuardRef.current) {
@@ -245,6 +327,20 @@ export function SwipeDeck({
     }
     refreshCards();
   };
+
+  // Track results after refresh or filters applied; suppress sponsored if no new real cards
+  useEffect(() => {
+    if (refreshRequestedRef.current || filtersAppliedRef.current) {
+      const hasRealCards = cards.length > 0;
+      suppressSponsoredRef.current = !hasRealCards;
+      console.log('[Sponsored] Post-update suppression set to', suppressSponsoredRef.current, {
+        reason: refreshRequestedRef.current ? 'refresh' : 'filters',
+        cardsCount: cards.length,
+      });
+      refreshRequestedRef.current = false;
+      filtersAppliedRef.current = false;
+    }
+  }, [cards]);
 
   // Loading state
   if ((isLoading || isFilterLoading) && cards.length === 0) {
@@ -326,12 +422,11 @@ export function SwipeDeck({
     );
   }
 
-  // No cards available state
-  if (cards.length === 0 && !isLoading) {
+  // No cards available state (consider injected sponsored)
+  if (injectedCards.length === 0 && !isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4">
-          <div className="text-6xl">🍽️</div>
+        <div className="text-center space-y-4 w-full max-w-md">
           <div>
             <h2 className="text-2xl font-bold text-foreground mb-2">
               No more restaurants!
@@ -357,19 +452,38 @@ export function SwipeDeck({
     <div className="flex-1 flex flex-col">
       {/* Card Stack - Full height with padding for controls */}
       <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
-        {visibleCards.map((card, index) => (
-          <SwipeCard
-            key={card.id}
-            card={card}
-            onSwipe={handleSwipe}
-            config={swipeConfig}
-            isTop={index === 0}
-            index={index}
-            onCardTap={handleCardTap}
+        {visibleCards.map((card, index) => {
+          if (card.isSponsored) {
+            return (
+              <SwipeCard
+                key={card.id}
+                card={card}
+                onSwipe={() => {
+                  dismissSponsored();
+                  onSwipeAction?.(card.id, "pass");
+                }}
+                config={swipeConfig}
+                isTop={index === 0}
+                index={index}
+                onCardTap={handleCardTap}
+                onSwipeDirection={handleSwipeDirection}
+              />
+            );
+          }
+          return (
+            <SwipeCard
+              key={card.id}
+              card={card}
+              onSwipe={handleSwipe}
+              config={swipeConfig}
+              isTop={index === 0}
+              index={index}
+              onCardTap={handleCardTap}
             handleOnExpand={handleExpand}
-            onSwipeDirection={handleSwipeDirection}
-          />
-        ))}
+              onSwipeDirection={handleSwipeDirection}
+            />
+          );
+        })}
       </div>
 
 
@@ -377,7 +491,7 @@ export function SwipeDeck({
       {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
-        onMenuOpen={handleMenuOpen}
+        onMenuOpen={topCard?.isSponsored ? undefined : handleMenuOpen}
         onVoiceFiltersApplied={enableFiltering ? (filters) => {
           // Apply each filter from the voice result
           filters.forEach(filter => {
