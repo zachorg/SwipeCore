@@ -23,6 +23,7 @@ import com.google.android.gms.ads.AdLoader;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.LoadAdError;
 import com.google.android.gms.ads.MobileAds;
+import com.google.android.gms.ads.MediaContent;
 import com.google.android.gms.ads.nativead.MediaView;
 import com.google.android.gms.ads.nativead.NativeAd;
 import com.google.android.gms.ads.nativead.NativeAdView;
@@ -35,6 +36,7 @@ public class NativeAdsPlugin extends Plugin {
     private NativeAd currentAd;
     private AdLoader adLoader;
     private static final String TAG = "NativeAds";
+    private static final String TEST_NATIVE_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110";
 
     @Override
     public void load() {
@@ -58,7 +60,8 @@ public class NativeAdsPlugin extends Plugin {
             if (adLoader != null) {
                 adLoader = null;
             }
-            Log.d(TAG, "Loading native ad | adUnitId=" + adUnitId);
+            boolean isTestUnit = TEST_NATIVE_AD_UNIT_ID.equals(adUnitId);
+            Log.d(TAG, "Loading native ad | adUnitId=" + adUnitId + (isTestUnit ? " (TEST)" : ""));
             AdLoader.Builder builder = new AdLoader.Builder(context, adUnitId);
             builder.forNativeAd(nativeAd -> {
                 destroyAd();
@@ -67,9 +70,38 @@ public class NativeAdsPlugin extends Plugin {
                 populateNativeAdView(nativeAd, nativeAdView);
                 try {
                     String headline = nativeAd.getHeadline();
+                    String body = nativeAd.getBody();
                     String cta = nativeAd.getCallToAction();
                     String advertiser = nativeAd.getAdvertiser();
-                    Log.d(TAG, "Native ad loaded | headline=" + headline + ", cta=" + cta + ", advertiser=" + advertiser);
+                    Double starRating = nativeAd.getStarRating();
+                    String price = nativeAd.getPrice();
+                    String store = nativeAd.getStore();
+                    NativeAd.Image icon = nativeAd.getIcon();
+                    String iconUri = icon != null && icon.getUri() != null ? icon.getUri().toString() : null;
+
+                    int imagesCount = nativeAd.getImages() != null ? nativeAd.getImages().size() : 0;
+                    String firstImageUri = null;
+                    if (imagesCount > 0 && nativeAd.getImages().get(0).getUri() != null) {
+                        firstImageUri = nativeAd.getImages().get(0).getUri().toString();
+                    }
+
+                    MediaContent mediaContent = nativeAd.getMediaContent();
+                    boolean hasVideo = mediaContent != null && mediaContent.hasVideoContent();
+                    float aspectRatio = mediaContent != null ? mediaContent.getAspectRatio() : 0f;
+
+                    Log.d(TAG, "Native ad loaded" + (isTestUnit ? " (TEST)" : "")
+                            + " | headline=" + headline
+                            + ", body=" + body
+                            + ", cta=" + cta
+                            + ", advertiser=" + advertiser
+                            + ", starRating=" + (starRating != null ? starRating : "null")
+                            + ", price=" + price
+                            + ", store=" + store
+                            + ", iconUri=" + iconUri
+                            + ", imagesCount=" + imagesCount
+                            + ", firstImageUri=" + firstImageUri
+                            + ", hasVideo=" + hasVideo
+                            + ", aspectRatio=" + aspectRatio);
                 } catch (Exception ignored) {}
                 call.resolve();
             });
@@ -78,6 +110,16 @@ public class NativeAdsPlugin extends Plugin {
                 public void onAdFailedToLoad(LoadAdError adError) {
                     Log.w(TAG, "Native ad failed to load | code=" + adError.getCode() + ", message=" + adError.getMessage());
                     call.reject("Failed to load native ad: " + adError.getMessage());
+                }
+
+                @Override
+                public void onAdClicked() {
+                    Log.d(TAG, "Native ad clicked");
+                }
+
+                @Override
+                public void onAdImpression() {
+                    Log.d(TAG, "Native ad impression recorded");
                 }
             });
             adLoader = builder.build();
@@ -98,7 +140,14 @@ public class NativeAdsPlugin extends Plugin {
                 call.reject("Native ad not loaded yet");
                 return;
             }
-            Log.d(TAG, "Attaching native ad overlay | x=" + x + ", y=" + y + ", width=" + width + ", height=" + height);
+            // Convert logical/CSS pixels from WebView to Android pixels using density
+            float density = activity.getResources().getDisplayMetrics().density;
+            int pxWidth = (int) Math.round(width * density);
+            int pxHeight = (int) Math.round(height * density);
+            int pxLeft = (int) Math.round(x * density);
+            int pxTop = (int) Math.round(y * density);
+
+            Log.d(TAG, "Attaching native ad overlay | css= {x=" + x + ", y=" + y + ", width=" + width + ", height=" + height + "} px= {left=" + pxLeft + ", top=" + pxTop + ", width=" + pxWidth + ", height=" + pxHeight + "}");
             ensureOverlayContainer(activity);
             if (nativeAdView.getParent() != overlayContainer) {
                 if (nativeAdView.getParent() instanceof ViewGroup) {
@@ -107,11 +156,11 @@ public class NativeAdsPlugin extends Plugin {
                 overlayContainer.addView(nativeAdView);
             }
             FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                (int) Math.round(width),
-                (int) Math.round(height)
+                pxWidth,
+                pxHeight
             );
-            lp.leftMargin = (int) Math.round(x);
-            lp.topMargin = (int) Math.round(y);
+            lp.leftMargin = pxLeft;
+            lp.topMargin = pxTop;
             nativeAdView.setLayoutParams(lp);
             nativeAdView.setVisibility(View.VISIBLE);
             call.resolve();
@@ -164,7 +213,8 @@ public class NativeAdsPlugin extends Plugin {
 
         TextView headlineView = new TextView(context);
         headlineView.setId(View.generateViewId());
-        headlineView.setTextColor(Color.WHITE);
+        // Use dark text to remain visible over the app's white bottom panel
+        headlineView.setTextColor(Color.BLACK);
         headlineView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         FrameLayout.LayoutParams headlineLp = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT,

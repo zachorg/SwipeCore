@@ -8,6 +8,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Ensure custom Capacitor plugins are registered before Bridge initialization
+        registerPlugin(NativeAdsPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Enable hardware acceleration for better performance
