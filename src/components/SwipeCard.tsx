@@ -368,12 +368,12 @@ export function SwipeCard({
             </div>
           )}
           {card.openingHours && (
-            <div className="flex items-center gap-2 text-sm text-white/90">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               {card.openingHours !== "Closed" && (
-                <Clock className="w-4 h-4 text-white drop-shadow-lg" />
+                <Clock className="w-4 h-4 text-purple-500" />
               )}
               {card.openingHours !== "Closed" && (
-                <span style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}>
+                <span>
                   {card.openingHours}
                 </span>
               )}

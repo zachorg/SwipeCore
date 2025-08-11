@@ -15,7 +15,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 export class PrefetchingService {
   private scoringEngine: HeuristicScoringEngine;
-  private costOptimizer: CostOptimizer;
+  public costOptimizer: CostOptimizer;
   private config: PrefetchConfig;
   private budgetStatus: BudgetStatus;
   private eventListeners: Array<(event: PrefetchEvent) => void> = [];
@@ -51,7 +51,7 @@ export class PrefetchingService {
       const predictiveSignals = behaviorTracker.getPredictiveSignals();
 
       console.log(
-        `Current: \n\t${JSON.stringify(userBehavior)} \n\n\t${JSON.stringify(sessionContext)} \n\n\t${JSON.stringify(predictiveSignals)}`
+        `Current: \n\t${JSON.stringify(userBehavior, null, 2)} \n\n\t${JSON.stringify(sessionContext, null, 2)} \n\n\t${JSON.stringify(predictiveSignals, null, 2)}`
       );
 
       // Early exit if user likely to end session soon
@@ -75,7 +75,7 @@ export class PrefetchingService {
       console.log("candidates: ", candidates);
 
       // Filter candidates based on thresholds
-      const viableCandidates = candidates; //this.filterViableCandidates(candidates);
+      const viableCandidates = this.filterViableCandidates(candidates);
 
       console.log("filterViableCandidates: ", viableCandidates);
 
@@ -259,7 +259,7 @@ export class PrefetchingService {
     }
   }
 
-  private async prefetchPlaceDetails(
+  public async prefetchPlaceDetails(
     placeId: string,
     queryClient: any
   ): Promise<void> {
@@ -277,7 +277,7 @@ export class PrefetchingService {
     }
   }
 
-  private async prefetchPhotos(
+  public async prefetchPhotos(
     card: RestaurantCard,
     queryClient: any
   ): Promise<void> {
@@ -386,7 +386,7 @@ export class PrefetchingService {
       this.budgetStatus.remainingMonthly <= 0;
   }
 
-  private updateBudgetSpend(cost: number): void {
+  public updateBudgetSpend(cost: number): void {
     const today = new Date().toDateString();
     const thisMonth = new Date().toISOString().slice(0, 7);
 
@@ -413,6 +413,8 @@ export class PrefetchingService {
       0,
       this.budgetStatus.remainingMonthly - cost
     );
+
+    console.log(JSON.stringify(this.budgetStatus, null, 2));
   }
 
   private getStoredSpend(key: string): number {
@@ -503,7 +505,7 @@ export class PrefetchingService {
     return false; // Placeholder implementation
   }
 
-  private emitEvent(event: PrefetchEvent): void {
+  public emitEvent(event: PrefetchEvent): void {
     this.eventListeners.forEach((listener) => {
       try {
         listener(event);

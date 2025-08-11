@@ -12,18 +12,18 @@ export interface PrefetchCandidate {
 
 export class CostOptimizer {
   private static readonly API_COSTS = {
-    DETAILS: 0.017,  // $0.017 per Places Details API request
+    DETAILS: 0.0017,  // $0.017 per Places Details API request
     PHOTO: 0.007     // $0.007 per Photo API request
   };
   
   private static readonly USER_VALUE_ESTIMATES = {
-    CARD_VIEW: 0.05,        // Value of a card being viewed
-    DETAIL_VIEW: 0.15,      // Value of details being viewed
-    PHOTO_VIEW: 0.08,       // Value of photos being viewed
-    ENGAGEMENT: 0.25        // Value of high engagement
+    CARD_VIEW: 0,        // Value of a card being viewed
+    DETAIL_VIEW: 0,      // Value of details being viewed
+    PHOTO_VIEW: 0,       // Value of photos being viewed
+    ENGAGEMENT: 0        // Value of high engagement
   };
   
-  calculateCostEstimate(card: RestaurantCard, includePhotos: boolean = true): CostEstimate {
+  public calculateCostEstimate(card: RestaurantCard, includePhotos: boolean = true): CostEstimate {
     let totalCost = CostOptimizer.API_COSTS.DETAILS; // Always include details cost
     
     if (includePhotos && card.photos && card.photos.length > 0) {
@@ -73,6 +73,7 @@ export class CostOptimizer {
     // Calculate cost and value for each candidate
     const enrichedCandidates: PrefetchCandidate[] = candidates.map(candidate => {
       const estimatedCost = this.calculateCostEstimate(candidate.card).totalCost;
+      // expected cost will always be negative...
       const expectedValue = this.calculateExpectedValue(candidate.score, estimatedCost, userEngagementHistory);
       
       return {
@@ -84,10 +85,10 @@ export class CostOptimizer {
     });
     
     // Filter out candidates with negative expected value
-    const viableCandidates = enrichedCandidates.filter(candidate => candidate.expectedValue > 0);
+    // const viableCandidates = enrichedCandidates.filter(candidate => candidate.expectedValue > 0);
     
     // Sort by value per dollar (efficiency)
-    const sortedCandidates = viableCandidates.sort((a, b) => b.valuePerDollar - a.valuePerDollar);
+    const sortedCandidates = enrichedCandidates.sort((a, b) => b.valuePerDollar - a.valuePerDollar);
     
     // Apply budget constraints using knapsack-like algorithm
     return this.applyBudgetConstraints(sortedCandidates, budgetStatus);

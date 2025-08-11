@@ -5,6 +5,8 @@ import {
   PrefetchAnalytics,
   PrefetchEvent,
   BudgetStatus,
+  PrefetchDecision,
+  CardScore,
 } from "@/types/prefetching";
 import { prefetchingService } from "@/services/prefetcher";
 import { prefetchAnalytics } from "@/services/prefetchAnalytics";
@@ -15,6 +17,12 @@ export interface UsePrefetcherOptions {
   enabled?: boolean;
   debugMode?: boolean;
   onPrefetchEvent?: (event: PrefetchEvent) => void;
+}
+
+export enum ImmediateFetchRequest {
+  Details,
+  Photos,
+  Both,
 }
 
 export interface UsePrefetcherReturn {
@@ -29,7 +37,10 @@ export interface UsePrefetcherReturn {
     currentPosition?: number,
     userPreferences?: any
   ) => Promise<void>;
-  requestImmediateFetch: (card: RestaurantCard) => Promise<void>;
+  requestImmediateFetch: (
+    card: RestaurantCard,
+    req: ImmediateFetchRequest
+  ) => Promise<void>;
   enablePrefetching: () => void;
   disablePrefetching: () => void;
   clearPrefetchQueue: () => void;
@@ -122,39 +133,44 @@ export function usePrefetcher(
   );
 
   const requestImmediateFetch = useCallback(
-    async (card: RestaurantCard) => {
+    async (card: RestaurantCard, req: ImmediateFetchRequest) => {
       console.log("requestImmediateFetch: ", card.title);
       if (!isEnabled) return;
 
       try {
-        const candidate: PrefetchCandidate = {
-          card: card,
-          score: {
-            // Individual factor scores (0-100)
-            positionScore: 100, // based on queue position
-            contentRelevanceScore: 100, // matches user preferences
-            ratingScore: 100, // restaurant rating influence
-            popularityScore: 100, // general popularity
-            userPatternScore: 100, // matches user's historical preferences
-            timeContextScore: 100, // relevant to current time
-            sessionContextScore: 100, // fits current session pattern
-            engagementPrediction: 100, // likelihood of user engagement
+        if (
+          req === ImmediateFetchRequest.Both ||
+          req === ImmediateFetchRequest.Details
+        ) {
+          await prefetchingService.prefetchPlaceDetails(card.id, queryClient);
+        }
 
-            // Computed values
-            baseScore: 100, // weighted combination
-            finalScore: 100, // adjusted for context
-            confidence: 100, // confidence in prediction (0-1)
+        const includePhotos =
+          req === ImmediateFetchRequest.Both ||
+          req === ImmediateFetchRequest.Photos;
+        if (includePhotos) {
+          await prefetchingService.prefetchPhotos(card, queryClient);
+        }
 
-            // Metadata
-            calculatedAt: 0, // timestamp
-            factors: {}, // detailed factor breakdown
-          },
-          position: 0,
-          estimatedCost: 0,
-          expectedValue: 0,
-          valuePerDollar: 0,
-        };
-        await prefetchingService.executePrefetchDecisions([candidate]);
+        // Update budget
+        const totalCost = prefetchingService.costOptimizer.calculateCostEstimate(
+            card,
+            includePhotos
+          ).totalCost
+        prefetchingService.updateBudgetSpend(
+          totalCost
+        );
+
+        // Emit prefetch completed event
+        prefetchingService.emitEvent({
+          type: "prefetch_completed",
+          cardId: card.id,
+          timestamp: Date.now(),
+          cost: totalCost,
+          score: {} as CardScore,
+          decision: {} as PrefetchDecision,
+          metadata: { success: true },
+        });
       } catch (error) {
         console.error("Error in prefetchCards:", error);
       }

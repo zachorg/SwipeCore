@@ -22,7 +22,7 @@ import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GooglePhotoResponse, placesApi } from "@/services/places";
-import { usePrefetcher } from "./usePrefetcher";
+import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
 import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
 
@@ -137,23 +137,18 @@ export function useFilteredPlaces(
           };
 
           // Prefetched Details
+          let updatedCard = cards[cardIndex];
           if (detailsData) {
-            const updatedCard = mergeCardWithDetails(
+            updatedCard = mergeCardWithDetails(
               cards[cardIndex],
               detailsData
             );
-
-            // Prefetched photos
-            if (photoData) {
-              updatedCard.photos[0].url = photoData.photoUrl;
-              console.log(
-                `Photo prefetched and updated for ${updatedCard.title}`
-              );
-            }
-
-            // console.log(`${JSON.stringify(updatedCard)}`);
-            updatedCards[cardIndex] = updatedCard;
           }
+          // Prefetched photos
+          if (photoData) {
+              updatedCard.photos[0].url = photoData.photoUrl;
+            }
+          updatedCards[cardIndex] = updatedCard;
 
           return updatedCards;
         });
@@ -316,6 +311,15 @@ export function useFilteredPlaces(
   // Update the ref whenever cards change
   useEffect(() => {
     cardsRef.current = cards;
+
+    if (isPrefetchingEnabled && cards.length > 0) {
+      if (cards[0].photos?.length > 0 && !cards[0].photos[0].url) {
+        requestImmediateFetch(
+          cardsRef.current[0],
+          ImmediateFetchRequest.Photos
+        );
+      }
+    }
   }, [cards]);
 
   // Initialize with mock data if not using live data
@@ -356,7 +360,6 @@ export function useFilteredPlaces(
       const transformedCards = transformPlacesToCards(places, {
         userLatitude: location?.latitude,
         userLongitude: location?.longitude,
-        defaultImageUrl: getDefaultRestaurantImage(),
       });
 
       // Keep a snapshot of the full, unfiltered list for future re-filtering
@@ -524,7 +527,10 @@ export function useFilteredPlaces(
       trackDetailView(cardsRef.current[0].id);
 
       if (!cardsRef.current[0].advDetails) {
-        requestImmediateFetch(cardsRef.current[0]);
+        requestImmediateFetch(
+          cardsRef.current[0],
+          ImmediateFetchRequest.Details
+        );
       }
     }
   }, []);
