@@ -16,7 +16,7 @@ import {
   Phone,
   Globe,
 } from "lucide-react";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -30,7 +30,6 @@ import {
   getOptimizedPerformanceConfig,
 } from "@/utils/deviceOptimization";
 import { isIOS, isAndroid } from "@/lib/utils";
-import { NativeAds, getAndroidTestNativeAdUnitId, isNativeAdsTestMode, getMockNativeAd } from "@/utils/nativeAds";
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -68,8 +67,7 @@ export function SwipeCard({
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
     null
   );
-  const mockAd = getMockNativeAd();
-  const isNativeTestMode = isNativeAdsTestMode();
+  // Ads handled via Capacitor AdMob plugin externally; no native overlay here
 
   // Get device-optimized settings (moved outside useMemo to avoid hook rules violation)
   const deviceInfo = getDeviceInfo();
@@ -133,22 +131,11 @@ export function SwipeCard({
 
   // Get current image URL
   const getCurrentImageUrl = useCallback(() => {
-    if ((card as any).isSponsored) {
-      // For sponsored cards, only render mock imagery in explicit test mode
-      if (isNativeTestMode) {
-        if (card.photoUrls && card.photoUrls.length > 0) {
-          return card.photoUrls[Math.min(currentImageIndex, card.photoUrls.length - 1)];
-        }
-        return mockAd.imageUrl;
-      }
-      // In real/native mode, don't render our own image background; native overlay will supply visuals
-      return null;
-    }
     if (card.photos && card.photos.length > 0) {
       return card.photos[currentImageIndex].url;
     }
     return null;
-  }, [card.photos, currentImageIndex, (card as any).isSponsored]);
+  }, [card.photos, currentImageIndex]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
@@ -256,18 +243,7 @@ export function SwipeCard({
       } else {
         onSwipeDirection?.(null);
       }
-      // Keep native ad overlay aligned while dragging the sponsored top card
-      if (isTop && (card as any).isSponsored && isAndroid()) {
-        const el = cardRef.current;
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          const x = rect.left + window.scrollX;
-          const y = rect.top + window.scrollY;
-          const width = rect.width;
-          const height = rect.height;
-          NativeAds.attach({ x, y, width, height }).catch(() => {});
-        }
-      }
+      // No native overlay syncing needed
     },
     [onSwipeDirection, deviceInfo.isLowEndDevice, isTop, card]
   );
@@ -334,60 +310,7 @@ export function SwipeCard({
     ]
   );
 
-  // Native ads: load and attach when a sponsored card is the top card on Android
-  useEffect(() => {
-    const isSponsored = Boolean((card as any).isSponsored);
-    if (!isSponsored || !isTop || !isAndroid()) return;
-    const el = cardRef.current;
-    if (!el) return;
-
-    const adUnitId = (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID || getAndroidTestNativeAdUnitId();
-
-    const updatePosition = async () => {
-      const rect = el.getBoundingClientRect();
-      const x = rect.left + window.scrollX;
-      const y = rect.top + window.scrollY;
-      const width = rect.width;
-      const height = rect.height;
-      try {
-        await NativeAds.attach({ x, y, width, height });
-      } catch (_) {
-        // ignore
-      }
-    };
-
-    const loadAndAttach = async () => {
-      try {
-        const testMode = isNativeAdsTestMode();
-        console.log('[Sponsored] Top sponsored card; test mode =', testMode, '| adUnitId =', adUnitId);
-        if (testMode) {
-          // In test mode, do not call native; rely on mock card UI
-          return;
-        }
-        await NativeAds.load({ adUnitId });
-        await updatePosition();
-      } catch (_) {
-        // keep mock/ui only
-      }
-    };
-
-    loadAndAttach();
-
-    const onScroll = () => updatePosition();
-    const onResize = () => updatePosition();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize);
-    const observer = new ResizeObserver(() => updatePosition());
-    observer.observe(document.body);
-
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      observer.disconnect();
-      // Only detach if we were top sponsored
-      NativeAds.detach().catch(() => {});
-    };
-  }, [isTop, card]);
+  // Native ads overlay removed; Capacitor AdMob handles ad rendering separately
 
   const renderStars = (rating: number) => {
     if (!rating || isNaN(rating)) return null;
@@ -412,14 +335,6 @@ export function SwipeCard({
 
     const MainContentOverlay = () => {
     const CardNameAndRating = () => {
-        if ((card as any).isSponsored) {
-          return (
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-1 text-gray-900">{mockAd.headline}</h2>
-              <p className="text-sm text-gray-700">{mockAd.body}</p>
-            </div>
-          );
-        }
         return (
           <div className="flex-1">
             <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
@@ -502,18 +417,7 @@ export function SwipeCard({
             <CardNameAndRating />
 
             {/* Expand/Collapse button - Right aligned and bigger */}
-              {!(card as any).isSponsored ? (
-                <ExpandButton />
-              ) : (
-                <a
-                  href={mockAd.clickUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 p-3 rounded-2xl transition-all duration-300 ml-4 flex-shrink-0 shadow-lg hover:shadow-xl hover:scale-105 text-white text-sm font-semibold"
-                >
-                  {mockAd.cta}
-                </a>
-              )}
+              <ExpandButton />
           </div>
 
           {/* Restaurant Details */}
@@ -925,8 +829,8 @@ export function SwipeCard({
           )}
         </div>
         {/* Gradient Overlay - Simplified during drag for performance */}
-        {/* Gradient overlay: suppress for sponsored in real/native mode so the ad remains fully visible */}
-        {(!((card as any).isSponsored) || isNativeTestMode) && (
+        {/* Gradient overlay */}
+        {
           <div
             className={`absolute inset-0 ${
               isPerformanceMode || deviceInfo.isLowEndDevice
@@ -934,35 +838,23 @@ export function SwipeCard({
                 : "bg-gradient-to-t from-black/80 via-black/20 to-transparent"
             }`}
           />
-        )}
+        }
         {/* Info Badge: show "Sponsored" label for ads */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
-          {Boolean((card as any).isSponsored) ? (
-            <>
-              <span className="text-xs uppercase tracking-wide text-gray-700">Sponsored</span>
-              {isNativeAdsTestMode() && (
-                <span className="text-[10px] uppercase tracking-wide text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">Test</span>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
-              {card.priceRange && (
-                <div className="flex items-center">{renderPriceRange(card.priceRange)}</div>
-              )}
-            </>
-          )}
+          <>
+            <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
+            {card.priceRange && (
+              <div className="flex items-center">{renderPriceRange(card.priceRange)}</div>
+            )}
+          </>
         </div>
 
         {/* Content Overlays with AnimatePresence */}
         <AnimatePresence mode="wait">
-          {isExpanded && !(card as any).isSponsored ? (
+          {isExpanded ? (
             <DetailedContentContainer key="detailed-content" />
           ) : (
-            // For sponsored cards in real/native mode, do not render our overlay content so the native ad is unobstructed
-            (!((card as any).isSponsored) || isNativeTestMode) ? (
-              <MainContentOverlay key="main-content" />
-            ) : null
+            <MainContentOverlay key="main-content" />
           )}
         </AnimatePresence>
       </div>

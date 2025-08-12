@@ -15,7 +15,6 @@ import {
 import { Button } from "./ui/button";
 import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
 import { isAndroid } from "@/lib/utils";
-import { NativeAds } from "@/utils/nativeAds";
 import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
@@ -52,11 +51,13 @@ export function SwipeDeck({
   const exhaustedToastGuardRef = useRef(false);
   const guardTimerRef = useRef<number | null>(null);
   const lastExhaustedToastIdRef = useRef<string | null>(null);
-  const inDeckSponsoredRef = useRef<RestaurantCard | null>(null);
+  const inDeckSponsoredMidRef = useRef<RestaurantCard | null>(null);
+  const inDeckSponsoredEndRef = useRef<RestaurantCard | null>(null);
   const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<Set<string>>(new Set());
   const suppressSponsoredRef = useRef<boolean>(false);
   const refreshRequestedRef = useRef<boolean>(false);
   const filtersAppliedRef = useRef<boolean>(false);
+  const hadRealCardsRef = useRef<boolean>(false);
 
   const resetSponsored = useCallback(() => {
     setDismissedSponsoredIds(new Set());
@@ -112,10 +113,10 @@ export function SwipeDeck({
     const clone = [...cards];
     if (!shouldInjectSponsored) return clone;
 
-    // Ensure a single sponsored placeholder instance
-    if (!inDeckSponsoredRef.current) {
-      inDeckSponsoredRef.current = {
-        id: `sponsored-${Math.random().toString(36).slice(2)}`,
+    // Ensure two sponsored placeholder instances (mid and end)
+    if (!inDeckSponsoredMidRef.current) {
+      inDeckSponsoredMidRef.current = {
+        id: `sponsored-mid-${Math.random().toString(36).slice(2)}`,
         imageUrl: null,
         title: "Sponsored",
         subtitle: "",
@@ -126,33 +127,67 @@ export function SwipeDeck({
         adClickUrl: 'https://www.google.com',
       } as unknown as RestaurantCard;
     }
-    const sponsoredCard = inDeckSponsoredRef.current!;
+    if (!inDeckSponsoredEndRef.current) {
+      inDeckSponsoredEndRef.current = {
+        id: `sponsored-end-${Math.random().toString(36).slice(2)}`,
+        imageUrl: null,
+        title: "Sponsored",
+        subtitle: "",
+        isSponsored: true,
+        photoUrls: [
+          'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+        ],
+        adClickUrl: 'https://www.google.com',
+      } as unknown as RestaurantCard;
+    }
 
+    const midAd = inDeckSponsoredMidRef.current!;
+    const endAd = inDeckSponsoredEndRef.current!;
+
+    // Only inject when there are actual cards
     if (clone.length > 0) {
-      // Insert a sponsored placeholder between 5th and 7th when available
-      const insertIndex = Math.min(Math.max(4, Math.floor(clone.length / 2)), 6);
-      const alreadyHasSponsored = clone.some((c) => c.isSponsored);
-      if (!suppressSponsoredRef.current && !alreadyHasSponsored && clone.length > insertIndex && !dismissedSponsoredIds.has(sponsoredCard.id)) {
-        console.log('[Sponsored] Injecting sponsored card into deck', { insertIndex, cardId: sponsoredCard.id });
-        clone.splice(insertIndex, 0, sponsoredCard);
+      // Insert mid-stream ad between 5th and 7th if there are more than 15 cards
+      // Choose the 6th position (index 5) deterministically
+      if (
+        clone.length > 15 &&
+        !suppressSponsoredRef.current &&
+        !dismissedSponsoredIds.has(midAd.id) &&
+        !clone.some((c) => c.id === midAd.id)
+      ) {
+        const insertIndex = 5; // 6th position (within 5th-7th range)
+        if (clone.length > insertIndex) {
+          console.log('[Sponsored] Injecting mid-stream sponsored card', { insertIndex, cardId: midAd.id });
+          clone.splice(insertIndex, 0, midAd);
+        }
+      }
+
+      // Always add one to the end if there is at least 1 card
+      if (
+        !suppressSponsoredRef.current &&
+        !dismissedSponsoredIds.has(endAd.id) &&
+        !clone.some((c) => c.id === endAd.id)
+      ) {
+        console.log('[Sponsored] Injecting end-of-list sponsored card', { cardId: endAd.id });
+        clone.push(endAd);
       }
       return clone;
     }
 
-    // No normal cards left; treat sponsored as a real card so the deck UI remains active
-    if (!suppressSponsoredRef.current && !dismissedSponsoredIds.has(sponsoredCard.id)) {
-      return [sponsoredCard];
+    // If we just exhausted the real cards but had some before, keep a single end ad visible
+    if (
+      hadRealCardsRef.current &&
+      !suppressSponsoredRef.current &&
+      !dismissedSponsoredIds.has(endAd.id)
+    ) {
+      return [endAd];
     }
     return clone;
   })();
 
-  const dismissSponsored = useCallback(() => {
-    const sponsored = inDeckSponsoredRef.current;
-    if (!sponsored) return;
-    setDismissedSponsoredIds((prev) => new Set(prev).add(sponsored.id));
+  const dismissSponsored = useCallback((sponsoredId: string) => {
+    if (!sponsoredId) return;
+    setDismissedSponsoredIds((prev) => new Set(prev).add(sponsoredId));
   }, []);
-
-  // Interstitial ads removed per requirement; sponsored cards now reserved for native ads overlay only
 
   // Create and pass filter button to parent
   useEffect(() => {
@@ -224,6 +259,11 @@ export function SwipeDeck({
   useEffect(() => {
     resetSponsored();
   }, [JSON.stringify(allFilters)]);
+
+  // Track whether we have ever had real cards in this session
+  useEffect(() => {
+    if (cards.length > 0) hadRealCardsRef.current = true;
+  }, [cards.length]);
 
   const handleSwipe = (cardId: string, action: "menu" | "pass") => {
     const swipeAction = {
@@ -329,18 +369,7 @@ export function SwipeDeck({
     refreshCards();
   };
 
-  // Ensure settings/filter panel can open over top of native ad by detaching overlay while open
-  useEffect(() => {
-    if (!isAndroid()) return;
-    const isTopSponsored = Boolean(topCard?.isSponsored);
-    if (!isTopSponsored) return;
-    if (isFilterPanelOpen) {
-      NativeAds.detach().catch(() => {});
-    } else {
-      // Re-attach by triggering SwipeCard's resize handler to recompute position
-      setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
-    }
-  }, [isFilterPanelOpen, topCard]);
+  // No special handling needed for native overlay now that we use community AdMob plugin
 
   // Track results after refresh or filters applied; suppress sponsored if no new real cards
   useEffect(() => {
@@ -473,7 +502,7 @@ export function SwipeDeck({
                 key={card.id}
                 card={card}
                 onSwipe={() => {
-                  dismissSponsored();
+                  dismissSponsored(card.id);
                   onSwipeAction?.(card.id, "pass");
                 }}
                 config={swipeConfig}

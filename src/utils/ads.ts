@@ -1,7 +1,7 @@
-// Lightweight Mobile Ads init; now oriented around Native Ads
+// AdMob (Capacitor Community) helpers
 import { Capacitor } from '@capacitor/core';
 import { AdMob } from '@capacitor-community/admob';
-import { NativeAds } from '@/utils/nativeAds';
+
 let initialized = false;
 
 export async function initMobileAds(): Promise<boolean> {
@@ -39,24 +39,41 @@ export async function initMobileAds(): Promise<boolean> {
       initialized = true;
     }
 
-    const nativeAdUnitId = platform === 'android'
-      ? (import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID)
-      : (import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS);
-
-    // Attempt a preload only on Android, since our NativeAds bridge is Android-only right now
-    if (platform === 'android') {
-      try {
-        console.log('[NativeAds][Init] Preloading native ad', { nativeAdUnitId });
-        await NativeAds.load({ adUnitId: nativeAdUnitId });
-        console.log('[NativeAds][Init] Preload success');
-      } catch (e) {
-        console.warn('[NativeAds][Init] Preload failed', e);
-      }
-    }
-
     return true;
   } catch (e) {
     console.warn('[AdMob] Ads init failed:', e);
+    return false;
+  }
+}
+
+function getInterstitialAdUnitId(): string {
+  const platform = Capacitor.getPlatform();
+  if (platform === 'android') {
+    return (import.meta as any)?.env?.VITE_ADMOB_INTERSTITIAL_AD_UNIT_ID_ANDROID || 'ca-app-pub-3940256099942544/1033173712';
+  }
+  if (platform === 'ios') {
+    return (import.meta as any)?.env?.VITE_ADMOB_INTERSTITIAL_AD_UNIT_ID_IOS || 'ca-app-pub-3940256099942544/4411468910';
+  }
+  return 'test';
+}
+
+export async function prepareInterstitial(): Promise<boolean> {
+  try {
+    const adId = getInterstitialAdUnitId();
+    await (AdMob as any).prepareInterstitial?.({ adId, isTesting: true });
+    return true;
+  } catch (e) {
+    console.warn('[AdMob] prepareInterstitial failed', e);
+    return false;
+  }
+}
+
+export async function showInterstitial(): Promise<boolean> {
+  try {
+    await (AdMob as any).showInterstitial?.();
+    return true;
+  } catch (e) {
+    console.warn('[AdMob] showInterstitial failed', e);
     return false;
   }
 }
