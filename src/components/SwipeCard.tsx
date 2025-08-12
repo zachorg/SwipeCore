@@ -198,8 +198,8 @@ export function SwipeCard({
     // Only consider as a tap if not dragging and finger didn't move much
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
       // Sponsored cards: tap opens link via onCardTap
-      if ((card as any).isSponsored) {
-        console.log("[Sponsored] Sponsored card tapped", { cardId: card.id });
+      if (card.isSponsored) {
+        console.log("Sponsored card tapped", { cardId: card.id });
         onCardTap?.(card);
       } else {
         if (!isExpanded) {
@@ -263,8 +263,8 @@ export function SwipeCard({
       ) {
         // Map menu direction back to like for the actual swipe action
         const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
-        if ((card as any).isSponsored) {
-          console.log("[Sponsored] Sponsored card swiped", {
+        if (card.isSponsored) {
+          console.log("Sponsored card swiped", {
             cardId: card.id,
             direction: actualDirection,
           });
@@ -420,7 +420,7 @@ export function SwipeCard({
           </div>
 
           {/* Restaurant Details */}
-          {!(card as any).isSponsored && <ResturantDetails />}
+          {!card.isSponsored && <ResturantDetails />}
         </div>
       </div>
     );
@@ -756,7 +756,7 @@ export function SwipeCard({
       onTouchEnd={!isExpanded ? handleTouchEnd : undefined}
       onClick={() => {
         // Desktop click support for sponsored cards
-        if (!isDragging && (card as any).isSponsored) {
+        if (!isDragging && card.isSponsored) {
           onCardTap?.(card);
         }
       }}
@@ -828,7 +828,6 @@ export function SwipeCard({
           )}
         </div>
         {/* Gradient Overlay - Simplified during drag for performance */}
-        {/* Gradient overlay */}
         {
           <div
             className={`absolute inset-0 ${
