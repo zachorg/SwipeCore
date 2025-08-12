@@ -39,6 +39,7 @@ interface SwipeCardProps {
   isTop: boolean;
   index: number;
   onCardTap?: (card: RestaurantCard) => void;
+  handleOnExpand?: (cardId: string) => void;
   onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
 }
 
@@ -49,6 +50,7 @@ export function SwipeCard({
   isTop,
   index,
   onCardTap,
+  handleOnExpand,
   onSwipeDirection,
 }: SwipeCardProps) {
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -142,11 +144,11 @@ export function SwipeCard({
       // In real/native mode, don't render our own image background; native overlay will supply visuals
       return null;
     }
-    if (card.photoUrls && card.photoUrls.length > 0) {
-      return card.photoUrls[currentImageIndex];
+    if (card.photos && card.photos.length > 0) {
+      return card.photos[currentImageIndex].url;
     }
     return null;
-  }, [card.photoUrls, currentImageIndex, (card as any).isSponsored, isNativeTestMode]);
+  }, [card.photos, currentImageIndex, (card as any).isSponsored]);
 
   // Transform values for animations (fixed - removed useMemo around hooks)
   const rotate = useTransform(
@@ -437,6 +439,7 @@ export function SwipeCard({
           onClick={() => {
             if (!isExpanded) {
               shouldAnimateRef.current = true;
+              handleOnExpand(card.id);
             } else {
               shouldAnimateRef.current = false;
             }
@@ -464,12 +467,12 @@ export function SwipeCard({
             </div>
           )}
           {card.openingHours && (
-            <div className="flex items-center gap-2 text-sm text-white/90">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
               {card.openingHours !== "Closed" && (
-                <Clock className="w-4 h-4 text-white drop-shadow-lg" />
+                <Clock className="w-4 h-4 text-purple-500" />
               )}
               {card.openingHours !== "Closed" && (
-                <span style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}>
+                <span>
                   {card.openingHours}
                 </span>
               )}

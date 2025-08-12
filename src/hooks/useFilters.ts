@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RestaurantCard } from '@/types/Types';
+import { CrossPlatformStorage } from '@/utils/crossPlatformStorage';
 
 // ============================================================================
 // UNIFIED TYPES - Single source of truth
@@ -455,10 +456,11 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   const filtersRef = useRef<Filter[]>([]);
 
   // Load persisted filters on mount
-  useEffect(() => {
+
+  useCallback(async () => {
     if (enablePersistence) {
       try {
-        const saved = localStorage.getItem(storageKey);
+        const saved = await CrossPlatformStorage.getItem(storageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           // Ensure parsed data is an array
@@ -477,15 +479,15 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   }, [enablePersistence, storageKey]);
 
   // Persist filters when they change (including empty clears)
-  useEffect(() => {
+  useCallback(async () => {
     if (!enablePersistence) return;
     try {
       if (Array.isArray(filters)) {
         // Persist current snapshot, even when empty, so clears stick across reloads
-        localStorage.setItem(storageKey, JSON.stringify(filters));
+        await CrossPlatformStorage.setItem(storageKey, JSON.stringify(filters));
       } else {
         // Fallback: remove invalid state
-        localStorage.removeItem(storageKey);
+        await CrossPlatformStorage.removeItem(storageKey);
       }
     } catch (err) {
       console.warn('Failed to persist filters:', err);
@@ -539,7 +541,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
     });
   }, []);
 
-  const clearFilters = useCallback(() => {
+  const clearFilters = useCallback(async () => {
     setFilters(prev => {
       // Only clear if there are actually filters to clear
       if (!Array.isArray(prev) || prev.length === 0) {
@@ -550,7 +552,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
     setError(null);
     // Ensure persistence clears immediately
     try {
-      localStorage.setItem(storageKey, JSON.stringify([]));
+      await CrossPlatformStorage.setItem(storageKey, JSON.stringify([]));
     } catch {}
     // Proactively notify the consumer to re-filter immediately
     try {

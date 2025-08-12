@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   placesApi,
   NearbySearchParams,
-  PlacesApiError,
+  GooglePlacesApiError,
 } from "../services/places";
 
 // Query keys for React Query
@@ -58,7 +58,7 @@ export const useNearbyPlaces = (
     retry: (failureCount, error) => {
       // Don't retry on client errors (4xx)
       if (
-        error instanceof PlacesApiError &&
+        error instanceof GooglePlacesApiError &&
         error.statusCode >= 400 &&
         error.statusCode < 500
       ) {
@@ -91,7 +91,7 @@ export const usePlaceDetails = (
     refetchOnWindowFocus,
     retry: (failureCount, error) => {
       if (
-        error instanceof PlacesApiError &&
+        error instanceof GooglePlacesApiError &&
         error.statusCode >= 400 &&
         error.statusCode < 500
       ) {
@@ -139,5 +139,5 @@ export const usePhotoUrl = (
 };
 
 // Type exports for convenience
-export type { NearbySearchParams, PlacesApiError } from "../services/places";
+export type { NearbySearchParams, GooglePlacesApiError as PlacesApiError } from "../services/places";
 export type { PlaceBasic, PlaceDetails } from "../types/places";

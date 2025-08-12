@@ -226,16 +226,6 @@ export function FilterPanel({
 
                 <AccordionContent className="space-y-4 pt-2">
                   {filters.map((filter) => {
-                    // Debug logging for cuisine filter
-                    if (filter.id === 'cuisine') {
-                      console.log('Rendering cuisine filter:', {
-                        filter,
-                        value: getFilterValue(filter.id),
-                        isActive: isFilterActive(filter.id),
-                        options: filter.options
-                      });
-                    }
-
                     return (
                       <FilterItem
                         key={filter.id}
