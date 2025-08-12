@@ -19,6 +19,7 @@ import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
+import { openUrl } from "@/utils/browser";
 // SponsoredCard is rendered via SwipeCard; keep import only if needed elsewhere
 
 interface SwipeDeckProps {
@@ -53,7 +54,9 @@ export function SwipeDeck({
   const lastExhaustedToastIdRef = useRef<string | null>(null);
   const inDeckSponsoredMidRef = useRef<RestaurantCard | null>(null);
   const inDeckSponsoredEndRef = useRef<RestaurantCard | null>(null);
-  const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<Set<string>>(new Set());
+  const [dismissedSponsoredIds, setDismissedSponsoredIds] = useState<
+    Set<string>
+  >(new Set());
   const suppressSponsoredRef = useRef<boolean>(false);
   const refreshRequestedRef = useRef<boolean>(false);
   const filtersAppliedRef = useRef<boolean>(false);
@@ -122,9 +125,9 @@ export function SwipeDeck({
         subtitle: "",
         isSponsored: true,
         photoUrls: [
-          'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+          "https://via.placeholder.com/800x1200.png?text=Sponsored+Ad",
         ],
-        adClickUrl: 'https://www.google.com',
+        adClickUrl: "https://www.google.com",
       } as unknown as RestaurantCard;
     }
     if (!inDeckSponsoredEndRef.current) {
@@ -135,9 +138,9 @@ export function SwipeDeck({
         subtitle: "",
         isSponsored: true,
         photoUrls: [
-          'https://via.placeholder.com/800x1200.png?text=Sponsored+Ad',
+          "https://via.placeholder.com/800x1200.png?text=Sponsored+Ad",
         ],
-        adClickUrl: 'https://www.google.com',
+        adClickUrl: "https://www.google.com",
       } as unknown as RestaurantCard;
     }
 
@@ -156,7 +159,10 @@ export function SwipeDeck({
       ) {
         const insertIndex = 5; // 6th position (within 5th-7th range)
         if (clone.length > insertIndex) {
-          console.log('[Sponsored] Injecting mid-stream sponsored card', { insertIndex, cardId: midAd.id });
+          console.log("[Sponsored] Injecting mid-stream sponsored card", {
+            insertIndex,
+            cardId: midAd.id,
+          });
           clone.splice(insertIndex, 0, midAd);
         }
       }
@@ -167,7 +173,9 @@ export function SwipeDeck({
         !dismissedSponsoredIds.has(endAd.id) &&
         !clone.some((c) => c.id === endAd.id)
       ) {
-        console.log('[Sponsored] Injecting end-of-list sponsored card', { cardId: endAd.id });
+        console.log("[Sponsored] Injecting end-of-list sponsored card", {
+          cardId: endAd.id,
+        });
         clone.push(endAd);
       }
       return clone;
@@ -207,7 +215,7 @@ export function SwipeDeck({
               variant="outline"
               size="lg"
               className="bg-black/40 backdrop-blur-sm hover:bg-black/60 border-white/40 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 rounded-2xl p-4"
-              style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.9)' }}
+              style={{ textShadow: "2px 2px 6px rgba(0,0,0,0.9)" }}
             >
               <Settings className="w-7 h-7" />
             </Button>
@@ -241,19 +249,19 @@ export function SwipeDeck({
   // Apply initial filters when component mounts
   useEffect(() => {
     if (initialFilters.length > 0 && enableFiltering) {
-      console.log('Applying initial filters from voice input:', initialFilters);
-      
+      console.log("Applying initial filters from voice input:", initialFilters);
+
       // Apply each filter from the voice input
-      initialFilters.forEach(filter => {
+      initialFilters.forEach((filter) => {
         addFilter(filter.filterId, filter.value);
       });
-      
+
       // Trigger filters applied callback to refresh results
       onNewFiltersApplied();
       // Mark that a filter change was applied, used to suppress sponsored when no real results return
       filtersAppliedRef.current = true;
     }
-  }, []);  // Empty dependency array ensures this runs only once on mount
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   // When filters set changes, re-allow sponsored insertion
   useEffect(() => {
@@ -297,10 +305,10 @@ export function SwipeDeck({
     if (card.isSponsored) {
       const url = (card as any).adClickUrl as string | undefined;
       if (url) {
-        console.log('[Sponsored] Opening sponsored click URL', { url });
-        window.open(url, "_blank", "noopener,noreferrer");
+        console.log("[Sponsored] Opening sponsored click URL", { url });
+        openUrl(url);
       } else {
-        console.log('[Sponsored] Tap ignored (no click URL)');
+        console.log("[Sponsored] Tap ignored (no click URL)");
       }
       return;
     }
@@ -376,10 +384,14 @@ export function SwipeDeck({
     if (refreshRequestedRef.current || filtersAppliedRef.current) {
       const hasRealCards = cards.length > 0;
       suppressSponsoredRef.current = !hasRealCards;
-      console.log('[Sponsored] Post-update suppression set to', suppressSponsoredRef.current, {
-        reason: refreshRequestedRef.current ? 'refresh' : 'filters',
-        cardsCount: cards.length,
-      });
+      console.log(
+        "[Sponsored] Post-update suppression set to",
+        suppressSponsoredRef.current,
+        {
+          reason: refreshRequestedRef.current ? "refresh" : "filters",
+          cardsCount: cards.length,
+        }
+      );
       refreshRequestedRef.current = false;
       filtersAppliedRef.current = false;
     }
@@ -392,14 +404,20 @@ export function SwipeDeck({
         <div className="text-center space-y-4 bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-white drop-shadow-lg" />
           <div>
-            <h2 className="text-xl font-semibold text-white mb-2" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.8)' }}>
+            <h2
+              className="text-xl font-semibold text-white mb-2"
+              style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}
+            >
               {isLocationLoading
                 ? "Getting your location..."
                 : isFilterLoading
                 ? "Applying filters..."
                 : "Finding restaurants..."}
             </h2>
-            <p className="text-white/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.6)' }}>
+            <p
+              className="text-white/80"
+              style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6)" }}
+            >
               {usingLiveData
                 ? "Loading restaurants near you"
                 : "Preparing your restaurant deck"}
@@ -418,7 +436,12 @@ export function SwipeDeck({
           <AlertCircle className="w-12 h-12 mx-auto text-white drop-shadow-lg" />
           <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
             <AlertCircle className="h-4 w-4 text-white inline mr-2" />
-            <span className="text-white" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{error}</span>
+            <span
+              className="text-white"
+              style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
+            >
+              {error}
+            </span>
           </div>
           <div className="space-y-2">
             {!hasLocation && (
@@ -522,27 +545,29 @@ export function SwipeDeck({
               isTop={index === 0}
               index={index}
               onCardTap={handleCardTap}
-            handleOnExpand={handleExpand}
+              handleOnExpand={handleExpand}
               onSwipeDirection={handleSwipeDirection}
             />
           );
         })}
       </div>
 
-
-
       {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
         onMenuOpen={topCard?.isSponsored ? undefined : handleMenuOpen}
-        onVoiceFiltersApplied={enableFiltering ? (filters) => {
-          // Apply each filter from the voice result
-          filters.forEach(filter => {
-            addFilter(filter.filterId, filter.value);
-          });
-          // Trigger new filters applied callback
-          onNewFiltersApplied();
-        } : undefined}
+        onVoiceFiltersApplied={
+          enableFiltering
+            ? (filters) => {
+                // Apply each filter from the voice result
+                filters.forEach((filter) => {
+                  addFilter(filter.filterId, filter.value);
+                });
+                // Trigger new filters applied callback
+                onNewFiltersApplied();
+              }
+            : undefined
+        }
         swipeDirection={swipeDirection}
       />
     </div>

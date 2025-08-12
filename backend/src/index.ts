@@ -43,18 +43,22 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin) return callback(null, true);
-      
+
       const allowedOrigins = [
         'http://localhost:8080',
         'http://10.0.2.2:8080',
-        'capacitor://localhost'
+        'capacitor://localhost',
       ];
-      
+
       // Allow any localhost or local network IP
-      if (origin.includes('localhost') || origin.includes('10.0.2.2') || origin.includes('192.168.')) {
+      if (
+        origin.includes('localhost') ||
+        origin.includes('10.0.2.2') ||
+        origin.includes('192.168.')
+      ) {
         return callback(null, true);
       }
-      
+
       callback(null, allowedOrigins.includes(origin));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],

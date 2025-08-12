@@ -58,7 +58,7 @@ export class PlacesApiClient {
     const emulatorHost = "10.0.2.2"; // Android emulator host loopback
     const defaultBackendUrl = isAndroid
       ? `http://${emulatorHost}:4000`
-      : "http://localhost:4000";
+      : import.meta.env.VITE_BACKEND_URL;
 
     const envUrl = import.meta.env.VITE_BACKEND_URL as string | undefined;
 

@@ -16,8 +16,9 @@ import {
   Phone,
   Globe,
 } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "./ui/button";
+import { openUrl } from "@/utils/browser";
 import {
   Dialog,
   DialogContent,
@@ -98,13 +99,7 @@ export function SwipeCard({
 
       // Small delay to ensure dialog closes smoothly
       setTimeout(() => {
-        // Use window.open for better UX - opens in new tab/app without refreshing current page
-        const mapWindow = window.open(url, "_blank", "noopener,noreferrer");
-
-        // Fallback for mobile devices where window.open might be blocked
-        if (!mapWindow || mapWindow.closed) {
-          window.location.href = url;
-        }
+        openUrl(url);
       }, 150); // Small delay for smooth animation
     },
     [openMapDialogAddress]
@@ -204,9 +199,13 @@ export function SwipeCard({
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
       // Sponsored cards: tap opens link via onCardTap
       if ((card as any).isSponsored) {
-        console.log('[Sponsored] Sponsored card tapped', { cardId: card.id });
+        console.log("[Sponsored] Sponsored card tapped", { cardId: card.id });
         onCardTap?.(card);
       } else {
+        if(!isExpanded)
+        {
+          handleOnExpand(card.id);
+        }
         setIsExpanded((value) => !value);
       }
     }
@@ -266,7 +265,10 @@ export function SwipeCard({
         // Map menu direction back to like for the actual swipe action
         const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
         if ((card as any).isSponsored) {
-          console.log('[Sponsored] Sponsored card swiped', { cardId: card.id, direction: actualDirection });
+          console.log("[Sponsored] Sponsored card swiped", {
+            cardId: card.id,
+            direction: actualDirection,
+          });
         }
         onSwipe(card.id, actualDirection);
       } else {
@@ -333,19 +335,19 @@ export function SwipeCard({
       .map((_, i) => <DollarSign key={i} className="w-3 h-3 text-green-500" />);
   };
 
-    const MainContentOverlay = () => {
+  const MainContentOverlay = () => {
     const CardNameAndRating = () => {
-        return (
-          <div className="flex-1">
-            <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
-            {card.rating && (
-              <div className="flex items-center gap-2 mb-2">
-                {renderStars(card.rating)}
-                <span className="text-sm text-gray-600">({card.rating})</span>
-              </div>
-            )}
-          </div>
-        );
+      return (
+        <div className="flex-1">
+          <h2 className="text-3xl font-bold mb-2">{card.title}</h2>
+          {card.rating && (
+            <div className="flex items-center gap-2 mb-2">
+              {renderStars(card.rating)}
+              <span className="text-sm text-gray-600">({card.rating})</span>
+            </div>
+          )}
+        </div>
+      );
     };
 
     const ExpandButton = () => {
@@ -387,9 +389,7 @@ export function SwipeCard({
                 <Clock className="w-4 h-4 text-purple-500" />
               )}
               {card.openingHours !== "Closed" && (
-                <span>
-                  {card.openingHours}
-                </span>
+                <span>{card.openingHours}</span>
               )}
               {card.isOpenNow !== undefined && (
                 <span
@@ -409,7 +409,7 @@ export function SwipeCard({
       );
     };
 
-      return (
+    return (
       <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="space-y-3">
           {/* Restaurant Name and Rating */}
@@ -417,11 +417,11 @@ export function SwipeCard({
             <CardNameAndRating />
 
             {/* Expand/Collapse button - Right aligned and bigger */}
-              <ExpandButton />
+            <ExpandButton />
           </div>
 
           {/* Restaurant Details */}
-            {!(card as any).isSponsored && <ResturantDetails />}
+          {!(card as any).isSponsored && <ResturantDetails />}
         </div>
       </div>
     );
@@ -554,7 +554,7 @@ export function SwipeCard({
               e.preventDefault();
               e.stopPropagation();
               e.nativeEvent.stopImmediatePropagation();
-              window.open(card.website, "_blank", "noopener,noreferrer");
+              openUrl(card.website);
             }}
             onTouchStart={(e) => e.stopPropagation()}
             onTouchEnd={(e) => e.stopPropagation()}
@@ -842,9 +842,13 @@ export function SwipeCard({
         {/* Info Badge: show "Sponsored" label for ads */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
           <>
-            <span className="text-gray-800 font-bold text-sm">{card.cuisine}</span>
+            <span className="text-gray-800 font-bold text-sm">
+              {card.cuisine}
+            </span>
             {card.priceRange && (
-              <div className="flex items-center">{renderPriceRange(card.priceRange)}</div>
+              <div className="flex items-center">
+                {renderPriceRange(card.priceRange)}
+              </div>
             )}
           </>
         </div>
