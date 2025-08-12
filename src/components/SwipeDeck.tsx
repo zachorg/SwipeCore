@@ -13,13 +13,20 @@ import {
   UseFilteredPlacesOptions,
 } from "@/hooks/useFilteredPlaces";
 import { Button } from "./ui/button";
-import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
+import {
+  RefreshCw,
+  MapPin,
+  AlertCircle,
+  Settings,
+  HandMetal,
+} from "lucide-react";
 import { isAndroid } from "@/lib/utils";
 import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
 import { openUrl } from "@/utils/browser";
+import { useQueryClient } from "@tanstack/react-query";
 // SponsoredCard is rendered via SwipeCard; keep import only if needed elsewhere
 
 interface SwipeDeckProps {
@@ -61,6 +68,8 @@ export function SwipeDeck({
   const refreshRequestedRef = useRef<boolean>(false);
   const filtersAppliedRef = useRef<boolean>(false);
   const hadRealCardsRef = useRef<boolean>(false);
+
+  const openMenuCardRef = useRef<string>("");
 
   const resetSponsored = useCallback(() => {
     setDismissedSponsoredIds(new Set());
@@ -297,9 +306,43 @@ export function SwipeDeck({
     }
   };
 
+  const visibleCards = injectedCards.slice(0, maxVisibleCards);
+  const topCard = visibleCards[0];
+
   const handleMenuOpen = () => {
     console.log("Open menu clicked");
+    handleExpand(topCard.id);
+
+    const pollForDetails = () => {
+      const queryClient = useQueryClient();
+
+      const detailsData = queryClient.getQueryData([
+        "places",
+        "details",
+        topCard.id,
+      ]);
+
+      if (!detailsData) {
+        setTimeout(() => {
+          pollForDetails();
+        }, 100);
+      }
+    };
+
+    if (!topCard.website) {
+      openMenuCardRef.current = topCard.id;
+      pollForDetails();
+    } else {
+      openUrl(topCard.website);
+    }
   };
+
+  useEffect(() => {
+    if (topCard && topCard.id === openMenuCardRef.current) {
+      console.log("User wants to open menu");
+      handleMenuOpen();
+    }
+  }, [topCard]);
 
   const handleCardTap = (card: RestaurantCard) => {
     if (card.isSponsored) {
@@ -318,9 +361,6 @@ export function SwipeDeck({
   const handleSwipeDirection = (direction: "menu" | "pass" | null) => {
     setSwipeDirection(direction);
   };
-
-  const visibleCards = injectedCards.slice(0, maxVisibleCards);
-  const topCard = visibleCards[0];
 
   const hasActiveFilters = Array.isArray(allFilters)
     ? allFilters.some((f: any) => f?.enabled)

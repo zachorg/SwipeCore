@@ -25,6 +25,7 @@ import { GooglePhotoResponse, placesApi } from "@/services/places";
 import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
 import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
+import { openUrl } from "@/utils/browser";
 
 export interface UseFilteredPlacesOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -139,15 +140,12 @@ export function useFilteredPlaces(
           // Prefetched Details
           let updatedCard = cards[cardIndex];
           if (detailsData) {
-            updatedCard = mergeCardWithDetails(
-              cards[cardIndex],
-              detailsData
-            );
+            updatedCard = mergeCardWithDetails(cards[cardIndex], detailsData);
           }
           // Prefetched photos
           if (photoData) {
-              updatedCard.photos[0].url = photoData.photoUrl;
-            }
+            updatedCard.photos[0].url = photoData.photoUrl;
+          }
           updatedCards[cardIndex] = updatedCard;
 
           return updatedCards;
@@ -454,6 +452,9 @@ export function useFilteredPlaces(
   // Swipe card action with behavior tracking and prefetching
   const swipeCard = useCallback(
     (action: SwipeAction) => {
+      const card = cards.find((card) => {
+        return card.id === action.cardId;
+      });
       setCards((prev) => prev.slice(1));
       setSwipeHistory((prev) => [...prev, action]);
 
@@ -518,21 +519,49 @@ export function useFilteredPlaces(
 
         prefetchCards(remainingCards, 0, userPreferences);
       }
+
+      const openMenu = async (swipedCard: RestaurantCard) => {
+        if (swipedCard.website) {
+          openUrl(swipedCard.website);
+        }
+
+        if (!swipedCard.website) {
+          const detailsData = queryClient.getQueryData([
+            "places",
+            "details",
+            swipedCard.id,
+          ]) as GooglePlacesApiAdvDetails;
+
+          if (!detailsData) {
+            setTimeout(() => {
+              openMenu(swipedCard);
+            }, 100);
+          }
+          if (detailsData && detailsData.websiteUri) {
+            openUrl(detailsData.websiteUri);
+          }
+        }
+      };
+      if (action.action == "menu") {
+        handleExpandCard(card);
+        openMenu(card);
+      }
     },
     [trackSwipeAction, isPrefetchingEnabled, cards, prefetchCards, filters]
   );
 
-  const expandCard = useCallback(() => {
+  const handleExpandCard = (card: RestaurantCard) => {
     if (isPrefetchingEnabled) {
-      trackDetailView(cardsRef.current[0].id);
+      trackDetailView(card.id);
 
-      if (!cardsRef.current[0].advDetails) {
-        requestImmediateFetch(
-          cardsRef.current[0],
-          ImmediateFetchRequest.Details
-        );
+      if (!card.advDetails) {
+        requestImmediateFetch(card, ImmediateFetchRequest.Details);
       }
     }
+  };
+
+  const expandCard = useCallback(() => {
+    handleExpandCard(cardsRef.current[0]);
   }, []);
 
   // Refresh cards
