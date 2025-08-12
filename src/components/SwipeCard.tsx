@@ -202,8 +202,7 @@ export function SwipeCard({
         console.log("[Sponsored] Sponsored card tapped", { cardId: card.id });
         onCardTap?.(card);
       } else {
-        if(!isExpanded)
-        {
+        if (!isExpanded) {
           handleOnExpand(card.id);
         }
         setIsExpanded((value) => !value);
@@ -450,7 +449,7 @@ export function SwipeCard({
             {card.rating && (
               <div className="flex items-center gap-2">
                 {renderStars(card.rating)}
-                <span className="text-sm text-gray-600">({card.rating})</span>
+                <span className="text-sm text-white">({card.rating})</span>
               </div>
             )}
           </div>
