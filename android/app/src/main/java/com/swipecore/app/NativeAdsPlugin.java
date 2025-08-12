@@ -40,7 +40,9 @@ public class NativeAdsPlugin extends Plugin {
     private AdLoader adLoader;
     private Button ctaButton;
     private MediaView mediaViewRef;
+    private ImageView mainImageViewRef;
     private TextView headlineViewRef;
+    private View.OnTouchListener touchForwarderRef;
     private static final String TAG = "NativeAds";
     private static final String TEST_NATIVE_AD_UNIT_ID = "ca-app-pub-3940256099942544/2247696110";
 
@@ -213,10 +215,9 @@ public class NativeAdsPlugin extends Plugin {
             overlayContainer.setFocusableInTouchMode(false);
             overlayContainer.setClipChildren(false);
             overlayContainer.setClipToPadding(false);
-            overlayContainer.setOnTouchListener((v, e) -> {
-                forwardTouchToWebView(e);
-                return true;
-            });
+            // Do not consume touches at the container level. Let the child ad view
+            // decide whether to handle CTA clicks or forward the touch to the WebView.
+            overlayContainer.setOnTouchListener((v, e) -> false);
             ((ViewGroup) activity.findViewById(android.R.id.content)).addView(overlayContainer);
             Log.d(TAG, "Created overlay container");
         }
@@ -247,6 +248,17 @@ public class NativeAdsPlugin extends Plugin {
         mediaView.setLayoutParams(mediaLp);
         mediaView.setClickable(false);
 
+        // Fallback main image view for non-video/static image creatives
+        ImageView mainImageView = new ImageView(context);
+        mainImageView.setId(View.generateViewId());
+        FrameLayout.LayoutParams imgLp = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        );
+        mainImageView.setLayoutParams(imgLp);
+        mainImageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        mainImageView.setClickable(false);
+
         TextView headlineView = new TextView(context);
         headlineView.setId(View.generateViewId());
         // Use dark text to remain visible over the app's white bottom panel
@@ -275,11 +287,13 @@ public class NativeAdsPlugin extends Plugin {
         // Only CTA is explicitly clickable so other areas can pass touches through to the WebView
         ctaView.setClickable(true);
 
+        // Order matters: put media view first, then fallback image on top so SDK toggles won't cover our image
         container.addView(mediaView);
+        container.addView(mainImageView);
         container.addView(headlineView);
         container.addView(ctaView);
 
-        nativeAdView.setMediaView(mediaView);
+        // Register headline and CTA here. Media/Image view will be registered in populateNativeAdView
         nativeAdView.setHeadlineView(headlineView);
         nativeAdView.setCallToActionView(ctaView);
         nativeAdView.addView(container);
@@ -287,9 +301,10 @@ public class NativeAdsPlugin extends Plugin {
         // Keep refs for touch routing
         this.ctaButton = ctaView;
         this.mediaViewRef = mediaView;
+        this.mainImageViewRef = mainImageView;
         this.headlineViewRef = headlineView;
 
-        // Route non-CTA touches to the underlying WebView so the card remains swipeable
+        // Route non-CTA touches on the whole ad view to the underlying WebView so the card remains swipeable
         nativeAdView.setOnTouchListener((v, event) -> {
             // Allow CTA region to handle its own clicks
             if (ctaButton != null && ctaButton.getVisibility() == View.VISIBLE) {
@@ -305,6 +320,42 @@ public class NativeAdsPlugin extends Plugin {
             forwardTouchToWebView(event);
             return true; // consume so the ad view doesn't interfere
         });
+
+        // Also route touches from child asset views (media/headline/image) to ensure they don't block swipes
+        View.OnTouchListener forwarder = (v, event) -> {
+            if (ctaButton != null && ctaButton.getVisibility() == View.VISIBLE) {
+                int[] loc = new int[2];
+                ctaButton.getLocationOnScreen(loc);
+                Rect ctaRect = new Rect(loc[0], loc[1], loc[0] + ctaButton.getWidth(), loc[1] + ctaButton.getHeight());
+                float rx = event.getRawX();
+                float ry = event.getRawY();
+                if (ctaRect.contains((int) rx, (int) ry)) {
+                    return false;
+                }
+            }
+            forwardTouchToWebView(event);
+            return true;
+        };
+        // Keep a reference so we can re-apply after SDK changes layout
+        this.touchForwarderRef = forwarder;
+        mediaView.setOnTouchListener(forwarder);
+        headlineView.setOnTouchListener(forwarder);
+        mainImageView.setOnTouchListener(forwarder);
+
+        // Ensure any SDK-internal child overlays (e.g., AdChoices) also forward touches
+        setForwarderRecursively(nativeAdView, forwarder);
+    }
+
+    private void setForwarderRecursively(View view, View.OnTouchListener forwarder) {
+        if (view == null) return;
+        if (view == ctaButton) return; // keep CTA interactive
+        view.setOnTouchListener(forwarder);
+        if (view instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) view;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                setForwarderRecursively(vg.getChildAt(i), forwarder);
+            }
+        }
     }
 
     private void populateNativeAdView(NativeAd nativeAd, NativeAdView adView) {
@@ -312,7 +363,47 @@ public class NativeAdsPlugin extends Plugin {
         TextView headlineView = (TextView) adView.getHeadlineView();
         if (headlineView != null) headlineView.setText(nativeAd.getHeadline());
 
-        // Media handled by MediaView automatically
+        // Media: prefer video/media content. If absent, fall back to an ImageView and register it as the image asset
+        boolean hasVideo = false;
+        try {
+            MediaContent mediaContent = nativeAd.getMediaContent();
+            hasVideo = mediaContent != null && mediaContent.hasVideoContent();
+
+            if (hasVideo) {
+                if (mediaViewRef != null) {
+                    mediaViewRef.setVisibility(View.VISIBLE);
+                    mediaViewRef.setMediaContent(mediaContent);
+                }
+                if (mainImageViewRef != null) {
+                    mainImageViewRef.setVisibility(View.GONE);
+                    mainImageViewRef.setImageDrawable(null);
+                }
+                // Register media view as the main asset
+                adView.setMediaView(mediaViewRef);
+            } else {
+                // Hide media view and use image view
+                if (mediaViewRef != null) {
+                    mediaViewRef.setVisibility(View.GONE);
+                }
+                if (mainImageViewRef != null) {
+                    mainImageViewRef.setVisibility(View.VISIBLE);
+                    mainImageViewRef.setImageDrawable(null);
+                    if (mediaContent != null && mediaContent.getMainImage() != null) {
+                        mainImageViewRef.setImageDrawable(mediaContent.getMainImage());
+                    } else if (nativeAd.getImages() != null && !nativeAd.getImages().isEmpty()) {
+                        NativeAd.Image firstImg = nativeAd.getImages().get(0);
+                        if (firstImg != null && firstImg.getDrawable() != null) {
+                            mainImageViewRef.setImageDrawable(firstImg.getDrawable());
+                        }
+                    } else if (nativeAd.getIcon() != null && nativeAd.getIcon().getDrawable() != null) {
+                        mainImageViewRef.setImageDrawable(nativeAd.getIcon().getDrawable());
+                    }
+                }
+                // Do not register media view for image-only case; keep our own ImageView on top
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed setting media/image fallback: " + e.getMessage());
+        }
 
         // CTA
         View cta = adView.getCallToActionView();
@@ -321,6 +412,21 @@ public class NativeAdsPlugin extends Plugin {
         }
 
         adView.setNativeAd(nativeAd);
+
+        // After SDK finalizes its internal layout, re-apply our touch forwarders
+        // and ensure our image fallback remains visible for non-video creatives.
+        try {
+            final boolean hasVideoFinal = hasVideo;
+            adView.postDelayed(() -> {
+                try {
+                    setForwarderRecursively(adView, touchForwarderRef);
+                    if (!hasVideoFinal && mainImageViewRef != null) {
+                        mainImageViewRef.bringToFront();
+                        mainImageViewRef.setVisibility(View.VISIBLE);
+                    }
+                } catch (Exception ignored) {}
+            }, 16);
+        } catch (Exception ignored) {}
     }
 
     private int dp(Context context, int dp) {
