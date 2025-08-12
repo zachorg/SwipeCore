@@ -12,6 +12,7 @@ import { CostOptimizer, PrefetchCandidate } from "@/utils/costOptimizer";
 import { behaviorTracker } from "./behaviorTracker";
 import { placesApi } from "./places";
 import { QueryClient } from "@tanstack/react-query";
+import { CrossPlatformStorage } from "@/utils/crossPlatformStorage";
 
 export class PrefetchingService {
   private scoringEngine: HeuristicScoringEngine;
@@ -51,7 +52,15 @@ export class PrefetchingService {
       const predictiveSignals = behaviorTracker.getPredictiveSignals();
 
       console.log(
-        `Current: \n\t${JSON.stringify(userBehavior, null, 2)} \n\n\t${JSON.stringify(sessionContext, null, 2)} \n\n\t${JSON.stringify(predictiveSignals, null, 2)}`
+        `Current: \n\t${JSON.stringify(
+          userBehavior,
+          null,
+          2
+        )} \n\n\t${JSON.stringify(
+          sessionContext,
+          null,
+          2
+        )} \n\n\t${JSON.stringify(predictiveSignals, null, 2)}`
       );
 
       // Early exit if user likely to end session soon
@@ -228,7 +237,7 @@ export class PrefetchingService {
         }
 
         // Update budget
-        this.updateBudgetSpend(candidate.estimatedCost);
+        await this.updateBudgetSpend(candidate.estimatedCost);
 
         // Emit prefetch completed event
         this.emitEvent({
@@ -357,8 +366,9 @@ export class PrefetchingService {
     const today = new Date().toDateString();
     const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
-    const dailySpend = this.getStoredSpend(`daily_${today}`) || 0;
-    const monthlySpend = this.getStoredSpend(`monthly_${thisMonth}`) || 0;
+    const dailySpend = (await this.getStoredSpend(`daily_${today}`)) || 0;
+    const monthlySpend =
+      (await this.getStoredSpend(`monthly_${thisMonth}`)) || 0;
 
     this.budgetStatus.currentSpend.daily = dailySpend;
     this.budgetStatus.currentSpend.monthly = monthlySpend;
@@ -386,18 +396,22 @@ export class PrefetchingService {
       this.budgetStatus.remainingMonthly <= 0;
   }
 
-  public updateBudgetSpend(cost: number): void {
+  public async updateBudgetSpend(cost: number): Promise<void> {
     const today = new Date().toDateString();
     const thisMonth = new Date().toISOString().slice(0, 7);
 
     // Update daily spend
-    const currentDailySpend = this.getStoredSpend(`daily_${today}`) || 0;
-    this.setStoredSpend(`daily_${today}`, currentDailySpend + cost);
+    const currentDailySpend =
+      (await this.getStoredSpend(`daily_${today}`)) || 0;
+    await this.setStoredSpend(`daily_${today}`, currentDailySpend + cost);
 
     // Update monthly spend
     const currentMonthlySpend =
-      this.getStoredSpend(`monthly_${thisMonth}`) || 0;
-    this.setStoredSpend(`monthly_${thisMonth}`, currentMonthlySpend + cost);
+      (await this.getStoredSpend(`monthly_${thisMonth}`)) || 0;
+    await this.setStoredSpend(
+      `monthly_${thisMonth}`,
+      currentMonthlySpend + cost
+    );
 
     // Update session spend
     this.budgetStatus.currentSpend.session += cost;
@@ -413,22 +427,25 @@ export class PrefetchingService {
       0,
       this.budgetStatus.remainingMonthly - cost
     );
-
-    console.log(JSON.stringify(this.budgetStatus, null, 2));
   }
 
-  private getStoredSpend(key: string): number {
+  private async getStoredSpend(key: string): Promise<number> {
     try {
-      const stored = localStorage.getItem(`prefetch_spend_${key}`);
+      const stored = await CrossPlatformStorage.getItem(
+        `prefetch_spend_${key}`
+      );
       return stored ? parseFloat(stored) : 0;
     } catch {
       return 0;
     }
   }
 
-  private setStoredSpend(key: string, value: number): void {
+  private async setStoredSpend(key: string, value: number): Promise<void> {
     try {
-      localStorage.setItem(`prefetch_spend_${key}`, value.toString());
+      await CrossPlatformStorage.setItem(
+        `prefetch_spend_${key}`,
+        value.toString()
+      );
     } catch (error) {
       console.warn("Failed to store spend data:", error);
     }

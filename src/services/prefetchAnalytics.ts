@@ -1,4 +1,5 @@
 import { PrefetchEvent, PrefetchAnalytics } from '@/types/prefetching';
+import { CrossPlatformStorage } from '@/utils/crossPlatformStorage';
 
 export class PrefetchAnalyticsService {
   private events: PrefetchEvent[] = [];
@@ -9,7 +10,7 @@ export class PrefetchAnalyticsService {
     this.loadStoredEvents();
   }
   
-  trackEvent(event: PrefetchEvent): void {
+  async trackEvent(event: PrefetchEvent): Promise<void> {
     this.events.push(event);
     
     // Keep only recent events
@@ -18,7 +19,7 @@ export class PrefetchAnalyticsService {
     }
     
     // Persist to storage
-    this.saveEvents();
+    await this.saveEvents();
   }
   
   getAnalytics(periodHours: number = 24): PrefetchAnalytics {
@@ -126,9 +127,9 @@ export class PrefetchAnalyticsService {
     return totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
   }
   
-  private loadStoredEvents(): void {
+  private async loadStoredEvents(): Promise<void> {
     try {
-      const stored = localStorage.getItem(this.storageKey);
+      const stored = await CrossPlatformStorage.getItem(this.storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
@@ -140,20 +141,20 @@ export class PrefetchAnalyticsService {
     }
   }
   
-  private saveEvents(): void {
+  private async saveEvents(): Promise<void> {
     try {
       // Only save recent events to avoid storage bloat
       const recentEvents = this.events.slice(-this.maxEvents);
-      localStorage.setItem(this.storageKey, JSON.stringify(recentEvents));
+      await CrossPlatformStorage.setItem(this.storageKey, JSON.stringify(recentEvents));
     } catch (error) {
       console.warn('Failed to save analytics events:', error);
     }
   }
   
   // Public API methods
-  clearAnalytics(): void {
+ async clearAnalytics(): Promise<void> {
     this.events = [];
-    localStorage.removeItem(this.storageKey);
+    await CrossPlatformStorage.removeItem(this.storageKey);
   }
   
   exportAnalytics(): PrefetchEvent[] {

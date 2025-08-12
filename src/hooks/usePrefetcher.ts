@@ -68,9 +68,9 @@ export function usePrefetcher(
 
   // Set up event listeners
   useEffect(() => {
-    const handlePrefetchEvent = (event: PrefetchEvent) => {
+    const handlePrefetchEvent = async (event: PrefetchEvent) => {
       // Track event in analytics
-      prefetchAnalytics.trackEvent(event);
+      await prefetchAnalytics.trackEvent(event);
 
       // Update analytics state
       setAnalytics(prefetchAnalytics.getAnalytics());
@@ -157,7 +157,7 @@ export function usePrefetcher(
             card,
             includePhotos
           ).totalCost
-        prefetchingService.updateBudgetSpend(
+        await prefetchingService.updateBudgetSpend(
           totalCost
         );
 
@@ -196,8 +196,8 @@ export function usePrefetcher(
     return prefetchAnalytics.getRecentEvents(count);
   }, []);
 
-  const clearAnalytics = useCallback(() => {
-    prefetchAnalytics.clearAnalytics();
+  const clearAnalytics = useCallback(async () => {
+    await prefetchAnalytics.clearAnalytics();
     setAnalytics(prefetchAnalytics.getAnalytics());
   }, []);
 
