@@ -31,6 +31,7 @@ import {
   getOptimizedPerformanceConfig,
 } from "@/utils/deviceOptimization";
 import { isIOS, isAndroid } from "@/lib/utils";
+import * as nativeAdsProvider from "@/services/nativeAdsProvider";
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -77,6 +78,12 @@ export function SwipeCard({
 
   const [openMapDialog, setOpenMapDialog] = useState(false);
   const [openMapDialogAddress, setOpenMapDialogAddress] = useState("");
+  // Fire impression when a sponsored card becomes top
+  useEffect(() => {
+    if (isTop && card.isSponsored) {
+      nativeAdsProvider.recordImpression(card.id);
+    }
+  }, [isTop, card.isSponsored, card.id]);
 
   // Memoize expensive callbacks for better performance
   const handleMapsClick = useCallback((resturantAddress: string) => {
@@ -350,6 +357,7 @@ export function SwipeCard({
     };
 
     const ExpandButton = () => {
+      if (card.isSponsored) return null;
       return (
         <button
           onClick={() => {
@@ -837,18 +845,22 @@ export function SwipeCard({
             }`}
           />
         }
-        {/* Info Badge: show "Sponsored" label for ads */}
+        {/* Info Badge: show "Sponsored" for ads, otherwise cuisine/price */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
-          <>
-            <span className="text-gray-800 font-bold text-sm">
-              {card.cuisine}
-            </span>
-            {card.priceRange && (
-              <div className="flex items-center">
-                {renderPriceRange(card.priceRange)}
-              </div>
-            )}
-          </>
+          {card.isSponsored ? (
+            <span className="text-gray-800 font-bold text-sm">Sponsored</span>
+          ) : (
+            <>
+              <span className="text-gray-800 font-bold text-sm">
+                {card.cuisine}
+              </span>
+              {card.priceRange && (
+                <div className="flex items-center">
+                  {renderPriceRange(card.priceRange)}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Content Overlays with AnimatePresence */}

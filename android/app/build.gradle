@@ -9,6 +9,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Provide manifest placeholder for AdMob App ID (defaults to Google test App ID)
+        manifestPlaceholders = [
+            VITE_ADMOB_APP_ID_ANDROID: System.getenv('VITE_ADMOB_APP_ID_ANDROID') ?: 'ca-app-pub-3940256099942544~3347511713'
+        ]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

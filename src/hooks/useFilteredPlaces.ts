@@ -26,6 +26,12 @@ import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
 import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
 import { openUrl } from "@/utils/browser";
+import { isAdsEnabled } from "@/utils/ads";
+import {
+  getNextAdCard,
+  getInterleaveInterval,
+  startNativeAdsPreload,
+} from "@/services/nativeAdsProvider";
 
 export interface UseFilteredPlacesOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -153,6 +159,13 @@ export function useFilteredPlaces(
       }
     },
   });
+
+  // Ensure native ads preload starts early on mount (no-op on web/disabled)
+  useEffect(() => {
+    if (isAdsEnabled()) {
+      startNativeAdsPreload();
+    }
+  }, []);
 
   // Behavior tracking integration
   const { trackCardView, trackSwipeAction, trackDetailView } =
@@ -364,17 +377,43 @@ export function useFilteredPlaces(
       setBaseCards(transformedCards);
 
       // Apply filters if enabled and active
-      let newCards = null;
+      let newCards: RestaurantCard[] = [];
       if (enableFiltering && hasActiveFilters) {
         const result = await applyFiltersToCards(transformedCards);
-        newCards = result.filteredCards;
+        newCards = result.filteredCards as RestaurantCard[];
         setFilterResult(result);
-        setCards(result.filteredCards.slice(0, maxCards));
       } else {
-        newCards = transformedCards;
-        setCards(transformedCards.slice(0, maxCards));
+        newCards = transformedCards as RestaurantCard[];
         setFilterResult(null);
       }
+
+      // Interleave sponsored native ads after every N real cards
+      const shouldInjectAds = isAdsEnabled();
+      const interval = getInterleaveInterval();
+      const interleaved: RestaurantCard[] = [];
+      let lastWasAd = false;
+
+      for (let i = 0, realCount = 0; i < newCards.length && interleaved.length < maxCards; i++) {
+        const card = newCards[i];
+        interleaved.push(card);
+        realCount++;
+        lastWasAd = false;
+
+        const atInjectionPoint = realCount > 0 && realCount % interval === 0;
+        if (shouldInjectAds && atInjectionPoint && interleaved.length < maxCards) {
+          const adCard = getNextAdCard();
+          if (adCard && !lastWasAd) {
+            interleaved.push(adCard);
+            lastWasAd = true;
+            if (import.meta.env.DEV) {
+              console.log("[Ads] Injected sponsored card after index", i);
+            }
+          }
+        }
+      }
+
+      const limited = (shouldInjectAds ? interleaved : newCards).slice(0, maxCards);
+      setCards(limited);
     } catch (err) {
       console.error("Error processing places:", err);
       setError(

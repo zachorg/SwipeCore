@@ -20,12 +20,24 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 
 ### Environment Configuration
 
-1. **Frontend**: Copy `.env.example` to `.env.local` and configure:
+1. **Frontend**: Create `.env` and `.env.production` with the following (Google test IDs by default):
    ```bash
+   # Common
    VITE_BACKEND_URL=http://localhost:4000
    VITE_USE_LIVE_DATA=true
    VITE_ENABLE_LOCATION_SERVICES=true
+
+   # Ads
+   VITE_ADS_ENABLED=true
+   VITE_ADS_TESTING=true
+   VITE_ADMOB_APP_ID_ANDROID=ca-app-pub-3940256099942544~3347511713
+   VITE_ADMOB_APP_ID_IOS=ca-app-pub-3940256099942544~1458002511
+   VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID=ca-app-pub-3940256099942544/2247696110
+   VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS=ca-app-pub-3940256099942544/3986624511
    ```
+
+   - Use `VITE_ADS_ENABLED=false` to disable all ad injection.
+   - Keep `VITE_ADS_TESTING=true` during development.
 
 2. **Backend**: Copy `backend/env.example` to `backend/.env` and configure:
    ```bash
@@ -64,15 +76,38 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 3. For mobile development:
    ```bash
    # Android
+   npm install
    npm run build
    npx cap sync android
    npx cap run android
 
-   # iOS  
+   # iOS (on macOS)
+   npm install
    npm run build
    npx cap sync ios
-   npx cap run ios
+   # Open Xcode and run the workspace to install CocoaPods and fetch the Mobile Ads SDK
    ```
+
+### Google AdMob Native Ads Setup
+
+1. Ensure the Capacitor AdMob plugin is initialized (handled in `src/utils/ads.ts`).
+2. Android: `android/app/src/main/AndroidManifest.xml` includes:
+   ```xml
+   <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${VITE_ADMOB_APP_ID_ANDROID}" />
+   ```
+   Use Google test IDs until you are ready for production.
+3. iOS: Add the following to `ios/App/App/Info.plist` (create if missing):
+   ```xml
+   <key>GADApplicationIdentifier</key>
+   <string>$(VITE_ADMOB_APP_ID_IOS)</string>
+   ```
+   Also include the recommended SKAdNetwork IDs per Google docs. Then run `npx cap sync ios`.
+4. Environment variables control ads:
+   - `VITE_ADS_ENABLED`: master toggle
+   - `VITE_ADS_TESTING`: initialize in testing mode
+   - `VITE_ADMOB_NATIVE_AD_UNIT_ID_*`: native ad unit IDs
+
+Native ad cards are interleaved into the swipe deck (after roughly every 4 real cards) and labeled “Sponsored.” Taps use the native plugin’s click handler, and impressions are recorded when the ad becomes the top card.
 
 ## Google Places API Setup
 

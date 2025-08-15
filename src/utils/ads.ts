@@ -3,11 +3,37 @@ import { Capacitor } from '@capacitor/core';
 import { AdMob } from '@capacitor-community/admob';
 
 let initialized = false;
+let trackingAuthorized: boolean | null = null;
+
+export function isAdsEnabled(): boolean {
+  try {
+    return (import.meta as any)?.env?.VITE_ADS_ENABLED === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function getNativeAdUnitId(): string {
+  const platform = Capacitor.getPlatform();
+  if (platform === 'android') {
+    return (
+      (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID ||
+      'ca-app-pub-3940256099942544/2247696110'
+    );
+  }
+  if (platform === 'ios') {
+    return (
+      (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS ||
+      'ca-app-pub-3940256099942544/3986624511'
+    );
+  }
+  return 'test-native-ad-unit';
+}
 
 export async function initMobileAds(): Promise<boolean> {
   if (initialized) return true;
   try {
-    const enabled = import.meta.env.VITE_ADS_ENABLED === 'true';
+    const enabled = isAdsEnabled();
     if (!enabled) return false;
 
     const platform = Capacitor.getPlatform();
@@ -22,18 +48,30 @@ export async function initMobileAds(): Promise<boolean> {
     // On iOS, request ATT if supported by the plugin
     if (platform === 'ios') {
       try {
-        await (AdMob as any)?.requestTrackingAuthorization?.();
-      } catch {
-        // ignore
+        const status = await (AdMob as any)?.requestTrackingAuthorization?.();
+        trackingAuthorized = status === 'authorized' || status === 3;
+        if (import.meta.env.DEV) {
+          console.log('[AdMob] ATT status', status);
+        }
+      } catch (e) {
+        if (import.meta.env.DEV) console.log('[AdMob] ATT request failed', e);
+        trackingAuthorized = null;
       }
     }
 
     // Initialize via Capacitor plugin when present
     if (AdMob?.initialize) {
-      console.log('[AdMob] Initializing Mobile Ads SDK');
+      const initializeForTesting =
+        (import.meta as any)?.env?.VITE_ADS_TESTING === 'true';
+      const testingDevices: string[] = [];
+      if (import.meta.env.DEV) {
+        console.log('[AdMob] Initializing Mobile Ads SDK', {
+          initializeForTesting,
+        });
+      }
       await AdMob.initialize({
-        testingDevices: [],
-        initializeForTesting: true,
+        testingDevices,
+        initializeForTesting,
       });
       console.log('[AdMob] Initialization complete');
       initialized = true;
@@ -60,7 +98,8 @@ function getInterstitialAdUnitId(): string {
 export async function prepareInterstitial(): Promise<boolean> {
   try {
     const adId = getInterstitialAdUnitId();
-    await (AdMob as any).prepareInterstitial?.({ adId, isTesting: true });
+    const isTesting = (import.meta as any)?.env?.VITE_ADS_TESTING === 'true';
+    await (AdMob as any).prepareInterstitial?.({ adId, isTesting });
     return true;
   } catch (e) {
     console.warn('[AdMob] prepareInterstitial failed', e);

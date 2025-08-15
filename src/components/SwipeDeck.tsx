@@ -1,25 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SwipeCard } from "./SwipeCard";
-import {
-  RestaurantCard,
-  SwipeConfig,
-  defaultSwipeConfig,
-  androidOptimizedSwipeConfig,
-  defaultFeatureFlags,
-} from "@/types/Types";
+import { RestaurantCard, SwipeConfig, defaultSwipeConfig, androidOptimizedSwipeConfig } from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
   useFilteredPlaces,
   UseFilteredPlacesOptions,
 } from "@/hooks/useFilteredPlaces";
 import { Button } from "./ui/button";
-import {
-  RefreshCw,
-  MapPin,
-  AlertCircle,
-  Settings,
-  HandMetal,
-} from "lucide-react";
+import { RefreshCw, MapPin, AlertCircle, Settings } from "lucide-react";
 import { isAndroid } from "@/lib/utils";
 import { FilterPanel } from "./filters/FilterPanel";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +15,7 @@ import { ToastAction } from "./ui/toast";
 import { useNavigate } from "react-router-dom";
 import { openUrl } from "@/utils/browser";
 import { useQueryClient } from "@tanstack/react-query";
+import * as nativeAdsProvider from "@/services/nativeAdsProvider";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -202,6 +191,16 @@ export function SwipeDeck({
     }
   };
 
+  const handleSponsoredSwipe = (cardId: string) => {
+    const swipeAction = {
+      cardId,
+      action: "pass" as const,
+      timestamp: Date.now(),
+    };
+    swipeCard(swipeAction);
+    onSwipeAction?.(cardId, "pass");
+  };
+
   const visibleCards = cards.slice(0, maxVisibleCards);
 
   const handleMenuOpen = () => {
@@ -241,13 +240,7 @@ export function SwipeDeck({
 
   const handleCardTap = (card: RestaurantCard) => {
     if (card.isSponsored) {
-      const url = (card as any).adClickUrl as string | undefined;
-      if (url) {
-        console.log("Opening sponsored click URL", { url });
-        openUrl(url);
-      } else {
-        console.log("Tap ignored (no click URL)");
-      }
+      nativeAdsProvider.handleClick(card.id);
       return;
     }
     onCardTap?.(card);
@@ -447,9 +440,7 @@ export function SwipeDeck({
               <SwipeCard
                 key={card.id}
                 card={card}
-                onSwipe={() => {
-                  onSwipeAction?.(card.id, "pass");
-                }}
+                onSwipe={() => handleSponsoredSwipe(card.id)}
                 config={swipeConfig}
                 isTop={index === 0}
                 index={index}

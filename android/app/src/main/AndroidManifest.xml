@@ -11,10 +11,10 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/AppTheme">
 
-        <!-- AdMob App ID meta-data; value provided via @string/admob_app_id -->
+        <!-- AdMob App ID meta-data using Vite env placeholder (replaced during build/sync) -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="@string/admob_app_id" />
+            android:value="${VITE_ADMOB_APP_ID_ANDROID}" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
