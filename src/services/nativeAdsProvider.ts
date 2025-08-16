@@ -1,9 +1,10 @@
 import { RestaurantCard } from "@/types/Types";
-import { initMobileAds, isAdsEnabled, getNativeAdUnitId, getAdMobAppId } from "@/utils/ads";
+import { initMobileAds, isAdsEnabled, getNativeAdUnitId } from "@/utils/ads";
 import { Capacitor } from "@capacitor/core";
 import { AdMobNativeAdvanced } from "@brandonknudsen/admob-native-advanced";
 import type { NativeAdData } from "@brandonknudsen/admob-native-advanced";
-import { AdMob } from "@capacitor-community/admob";
+import { AdmobAds } from "capacitor-admob-ads";
+
 
 // Simple in-memory ad inventory and tracking. Safe no-ops on web/dev.
 
@@ -17,40 +18,8 @@ const cardIdToNativeId = new Map<string, string>();
 
 // Maintain a small preload queue for smoother interleaving
 const preloadedAds: NativeAdData[] = [];
-const MAX_PRELOADED_ADS = 2;
-let nativePluginInitialized = false;
-
-async function ensureNativePluginInitialized(): Promise<void> {
-  if (nativePluginInitialized) return;
-  const platform = Capacitor.getPlatform();
-  if (platform === "web") {
-    if (DEBUG) console.log("[Ads] Skipping native plugin init (web platform)", { platform });
-    return;
-  }
-  try {
-    const appId = getAdMobAppId();
-    if (DEBUG) {
-      console.log("[Ads] Initializing AdMob plugins", { appId, platform });
-    }
-    
-    if (platform === "ios") {
-      // Use AdMobNativeAdvanced for iOS
-      await AdMobNativeAdvanced.initialize({ appId });
-      if (DEBUG) console.log("[Ads] AdMobNativeAdvanced initialized for iOS");
-    } else if (platform === "android") {
-      // Use @capacitor-community/admob for Android initialization
-      await AdMob.initialize({
-        testingDevices: [],
-        initializeForTesting: false
-      });
-      if (DEBUG) console.log("[Ads] @capacitor-community/admob initialized for Android");
-    }
-    
-    nativePluginInitialized = true;
-  } catch (e) {
-    if (DEBUG) console.warn("[Ads] Failed to initialize AdMob plugins", e);
-  }
-}
+const MAX_PRELOADED_ADS = 5; // Increased to support more real ads
+// Removed duplicate initialization - now using unified initMobileAds() from @/utils/ads
 
 function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
   const id = `native-${native.adId}`;
@@ -63,6 +32,18 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
       heightPx: 0,
     } as any,
   ];
+
+  if (DEBUG) {
+    console.log("[Ads] Mapping native ad to card", {
+      nativeAdId: native.adId,
+      headline: native.headline,
+      body: native.body,
+      advertiser: native.advertiser,
+      photoUrl,
+      hasMediaUrl: Boolean(native.mediaContentUrl),
+      hasIconUrl: Boolean(native.iconUrl)
+    });
+  }
 
   const card: RestaurantCard = {
     id,
@@ -77,6 +58,7 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
     address: undefined,
     isOpenNow: undefined,
     photos,
+    images: photos.map(p => p.url), // Add images array for SwipeCard navigation
     basicDetails: {
       id,
       displayName: { text: native.headline || "Sponsored", languageCode: "en" },
@@ -92,6 +74,20 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
 
   adRegistry.set(id, card);
   cardIdToNativeId.set(id, native.adId);
+  
+  if (DEBUG) {
+    console.log("[Ads] Final mapped card", {
+      cardId: card.id,
+      isSponsored: card.isSponsored,
+      title: card.title,
+      subtitle: card.subtitle,
+      photosLength: card.photos?.length,
+      imagesLength: card.images?.length,
+      firstPhotoUrl: card.photos?.[0]?.url,
+      firstImageUrl: card.images?.[0]
+    });
+  }
+  
   return card;
 }
 
@@ -104,6 +100,7 @@ function createFallbackAd(): RestaurantCard {
     subtitle: "Recommended near you",
     adClickUrl: undefined,
     photos: [],
+    images: [], // Add empty images array
     basicDetails: {
       id,
       displayName: { text: "Sponsored", languageCode: "en" },
@@ -114,51 +111,7 @@ function createFallbackAd(): RestaurantCard {
   return card;
 }
 
-function createFallbackAdWithTestData(): RestaurantCard {
-  const id = `ad-${Date.now()}-${adCounter++}`;
-  const testAds = [
-    {
-      title: "DoorDash - Fast Delivery",
-      subtitle: "Food delivered in 30 minutes",
-      photo: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&h=1200&fit=crop"
-    },
-    {
-      title: "Uber Eats - Order Now",
-      subtitle: "Get $5 off your first order",
-      photo: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&h=1200&fit=crop"
-    },
-    {
-      title: "Grubhub - Local Favorites",
-      subtitle: "Discover restaurants near you",
-      photo: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&h=1200&fit=crop"
-    }
-  ];
-  
-  const testAd = testAds[adCounter % testAds.length];
-  
-  const card: RestaurantCard = {
-    id,
-    isSponsored: true,
-    title: testAd.title,
-    subtitle: testAd.subtitle,
-    adClickUrl: undefined,
-    photos: [
-      {
-        url: testAd.photo,
-        widthPx: 800,
-        heightPx: 1200,
-      } as any,
-    ],
-    basicDetails: {
-      id,
-      displayName: { text: testAd.title, languageCode: "en" },
-      regularOpeningHours: { openNow: false },
-    },
-  } as RestaurantCard;
-  
-  adRegistry.set(id, card);
-  return card;
-}
+
 
 function createRealisticNativeAd(): RestaurantCard {
   const id = `native-ad-${Date.now()}-${adCounter++}`;
@@ -211,19 +164,22 @@ function createRealisticNativeAd(): RestaurantCard {
   
   const ad = realAds[adCounter % realAds.length];
   
+  const photos = [
+    {
+      url: ad.photo,
+      widthPx: 800,
+      heightPx: 1200,
+    } as any,
+  ];
+
   const card: RestaurantCard = {
     id,
     isSponsored: true,
     title: ad.headline,
     subtitle: `${ad.advertiser} • ${ad.body.slice(0, 50)}...`,
     adClickUrl: undefined,
-    photos: [
-      {
-        url: ad.photo,
-        widthPx: 800,
-        heightPx: 1200,
-      } as any,
-    ],
+    photos,
+    images: photos.map(p => p.url), // Add images array for SwipeCard navigation
     basicDetails: {
       id,
       displayName: { text: ad.headline, languageCode: "en" },
@@ -268,7 +224,12 @@ async function topUpPreloadedAds(): Promise<void> {
     const platform = Capacitor.getPlatform();
     if (platform === "web") return; // not supported on web
     
-    await ensureNativePluginInitialized();
+    if (DEBUG) {
+      console.log("[Ads] topUpPreloadedAds called", { platform, currentQueueSize: preloadedAds.length, target: MAX_PRELOADED_ADS });
+    }
+    
+    // Ensure AdMob is initialized using the unified approach
+    await initMobileAds();
     
     if (platform === "ios") {
       // iOS: Use AdMobNativeAdvanced for real native ads
@@ -291,11 +252,93 @@ async function topUpPreloadedAds(): Promise<void> {
         }
       }
     } else if (platform === "android") {
-      // Android: Create realistic native ads using real advertiser data
+      // Android: Try capacitor-admob-ads for native ads (fallback to mock if issues)
       if (DEBUG) {
-        console.log("[Ads] Android: Generating realistic native ads with real advertiser data");
+        console.log("[Ads] Android: Attempting real native ads via capacitor-admob-ads (compatibility warning exists)");
       }
-      // This will be handled in getNextAdCard() using createRealisticNativeAd()
+      while (preloadedAds.length < MAX_PRELOADED_ADS) {
+        const adUnitId = getNativeAdUnitId();
+        if (DEBUG) {
+          console.log("[Ads] Loading Android native ad", { 
+            adUnitId, 
+            queueSize: preloadedAds.length,
+            adsEnabled: isAdsEnabled(),
+            testingMode: import.meta.env.VITE_ADS_TESTING,
+            envVars: {
+              VITE_ADS_ENABLED: import.meta.env.VITE_ADS_ENABLED,
+              VITE_ADS_TESTING: import.meta.env.VITE_ADS_TESTING,
+              VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID: import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID
+            }
+          });
+        }
+        try {
+          if (DEBUG) {
+            console.log("[Ads] Calling AdmobAds.loadNativeAd with options:", {
+              adId: adUnitId,
+              isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
+              adsCount: 1
+            });
+          }
+          
+          const result = await AdmobAds.loadNativeAd({
+            adId: adUnitId,
+            isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
+            adsCount: 1
+          });
+          
+          if (DEBUG) {
+            console.log("[Ads] AdmobAds.loadNativeAd result:", result);
+          }
+          
+          if (result && result.ads && result.ads.length > 0) {
+            const adData = result.ads[0];
+            if (DEBUG) {
+              console.log("[Ads] Processing ad data:", adData);
+            }
+            
+            // Convert to our expected format
+            const nativeAdData: NativeAdData = {
+              adId: adData.id,
+              headline: adData.headline,
+              body: adData.body,
+              callToAction: adData.cta,
+              advertiser: adData.advertiser,
+              mediaContentUrl: adData.cover,
+              iconUrl: adData.icon,
+              adChoicesIconUrl: adData.adChoicesUrl,
+              isContentAd: true // Default for this plugin
+            };
+            preloadedAds.push(nativeAdData);
+            if (DEBUG) {
+              console.log("[Ads] Android native ad loaded successfully", { 
+                adId: nativeAdData.adId, 
+                headline: nativeAdData.headline,
+                hasMedia: Boolean(nativeAdData.mediaContentUrl) 
+              });
+            }
+          } else {
+            if (DEBUG) {
+              console.warn("[Ads] No ads returned from AdmobAds.loadNativeAd", { result });
+            }
+            // Break the loop if we get an empty response to avoid infinite requests
+            break;
+          }
+        } catch (e) {
+          if (DEBUG) {
+            console.warn("[Ads] Android native ad load failed, will use mock data", e);
+          }
+          break;
+        }
+        
+        // Add a small delay between ad requests to avoid rate limiting
+        if (preloadedAds.length < MAX_PRELOADED_ADS) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      if (DEBUG) {
+        console.log("[Ads] Android ad preload completed", { finalQueueSize: preloadedAds.length });
+      }
     }
   } catch {
     // ignore
@@ -308,7 +351,7 @@ export function getInterleaveInterval(): number {
   return AD_INTERVAL_DEFAULT;
 }
 
-export function getNextAdCard(): RestaurantCard | null {
+export async function getNextAdCard(): Promise<RestaurantCard | null> {
   if (!isAdsEnabled()) return null;
   const platform = Capacitor.getPlatform();
 
@@ -326,13 +369,76 @@ export function getNextAdCard(): RestaurantCard | null {
     }
   }
 
-  // Android: Use realistic native ads with real advertiser data
+  // Android: Use real native ads via capacitor-admob-ads, fallback to mock
   if (platform === "android") {
     // Ensure AdMob is initialized for proper tracking
-    void ensureNativePluginInitialized();
+    void initMobileAds();
+    
+    // Try to get a real native ad if available
+    const next = preloadedAds.shift();
+    if (next) {
+      // Aggressively refill queue when it gets low
+      if (preloadedAds.length <= 2) {
+        if (DEBUG) {
+          console.log("[Ads] Queue getting low, triggering refill", { remaining: preloadedAds.length });
+        }
+        void topUpPreloadedAds();
+      }
+      const card = mapNativeAdToCard(next);
+      if (DEBUG) {
+        console.log("[Ads] Emitting real Android native ad card", { cardId: card.id, nativeId: next.adId, queueRemaining: preloadedAds.length });
+      }
+      return card;
+    }
+    
+    // Try to refill immediately if queue is empty
+    if (preloadedAds.length === 0) {
+      if (DEBUG) {
+        console.log("[Ads] Queue is empty, attempting immediate refill");
+      }
+      try {
+        // Try one immediate ad load
+        const adUnitId = getNativeAdUnitId();
+        const result = await AdmobAds.loadNativeAd({
+          adId: adUnitId,
+          isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
+          adsCount: 1
+        });
+        
+        if (result && result.ads && result.ads.length > 0) {
+          const adData = result.ads[0];
+          const nativeAdData: NativeAdData = {
+            adId: adData.id,
+            headline: adData.headline,
+            body: adData.body,
+            callToAction: adData.cta,
+            advertiser: adData.advertiser,
+            mediaContentUrl: adData.cover,
+            iconUrl: adData.icon,
+            adChoicesIconUrl: adData.adChoicesUrl,
+            isContentAd: true
+          };
+          
+          const card = mapNativeAdToCard(nativeAdData);
+          if (DEBUG) {
+            console.log("[Ads] Immediate refill successful, emitting real ad", { cardId: card.id });
+          }
+          
+          // Start background refill for next time
+          void topUpPreloadedAds();
+          return card;
+        }
+      } catch (e) {
+        if (DEBUG) {
+          console.warn("[Ads] Immediate refill failed", e);
+        }
+      }
+    }
+    
+    // Fallback to realistic mock data if no real ads available
     const card = createRealisticNativeAd();
     if (DEBUG) {
-      console.log("[Ads] Emitting realistic Android native ad", { cardId: card.id, advertiser: card.adMeta?.advertiser });
+      console.log("[Ads] Emitting mock Android native ad (no real ads available)", { cardId: card.id, advertiser: card.adMeta?.advertiser });
     }
     return card;
   }

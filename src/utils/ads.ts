@@ -91,6 +91,7 @@ export async function initMobileAds(): Promise<boolean> {
     if (!enabled) return false;
 
     const platform = Capacitor.getPlatform();
+    const DEBUG = import.meta.env.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV;
 
     // On web, act as a no-op to avoid errors during local dev/preview
     if (platform === 'web') {
@@ -98,18 +99,29 @@ export async function initMobileAds(): Promise<boolean> {
       return true;
     }
 
-    // Initialize using AdMobNativeAdvanced plugin (works on both iOS and Android)
-    const { AdMobNativeAdvanced } = await import('@brandonknudsen/admob-native-advanced');
     const appId = getAdMobAppId();
-    
-    if (import.meta.env.DEV) {
-      console.log('[AdMob] Initializing Mobile Ads SDK via AdMobNativeAdvanced', { appId, platform });
+    if (DEBUG) {
+      console.log('[AdMob] Initializing Mobile Ads SDK', { appId, platform });
     }
     
-    await AdMobNativeAdvanced.initialize({ appId });
+    if (platform === 'ios') {
+      // iOS: Use AdMobNativeAdvanced for native ads
+      const { AdMobNativeAdvanced } = await import('@brandonknudsen/admob-native-advanced');
+      await AdMobNativeAdvanced.initialize({ appId });
+      if (DEBUG) console.log('[AdMob] AdMobNativeAdvanced initialized for iOS');
+    } else if (platform === 'android') {
+      // Android: Use @capacitor-community/admob for initialization
+      const { AdMob } = await import('@capacitor-community/admob');
+      await AdMob.initialize({
+        testingDevices: [],
+        initializeForTesting: false
+      });
+      if (DEBUG) console.log('[AdMob] @capacitor-community/admob initialized for Android');
+    }
+    
     initialized = true;
     
-    if (import.meta.env.DEV) {
+    if (DEBUG) {
       console.log('[AdMob] Mobile Ads SDK initialization complete');
     }
     

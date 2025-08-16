@@ -404,7 +404,7 @@ export function useFilteredPlaces(
 
         const atInjectionPoint = realCount > 0 && realCount % interval === 0;
         if (shouldInjectAds && atInjectionPoint && interleaved.length < maxCards) {
-          const adCard = getNextAdCard();
+          const adCard = await getNextAdCard();
           if (adCard && !lastWasAd) {
             interleaved.push(adCard);
             lastWasAd = true;

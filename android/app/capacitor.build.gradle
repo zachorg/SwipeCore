@@ -15,6 +15,7 @@ dependencies {
     implementation project(':capacitor-browser')
     implementation project(':capacitor-geolocation')
     implementation project(':capacitor-preferences')
+    implementation project(':capacitor-admob-ads')
 
 }
 
