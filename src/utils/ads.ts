@@ -1,21 +1,35 @@
-// AdMob (Capacitor Community) helpers
+// AdMob helpers
 import { Capacitor } from '@capacitor/core';
-import { AdMob } from '@capacitor-community/admob';
 
 let initialized = false;
-let trackingAuthorized: boolean | null = null;
 
 export function getAdMobAppId(): string {
   try {
     const platform = Capacitor.getPlatform();
+    const DEBUG = import.meta.env.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV;
+
     if (platform === 'android') {
-      return (import.meta as any)?.env?.VITE_ADMOB_APP_ID_ANDROID || 'ca-app-pub-3940256099942544~3347511713';
+      const id = import.meta.env.VITE_ADMOB_APP_ID_ANDROID;
+      if (!id) {
+        console.error('[Ads] VITE_ADMOB_APP_ID_ANDROID not set in .env file');
+        return '';
+      }
+      if (DEBUG) console.log('[Ads] Using Android app ID from .env:', id);
+      return id;
     }
     if (platform === 'ios') {
-      return (import.meta as any)?.env?.VITE_ADMOB_APP_ID_IOS || 'ca-app-pub-3940256099942544~1458002511';
+      const id = import.meta.env.VITE_ADMOB_APP_ID_IOS;
+      if (!id) {
+        console.error('[Ads] VITE_ADMOB_APP_ID_IOS not set in .env file');
+        return '';
+      }
+      if (DEBUG) console.log('[Ads] Using iOS app ID from .env:', id);
+      return id;
     }
+    if (DEBUG) console.log('[Ads] Using test app ID for platform:', platform);
     return 'test-app-id';
-  } catch {
+  } catch (e) {
+    console.warn('[Ads] Error getting app ID:', e);
     return 'test-app-id';
   }
 }
@@ -31,18 +45,43 @@ export function isAdsEnabled(): boolean {
 export function getNativeAdUnitId(): string {
   const platform = Capacitor.getPlatform();
   if (platform === 'android') {
-    return (
-      (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID ||
-      'ca-app-pub-3940256099942544/2247696110'
-    );
+    const id = (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID;
+    if (!id) {
+      console.error('[Ads] VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID not set in .env file');
+      return '';
+    }
+    return id;
   }
   if (platform === 'ios') {
-    return (
-      (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS ||
-      'ca-app-pub-3940256099942544/3986624511'
-    );
+    const id = (import.meta as any)?.env?.VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS;
+    if (!id) {
+      console.error('[Ads] VITE_ADMOB_NATIVE_AD_UNIT_ID_IOS not set in .env file');
+      return '';
+    }
+    return id;
   }
-  return 'test-native-ad-unit';
+  return '';
+}
+
+export function getBannerAdUnitId(): string {
+  const platform = Capacitor.getPlatform();
+  if (platform === 'android') {
+    const id = (import.meta as any)?.env?.VITE_ADMOB_BANNER_AD_UNIT_ID_ANDROID;
+    if (!id) {
+      console.error('[Ads] VITE_ADMOB_BANNER_AD_UNIT_ID_ANDROID not set in .env file');
+      return '';
+    }
+    return id;
+  }
+  if (platform === 'ios') {
+    const id = (import.meta as any)?.env?.VITE_ADMOB_BANNER_AD_UNIT_ID_IOS;
+    if (!id) {
+      console.error('[Ads] VITE_ADMOB_BANNER_AD_UNIT_ID_IOS not set in .env file');
+      return '';
+    }
+    return id;
+  }
+  return '';
 }
 
 export async function initMobileAds(): Promise<boolean> {
@@ -59,39 +98,21 @@ export async function initMobileAds(): Promise<boolean> {
       return true;
     }
 
-    // If a Capacitor AdMob plugin is present, attempt initialization
-    // On iOS, request ATT if supported by the plugin
-    if (platform === 'ios') {
-      try {
-        const status = await (AdMob as any)?.requestTrackingAuthorization?.();
-        trackingAuthorized = status === 'authorized' || status === 3;
-        if (import.meta.env.DEV) {
-          console.log('[AdMob] ATT status', status);
-        }
-      } catch (e) {
-        if (import.meta.env.DEV) console.log('[AdMob] ATT request failed', e);
-        trackingAuthorized = null;
-      }
+    // Initialize using AdMobNativeAdvanced plugin (works on both iOS and Android)
+    const { AdMobNativeAdvanced } = await import('@brandonknudsen/admob-native-advanced');
+    const appId = getAdMobAppId();
+    
+    if (import.meta.env.DEV) {
+      console.log('[AdMob] Initializing Mobile Ads SDK via AdMobNativeAdvanced', { appId, platform });
     }
-
-    // Initialize via Capacitor plugin when present
-    if (AdMob?.initialize) {
-      const initializeForTesting =
-        (import.meta as any)?.env?.VITE_ADS_TESTING === 'true';
-      const testingDevices: string[] = [];
-      if (import.meta.env.DEV) {
-        console.log('[AdMob] Initializing Mobile Ads SDK', {
-          initializeForTesting,
-        });
-      }
-      await AdMob.initialize({
-        testingDevices,
-        initializeForTesting,
-      });
-      console.log('[AdMob] Initialization complete');
-      initialized = true;
+    
+    await AdMobNativeAdvanced.initialize({ appId });
+    initialized = true;
+    
+    if (import.meta.env.DEV) {
+      console.log('[AdMob] Mobile Ads SDK initialization complete');
     }
-
+    
     return true;
   } catch (e) {
     console.warn('[AdMob] Ads init failed:', e);

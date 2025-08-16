@@ -163,7 +163,7 @@ export function useFilteredPlaces(
   // Ensure native ads preload starts early on mount (no-op on web/disabled)
   useEffect(() => {
     if (isAdsEnabled()) {
-      if (import.meta.env.DEV) {
+      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
         console.log("[Ads] Starting native ads preload (hook mount)");
       }
       startNativeAdsPreload();

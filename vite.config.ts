@@ -16,4 +16,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    // Enable ads - other values will come from your .env file
+    'import.meta.env.VITE_ADS_ENABLED': JSON.stringify('true'),
+    'import.meta.env.VITE_ADS_DEBUG': JSON.stringify('true'),
+  },
 }));

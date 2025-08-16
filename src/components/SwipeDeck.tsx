@@ -240,6 +240,12 @@ export function SwipeDeck({
 
   const handleCardTap = (card: RestaurantCard) => {
     if (card.isSponsored) {
+      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
+        console.log("[Ads] Sponsored card tapped", {
+          cardId: card.id,
+          nativeId: (nativeAdsProvider as any)?.getNativeAdIdForCard?.(card.id),
+        });
+      }
       nativeAdsProvider.handleClick(card.id);
       return;
     }

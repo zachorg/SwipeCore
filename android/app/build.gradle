@@ -9,9 +9,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
-        // Provide manifest placeholder for AdMob App ID (defaults to Google test App ID)
+        // Provide manifest placeholder for AdMob App ID
         manifestPlaceholders = [
-            VITE_ADMOB_APP_ID_ANDROID: System.getenv('VITE_ADMOB_APP_ID_ANDROID') ?: 'ca-app-pub-3940256099942544~3347511713'
+            VITE_ADMOB_APP_ID_ANDROID: 'ca-app-pub-1638652278312904~7072049423'
         ]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -25,6 +25,11 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 

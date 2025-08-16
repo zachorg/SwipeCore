@@ -81,7 +81,7 @@ export function SwipeCard({
   // Fire impression when a sponsored card becomes top
   useEffect(() => {
     if (isTop && card.isSponsored) {
-      if (import.meta.env.DEV) {
+      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
         console.log("[Ads] Top sponsored card", {
           cardId: card.id,
           title: card.title,
