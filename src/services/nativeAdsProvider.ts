@@ -499,8 +499,16 @@ export function handleClick(adId: string): void {
     // iOS: Use AdMobNativeAdvanced click tracking
     void AdMobNativeAdvanced.reportClick(nativeId).catch(() => {});
   } else if (platform === "android") {
-    // Android: Log click (realistic ad behavior)
-    if (DEBUG) console.log("[Ads] Android ad click recorded", { adId });
+    // Android: Trigger native ad overlay so user can click through
+    try {
+      // Shows the native ad UI (provided by the SDK) which handles navigation
+      // and proper click/impression reporting
+      // Best-effort, ignore if plugin not available
+      void (AdmobAds as any)?.triggerNativeAd?.({ id: nativeId });
+      if (DEBUG) console.log("[Ads] Android ad overlay triggered", { adId, nativeId });
+    } catch {
+      if (DEBUG) console.warn("[Ads] Android ad click trigger failed", { adId, nativeId });
+    }
   }
   // Fallback: no-op for other platforms
 }
