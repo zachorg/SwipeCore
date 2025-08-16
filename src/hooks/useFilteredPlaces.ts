@@ -509,8 +509,11 @@ export function useFilteredPlaces(
     } else {
       // No active filters: restore unfiltered base list
       const source = baseCards.length > 0 ? baseCards : cards;
-      const limited = source.slice(0, maxCards);
-      setCards(limited);
+      // Always rebuild with ads when filter state changes back to none
+      (async () => {
+        const withAds = await buildInterleavedWithAds(source, maxCards);
+        setCards(withAds);
+      })();
       setFilterResult(null);
     }
     setShouldRefilter(false);
@@ -522,6 +525,7 @@ export function useFilteredPlaces(
     enableFiltering,
     hasActiveFilters,
     maxCards,
+    buildInterleavedWithAds,
   ]);
 
   // Swipe card action with behavior tracking and prefetching
