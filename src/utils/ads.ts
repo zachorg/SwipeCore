@@ -5,6 +5,21 @@ import { AdMob } from '@capacitor-community/admob';
 let initialized = false;
 let trackingAuthorized: boolean | null = null;
 
+export function getAdMobAppId(): string {
+  try {
+    const platform = Capacitor.getPlatform();
+    if (platform === 'android') {
+      return (import.meta as any)?.env?.VITE_ADMOB_APP_ID_ANDROID || 'ca-app-pub-3940256099942544~3347511713';
+    }
+    if (platform === 'ios') {
+      return (import.meta as any)?.env?.VITE_ADMOB_APP_ID_IOS || 'ca-app-pub-3940256099942544~1458002511';
+    }
+    return 'test-app-id';
+  } catch {
+    return 'test-app-id';
+  }
+}
+
 export function isAdsEnabled(): boolean {
   try {
     return (import.meta as any)?.env?.VITE_ADS_ENABLED === 'true';
@@ -83,38 +98,3 @@ export async function initMobileAds(): Promise<boolean> {
     return false;
   }
 }
-
-function getInterstitialAdUnitId(): string {
-  const platform = Capacitor.getPlatform();
-  if (platform === 'android') {
-    return (import.meta as any)?.env?.VITE_ADMOB_INTERSTITIAL_AD_UNIT_ID_ANDROID || 'ca-app-pub-3940256099942544/1033173712';
-  }
-  if (platform === 'ios') {
-    return (import.meta as any)?.env?.VITE_ADMOB_INTERSTITIAL_AD_UNIT_ID_IOS || 'ca-app-pub-3940256099942544/4411468910';
-  }
-  return 'test';
-}
-
-export async function prepareInterstitial(): Promise<boolean> {
-  try {
-    const adId = getInterstitialAdUnitId();
-    const isTesting = (import.meta as any)?.env?.VITE_ADS_TESTING === 'true';
-    await (AdMob as any).prepareInterstitial?.({ adId, isTesting });
-    return true;
-  } catch (e) {
-    console.warn('[AdMob] prepareInterstitial failed', e);
-    return false;
-  }
-}
-
-export async function showInterstitial(): Promise<boolean> {
-  try {
-    await (AdMob as any).showInterstitial?.();
-    return true;
-  } catch (e) {
-    console.warn('[AdMob] showInterstitial failed', e);
-    return false;
-  }
-}
-
-

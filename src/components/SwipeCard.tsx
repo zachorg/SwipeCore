@@ -81,6 +81,14 @@ export function SwipeCard({
   // Fire impression when a sponsored card becomes top
   useEffect(() => {
     if (isTop && card.isSponsored) {
+      if (import.meta.env.DEV) {
+        console.log("[Ads] Top sponsored card", {
+          cardId: card.id,
+          title: card.title,
+          hasPhotos: Array.isArray(card.photos) && card.photos.length > 0,
+          firstPhoto: card.photos?.[0]?.url || card.photos?.[0]?.googleUrl,
+        });
+      }
       nativeAdsProvider.recordImpression(card.id);
     }
   }, [isTop, card.isSponsored, card.id]);
