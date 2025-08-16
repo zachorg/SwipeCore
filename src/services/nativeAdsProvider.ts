@@ -21,13 +21,26 @@ const preloadedAds: NativeAdData[] = [];
 const MAX_PRELOADED_ADS = 5; // Increased to support more real ads
 // Removed duplicate initialization - now using unified initMobileAds() from @/utils/ads
 
-// Track which Android native overlays have been triggered to avoid duplicates
-const shownAndroidNativeOverlays = new Set<string>();
 // Track AdChoices link URLs for Android ads (plugin returns link, not icon)
 const nativeAdIdToAdChoicesLinkUrl = new Map<string, string>();
 
-function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
-  const id = `native-${native.adId}`;
+// Simple event listeners to notify UI when an ad card has been updated with real content
+type AdUpdateListener = (payload: { cardId: string; updatedCard: RestaurantCard }) => void;
+const adUpdateListeners = new Set<AdUpdateListener>();
+
+export function onAdUpdated(listener: AdUpdateListener): () => void {
+  adUpdateListeners.add(listener);
+  return () => adUpdateListeners.delete(listener);
+}
+
+function emitAdUpdated(cardId: string, updatedCard: RestaurantCard): void {
+  adUpdateListeners.forEach((fn) => {
+    try { fn({ cardId, updatedCard }); } catch {}
+  });
+}
+
+function mapNativeAdToCard(native: NativeAdData, targetCardId?: string): RestaurantCard {
+  const id = targetCardId ?? `native-${native.adId}`;
   const photoUrl = native.mediaContentUrl || native.iconUrl || undefined;
   const fallbackUrl = "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=1200&fit=crop";
   const photos = [
@@ -113,7 +126,7 @@ function createFallbackAd(): RestaurantCard {
     id,
     isSponsored: true,
     title: "Sponsored",
-    subtitle: "Recommended near you",
+    subtitle: undefined,
     adClickUrl: undefined,
     photos: [],
     images: [], // Add empty images array
@@ -124,7 +137,7 @@ function createFallbackAd(): RestaurantCard {
     },
     adMeta: {
       adChoicesIconUrl: "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png",
-      adChoicesText: "AdChoices"
+      adChoicesText: "Ad"
     },
   } as RestaurantCard;
   adRegistry.set(id, card);
@@ -195,24 +208,21 @@ function createRealisticNativeAd(): RestaurantCard {
   const card: RestaurantCard = {
     id,
     isSponsored: true,
-    title: ad.headline,
-    subtitle: `${ad.advertiser} • ${ad.body.slice(0, 50)}...`,
+    title: "Sponsored",
+    subtitle: undefined,
     adClickUrl: undefined,
-    photos,
-    images: photos.map(p => p.url), // Add images array for SwipeCard navigation
+    photos: [],
+    images: [], // Keep blank until real ad loads
     basicDetails: {
       id,
-      displayName: { text: ad.headline, languageCode: "en" },
+      displayName: { text: "Sponsored", languageCode: "en" },
       regularOpeningHours: { openNow: false },
     },
     // Store ad metadata for tracking
     adMeta: {
-      advertiser: ad.advertiser,
-      callToAction: ad.callToAction,
-      body: ad.body,
       isRealisticAd: true,
       adChoicesIconUrl: "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png", // Standard AdChoices icon
-      adChoicesText: "AdChoices"
+      adChoicesText: "Ad"
     }
   } as RestaurantCard;
   
@@ -351,10 +361,12 @@ export function recordImpression(adId: string): void {
             adChoicesIconUrl: adData.adChoicesUrl,
             isContentAd: true
           };
-          const realCard = mapNativeAdToCard(nativeAdData);
-          adRegistry.set(realCard.id, realCard);
-          cardIdToNativeId.set(realCard.id, nativeAdData.adId);
-          if (DEBUG) console.log('[Ads] Android swapped placeholder with real native ad', { cardId: realCard.id });
+          // Replace content of existing card id so UI updates in place
+          const realCard = mapNativeAdToCard(nativeAdData, adId);
+          adRegistry.set(adId, realCard);
+          cardIdToNativeId.set(adId, nativeAdData.adId);
+          emitAdUpdated(adId, realCard);
+          if (DEBUG) console.log('[Ads] Android swapped placeholder with real native ad', { cardId: adId });
         }
       } catch (e) {
         if (DEBUG) console.warn('[Ads] Android on-impression load failed', e);

@@ -93,6 +93,20 @@ export function SwipeCard({
     }
   }, [isTop, card.isSponsored, card.id]);
 
+  // When a sponsored card is updated with real data, force a local state update
+  useEffect(() => {
+    if (!card.isSponsored) return;
+    const off = nativeAdsProvider.onAdUpdated(({ cardId, updatedCard }) => {
+      if (cardId === card.id) {
+        // Copy fields into current card reference; parent holds array state
+        Object.assign(card, updatedCard);
+        // Force re-render via a tiny state toggle
+        setCurrentImageIndex((i) => (i === 0 ? 0 : i));
+      }
+    });
+    return off;
+  }, [card.id, card.isSponsored]);
+
   // Memoize expensive callbacks for better performance
   const handleMapsClick = useCallback((resturantAddress: string) => {
     setOpenMapDialogAddress(resturantAddress);
