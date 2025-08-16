@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
 import { placesRouter } from './routes/places';
+import { otpRouter } from './routes/otp';
+import { userProfileRouter } from './services/userProfileService';
 
 // Debug: Log environment loading
 console.log('🔧 Environment loaded:', {
@@ -82,6 +84,8 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/places', placesRouter);
+app.use('/api/otp', otpRouter);
+app.use('/api/userprofile', userProfileRouter);
 
 // 404 handler
 app.use((req, res) => {
