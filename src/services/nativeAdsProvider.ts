@@ -409,20 +409,6 @@ export async function getNextAdCard(): Promise<RestaurantCard | null> {
       if (DEBUG) {
         console.log("[Ads] Emitting real Android native ad card", { cardId: card.id, nativeId: next.adId, queueRemaining: preloadedAds.length });
       }
-      // Ensure native overlay (AdChoices/attribution) is rendered by the SDK
-      try {
-        if (!shownAndroidNativeOverlays.has(card.id)) {
-          await AdmobAds.triggerNativeAd({ id: next.adId });
-          shownAndroidNativeOverlays.add(card.id);
-          if (DEBUG) {
-            console.log("[Ads] Triggered Android native ad overlay", { nativeId: next.adId, cardId: card.id });
-          }
-        }
-      } catch (e) {
-        if (DEBUG) {
-          console.warn("[Ads] Failed to trigger Android native ad overlay", e);
-        }
-      }
       return card;
     }
     

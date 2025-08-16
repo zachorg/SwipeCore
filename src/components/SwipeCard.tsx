@@ -770,12 +770,7 @@ export function SwipeCard({
       onTouchStart={!isExpanded ? handleTouchStart : undefined}
       onTouchMove={!isExpanded ? handleTouchMove : undefined}
       onTouchEnd={!isExpanded ? handleTouchEnd : undefined}
-      onClick={() => {
-        // Desktop click support for sponsored cards
-        if (!isDragging && card.isSponsored) {
-          onCardTap?.(card);
-        }
-      }}
+      // Remove generic onClick to avoid accidental programmatic clicks on sponsored cards
       // Performance optimizations
       layout={false}
       layoutId={undefined}

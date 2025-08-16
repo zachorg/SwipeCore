@@ -390,33 +390,9 @@ export function useFilteredPlaces(
         setFilterResult(null);
       }
 
-      // Interleave sponsored native ads after every N real cards
-      const shouldInjectAds = isAdsEnabled();
-      const interval = getInterleaveInterval();
-      const interleaved: RestaurantCard[] = [];
-      let lastWasAd = false;
-
-      for (let i = 0, realCount = 0; i < newCards.length && interleaved.length < maxCards; i++) {
-        const card = newCards[i];
-        interleaved.push(card);
-        realCount++;
-        lastWasAd = false;
-
-        const atInjectionPoint = realCount > 0 && realCount % interval === 0;
-        if (shouldInjectAds && atInjectionPoint && interleaved.length < maxCards) {
-          const adCard = await getNextAdCard();
-          if (adCard && !lastWasAd) {
-            interleaved.push(adCard);
-            lastWasAd = true;
-            if (import.meta.env.DEV) {
-              console.log("[Ads] Injected sponsored card after index", i);
-            }
-          }
-        }
-      }
-
-      const limited = (shouldInjectAds ? interleaved : newCards).slice(0, maxCards);
-      setCards(limited);
+      // Interleave ads per rules: 1 at end, plus 1-2 sprinkled based on list size
+      const interleaved = await buildInterleavedWithAds(newCards, maxCards);
+      setCards(interleaved);
     } catch (err) {
       console.error("Error processing places:", err);
       setError(
@@ -424,6 +400,62 @@ export function useFilteredPlaces(
       );
     }
   };
+
+  // Build interleaved list with ads
+  const buildInterleavedWithAds = useCallback(
+    async (realCards: RestaurantCard[], limit: number): Promise<RestaurantCard[]> => {
+      const hasReal = Array.isArray(realCards) && realCards.length > 0;
+      if (!isAdsEnabled()) return realCards.slice(0, limit);
+      // If there are no real cards, return empty (do not show ad-only deck)
+      if (!hasReal) return [];
+
+      const maxLen = Math.min(realCards.length, limit);
+      const output: RestaurantCard[] = [];
+
+      // Decide how many internal ads
+      const internalAdsNeeded = maxLen >= 12 ? 2 : 1;
+
+      // Compute insertion indices roughly evenly spaced, avoid first and last positions
+      const internalIndices: number[] = [];
+      if (internalAdsNeeded === 1) {
+        internalIndices.push(Math.max(1, Math.floor(maxLen / 2)));
+      } else {
+        internalIndices.push(Math.max(1, Math.floor(maxLen / 3)));
+        internalIndices.push(Math.max(2, Math.floor((2 * maxLen) / 3)));
+      }
+
+      // Ensure uniqueness and sort
+      const uniqueInternal = Array.from(new Set(internalIndices)).filter((idx) => idx > 0 && idx < maxLen - 1).sort((a, b) => a - b);
+
+      // Walk real cards and inject on indices
+      let realIndex = 0;
+      for (let i = 0; i < maxLen; i++) {
+        output.push(realCards[realIndex++]);
+        const nextInsertSlot = uniqueInternal[0];
+        if (typeof nextInsertSlot === "number" && i + 1 === nextInsertSlot && output.length < limit) {
+          const ad = await getNextAdCard();
+          if (ad) {
+            output.push(ad);
+          }
+          uniqueInternal.shift();
+        }
+        if (output.length >= limit) break;
+      }
+
+      // Ensure one ad at the end when last is not an ad and capacity allows
+      if (
+        output.length < limit &&
+        output.length > 0 &&
+        !output[output.length - 1].isSponsored
+      ) {
+        const endAd = await getNextAdCard();
+        if (endAd) output.push(endAd);
+      }
+
+      return output.slice(0, limit);
+    },
+    [getNextAdCard]
+  );
 
   // Add card view tracking effect
   useEffect(() => {
@@ -451,8 +483,9 @@ export function useFilteredPlaces(
         const currentCards = baseCards.length > 0 ? baseCards : cards;
         const result = await applyFiltersToCards(currentCards);
         setFilterResult(result);
-        const limited = result.filteredCards.slice(0, maxCards);
-        setCards(limited);
+        // Rebuild with ad interleaving on every filter application
+        const withAds = await buildInterleavedWithAds(result.filteredCards as RestaurantCard[], maxCards);
+        setCards(withAds);
       } catch (err) {
         console.error("Error applying filters:", err);
         setError(
@@ -460,7 +493,7 @@ export function useFilteredPlaces(
         );
       }
     },
-    [enableFiltering, applyFiltersToCards, baseCards, maxCards]
+    [enableFiltering, applyFiltersToCards, baseCards, maxCards, buildInterleavedWithAds]
   );
 
   useEffect(() => {
