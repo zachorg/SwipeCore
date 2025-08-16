@@ -160,15 +160,18 @@ export function useFilteredPlaces(
     },
   });
 
-  // Ensure native ads preload starts early on mount (no-op on web/disabled)
+  // Lazy-start native ads preload only after we have at least one real card rendered
+  const adsInitStartedRef = useRef(false);
   useEffect(() => {
-    if (isAdsEnabled()) {
-      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
-        console.log("[Ads] Starting native ads preload (hook mount)");
-      }
-      startNativeAdsPreload();
+    if (adsInitStartedRef.current) return;
+    if (!isAdsEnabled()) return;
+    if (cards.length === 0) return;
+    adsInitStartedRef.current = true;
+    if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
+      console.log("[Ads] Starting native ads preload (after first cards available)");
     }
-  }, []);
+    startNativeAdsPreload();
+  }, [cards.length]);
 
   // Behavior tracking integration
   const { trackCardView, trackSwipeAction, trackDetailView } =

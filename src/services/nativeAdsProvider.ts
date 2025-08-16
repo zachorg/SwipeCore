@@ -50,6 +50,10 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
     });
   }
 
+  const adChoicesLink = nativeAdIdToAdChoicesLinkUrl.get(native.adId) ||
+    (typeof (native as any)?.adChoicesIconUrl === "string" && (native as any).adChoicesIconUrl.startsWith("http") ? (native as any).adChoicesIconUrl : undefined) ||
+    "https://www.youradchoices.com/";
+
   const card: RestaurantCard = {
     id,
     isSponsored: true,
@@ -75,7 +79,8 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
       isAppInstallAd: native.isAppInstallAd,
       isContentAd: native.isContentAd,
       adChoicesIconUrl: native.adChoicesIconUrl || "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png",
-      adChoicesText: native.adChoicesText || "AdChoices",
+      adChoicesText: native.adChoicesText || "Ad",
+      adChoicesLinkUrl: adChoicesLink,
     },
   } as RestaurantCard;
 
@@ -218,19 +223,14 @@ function createRealisticNativeAd(): RestaurantCard {
 export function startNativeAdsPreload(): void {
   try {
     if (!isAdsEnabled()) return;
-    if (DEBUG) {
-      console.log("[Ads] startNativeAdsPreload: initializing...");
-    }
-    void initMobileAds();
-
+    if (DEBUG) console.log("[Ads] startNativeAdsPreload: queued init");
     const platform = Capacitor.getPlatform();
     if (platform === "web") {
       if (DEBUG) console.log("[Ads] Web platform - skipping native preload");
       return;
     }
 
-    // Top up preload queue
-    void topUpPreloadedAds();
+    // No eager init here. Actual init happens only inside topUpPreloadedAds and getNextAdCard call sites.
   } catch {
     // ignore
   }
@@ -269,97 +269,9 @@ async function topUpPreloadedAds(): Promise<void> {
         }
       }
     } else if (platform === "android") {
-      // Android: Try capacitor-admob-ads for native ads (fallback to mock if issues)
-      if (DEBUG) {
-        console.log("[Ads] Android: Attempting real native ads via capacitor-admob-ads (compatibility warning exists)");
-      }
-      while (preloadedAds.length < MAX_PRELOADED_ADS) {
-        const adUnitId = getNativeAdUnitId();
-        if (DEBUG) {
-          console.log("[Ads] Loading Android native ad", { 
-            adUnitId, 
-            queueSize: preloadedAds.length,
-            adsEnabled: isAdsEnabled(),
-            testingMode: import.meta.env.VITE_ADS_TESTING,
-            envVars: {
-              VITE_ADS_ENABLED: import.meta.env.VITE_ADS_ENABLED,
-              VITE_ADS_TESTING: import.meta.env.VITE_ADS_TESTING,
-              VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID: import.meta.env.VITE_ADMOB_NATIVE_AD_UNIT_ID_ANDROID
-            }
-          });
-        }
-        try {
-          if (DEBUG) {
-            console.log("[Ads] Calling AdmobAds.loadNativeAd with options:", {
-              adId: adUnitId,
-              isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
-              adsCount: 1
-            });
-          }
-          
-          const result = await AdmobAds.loadNativeAd({
-            adId: adUnitId,
-            isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
-            adsCount: 1
-          });
-          
-          if (DEBUG) {
-            console.log("[Ads] AdmobAds.loadNativeAd result:", result);
-          }
-          
-          if (result && result.ads && result.ads.length > 0) {
-            const adData = result.ads[0];
-            if (DEBUG) {
-              console.log("[Ads] Processing ad data:", adData);
-            }
-            
-            // Convert to our expected format
-            const nativeAdData: NativeAdData = {
-              adId: adData.id,
-              headline: adData.headline,
-              body: adData.body,
-              callToAction: adData.cta,
-              advertiser: adData.advertiser,
-              mediaContentUrl: adData.cover,
-              iconUrl: adData.icon,
-              adChoicesIconUrl: adData.adChoicesUrl,
-              isContentAd: true // Default for this plugin
-            };
-            // Some Android plugins provide AdChoices as a link target; store it
-            if (adData.adChoicesUrl) {
-              nativeAdIdToAdChoicesLinkUrl.set(nativeAdData.adId, adData.adChoicesUrl);
-            }
-            preloadedAds.push(nativeAdData);
-            if (DEBUG) {
-              console.log("[Ads] Android native ad loaded successfully", { 
-                adId: nativeAdData.adId, 
-                headline: nativeAdData.headline,
-                hasMedia: Boolean(nativeAdData.mediaContentUrl) 
-              });
-            }
-          } else {
-            if (DEBUG) {
-              console.warn("[Ads] No ads returned from AdmobAds.loadNativeAd", { result });
-            }
-            // Break the loop if we get an empty response to avoid infinite requests
-            break;
-          }
-        } catch (e) {
-          if (DEBUG) {
-            console.warn("[Ads] Android native ad load failed, will use mock data", e);
-          }
-          break;
-        }
-        
-        // Add a small delay between ad requests to avoid rate limiting
-        if (preloadedAds.length < MAX_PRELOADED_ADS) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      if (DEBUG) {
-        console.log("[Ads] Android ad preload completed", { finalQueueSize: preloadedAds.length });
-      }
+      // Android: do NOT preload native ads. We only load at the exact injection time
+      // to avoid native validator overlays before an ad is actually shown.
+      if (DEBUG) console.log("[Ads] Android: skipping background preload by design");
     }
   } catch {
     // ignore
@@ -390,78 +302,10 @@ export async function getNextAdCard(): Promise<RestaurantCard | null> {
     }
   }
 
-  // Android: Use real native ads via capacitor-admob-ads, fallback to mock
+  // Android: Defer native ad load until the ad becomes visible (impression)
   if (platform === "android") {
-    // Ensure AdMob is initialized for proper tracking
-    void initMobileAds();
-    
-    // Try to get a real native ad if available
-    const next = preloadedAds.shift();
-    if (next) {
-      // Aggressively refill queue when it gets low
-      if (preloadedAds.length <= 2) {
-        if (DEBUG) {
-          console.log("[Ads] Queue getting low, triggering refill", { remaining: preloadedAds.length });
-        }
-        void topUpPreloadedAds();
-      }
-      const card = mapNativeAdToCard(next);
-      if (DEBUG) {
-        console.log("[Ads] Emitting real Android native ad card", { cardId: card.id, nativeId: next.adId, queueRemaining: preloadedAds.length });
-      }
-      return card;
-    }
-    
-    // Try to refill immediately if queue is empty
-    if (preloadedAds.length === 0) {
-      if (DEBUG) {
-        console.log("[Ads] Queue is empty, attempting immediate refill");
-      }
-      try {
-        // Try one immediate ad load
-        const adUnitId = getNativeAdUnitId();
-        const result = await AdmobAds.loadNativeAd({
-          adId: adUnitId,
-          isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
-          adsCount: 1
-        });
-        
-        if (result && result.ads && result.ads.length > 0) {
-          const adData = result.ads[0];
-          const nativeAdData: NativeAdData = {
-            adId: adData.id,
-            headline: adData.headline,
-            body: adData.body,
-            callToAction: adData.cta,
-            advertiser: adData.advertiser,
-            mediaContentUrl: adData.cover,
-            iconUrl: adData.icon,
-            adChoicesIconUrl: adData.adChoicesUrl,
-            isContentAd: true
-          };
-          
-          const card = mapNativeAdToCard(nativeAdData);
-          if (DEBUG) {
-            console.log("[Ads] Immediate refill successful, emitting real ad", { cardId: card.id });
-          }
-          
-          // Start background refill for next time
-          void topUpPreloadedAds();
-          return card;
-        }
-      } catch (e) {
-        if (DEBUG) {
-          console.warn("[Ads] Immediate refill failed", e);
-        }
-      }
-    }
-    
-    // Fallback to realistic mock data if no real ads available
-    const card = createRealisticNativeAd();
-    if (DEBUG) {
-      console.log("[Ads] Emitting mock Android native ad (no real ads available)", { cardId: card.id, advertiser: card.adMeta?.advertiser });
-    }
-    return card;
+    // Return a realistic placeholder. Real native ad will be loaded on impression.
+    return createRealisticNativeAd();
   }
 
   // Load on-demand as a fallback
@@ -484,8 +328,38 @@ export function recordImpression(adId: string): void {
     // iOS: Use AdMobNativeAdvanced impression tracking
     void AdMobNativeAdvanced.reportImpression(nativeId).catch(() => {});
   } else if (platform === "android") {
-    // Android: Log impression (community plugin handles this automatically for banner/interstitial)
-    if (DEBUG) console.log("[Ads] Android impression recorded", { adId });
+    // Android: On first impression of placeholder, load and swap in a real native ad
+    (async () => {
+      try {
+        const adUnitId = getNativeAdUnitId();
+        await initMobileAds();
+        const result = await AdmobAds.loadNativeAd({
+          adId: adUnitId,
+          isTesting: import.meta.env.VITE_ADS_TESTING === 'true',
+          adsCount: 1
+        });
+        if (result && result.ads && result.ads.length > 0) {
+          const adData = result.ads[0];
+          const nativeAdData: NativeAdData = {
+            adId: adData.id,
+            headline: adData.headline,
+            body: adData.body,
+            callToAction: adData.cta,
+            advertiser: adData.advertiser,
+            mediaContentUrl: adData.cover,
+            iconUrl: adData.icon,
+            adChoicesIconUrl: adData.adChoicesUrl,
+            isContentAd: true
+          };
+          const realCard = mapNativeAdToCard(nativeAdData);
+          adRegistry.set(realCard.id, realCard);
+          cardIdToNativeId.set(realCard.id, nativeAdData.adId);
+          if (DEBUG) console.log('[Ads] Android swapped placeholder with real native ad', { cardId: realCard.id });
+        }
+      } catch (e) {
+        if (DEBUG) console.warn('[Ads] Android on-impression load failed', e);
+      }
+    })();
   } else if (DEBUG) {
     console.log("[Ads] Impression recorded", { adId });
   }

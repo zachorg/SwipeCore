@@ -867,10 +867,15 @@ export function SwipeCard({
         </div>
 
         {/* AdChoices Attribution - Prefer native SDK overlay; keep small fallback */}
-        {card.isSponsored && card.adMeta?.adChoicesIconUrl && (
-          <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] shadow-sm border border-white/50">
-            <img 
-              src={card.adMeta.adChoicesIconUrl} 
+        {card.isSponsored && (
+          <a
+            href={card.adMeta?.adChoicesLinkUrl || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-4 right-4 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] shadow-sm border border-white/50"
+          >
+            <img
+              src={card.adMeta?.adChoicesIconUrl}
               alt="AdChoices"
               className="w-4 h-4 min-w-[16px] min-h-[16px]"
               style={{ minWidth: '16px', minHeight: '16px' }}
@@ -878,7 +883,7 @@ export function SwipeCard({
             <span className="text-gray-700 font-medium">
               {card.adMeta?.adChoicesText || 'Ad'}
             </span>
-          </div>
+          </a>
         )}
 
         {/* Content Overlays with AnimatePresence */}
