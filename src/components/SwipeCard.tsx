@@ -797,7 +797,7 @@ export function SwipeCard({
       >
         {/* Background Image Section - Full height */}
         <div
-          className="absolute inset-0 bg-cover bg-center bg-gray-200"
+          className={`absolute inset-0 ${card.isSponsored ? 'bg-contain bg-no-repeat' : 'bg-cover'} bg-center bg-gray-200`}
           style={{
             backgroundImage: getCurrentImageUrl()
               ? `url(${getCurrentImageUrl()})`
@@ -853,10 +853,10 @@ export function SwipeCard({
             }`}
           />
         }
-        {/* Info Badge: show "Sponsored" for ads, otherwise cuisine/price */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50">
+        {/* Info Badge: show "Ad" for ads (top-left per policy), otherwise cuisine/price */}
+        <div className={`absolute ${card.isSponsored ? 'top-4 left-4 -translate-x-0' : 'top-6 left-1/2 -translate-x-1/2'} bg-white/95 backdrop-blur-sm ${card.isSponsored ? 'px-3 py-1.5 rounded-full' : 'px-6 py-3 rounded-2xl'} flex items-center gap-3 shadow-lg border border-white/50`}>
           {card.isSponsored ? (
-            <span className="text-gray-800 font-bold text-sm">Sponsored</span>
+            <span className="text-gray-900 font-extrabold text-sm tracking-wide leading-none">Ad</span>
           ) : (
             <>
               <span className="text-gray-800 font-bold text-sm">
@@ -870,6 +870,21 @@ export function SwipeCard({
             </>
           )}
         </div>
+
+        {/* AdChoices Attribution - Prefer native SDK overlay; keep small fallback */}
+        {card.isSponsored && card.adMeta?.adChoicesIconUrl && (
+          <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] shadow-sm border border-white/50">
+            <img 
+              src={card.adMeta.adChoicesIconUrl} 
+              alt="AdChoices"
+              className="w-4 h-4 min-w-[16px] min-h-[16px]"
+              style={{ minWidth: '16px', minHeight: '16px' }}
+            />
+            <span className="text-gray-700 font-medium">
+              {card.adMeta?.adChoicesText || 'Ad'}
+            </span>
+          </div>
+        )}
 
         {/* Content Overlays with AnimatePresence */}
         <AnimatePresence mode="wait">

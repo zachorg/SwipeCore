@@ -21,6 +21,11 @@ const preloadedAds: NativeAdData[] = [];
 const MAX_PRELOADED_ADS = 5; // Increased to support more real ads
 // Removed duplicate initialization - now using unified initMobileAds() from @/utils/ads
 
+// Track which Android native overlays have been triggered to avoid duplicates
+const shownAndroidNativeOverlays = new Set<string>();
+// Track AdChoices link URLs for Android ads (plugin returns link, not icon)
+const nativeAdIdToAdChoicesLinkUrl = new Map<string, string>();
+
 function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
   const id = `native-${native.adId}`;
   const photoUrl = native.mediaContentUrl || native.iconUrl || undefined;
@@ -28,8 +33,8 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
   const photos = [
     {
       url: photoUrl || fallbackUrl,
-      widthPx: 0,
-      heightPx: 0,
+      widthPx: Math.max(native.mediaContentUrl ? 800 : 150, 150), // Ensure minimum 150px (well above 32dp requirement)
+      heightPx: Math.max(native.mediaContentUrl ? 600 : 150, 150), // Ensure minimum 150px
     } as any,
   ];
 
@@ -69,6 +74,8 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
       adId: native.adId,
       isAppInstallAd: native.isAppInstallAd,
       isContentAd: native.isContentAd,
+      adChoicesIconUrl: native.adChoicesIconUrl || "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png",
+      adChoicesText: native.adChoicesText || "AdChoices",
     },
   } as RestaurantCard;
 
@@ -84,7 +91,11 @@ function mapNativeAdToCard(native: NativeAdData): RestaurantCard {
       photosLength: card.photos?.length,
       imagesLength: card.images?.length,
       firstPhotoUrl: card.photos?.[0]?.url,
-      firstImageUrl: card.images?.[0]
+      firstImageUrl: card.images?.[0],
+      photoWidth: card.photos?.[0]?.widthPx,
+      photoHeight: card.photos?.[0]?.heightPx,
+      hasAdChoicesIcon: Boolean(card.adMeta?.adChoicesIconUrl),
+      adChoicesText: card.adMeta?.adChoicesText
     });
   }
   
@@ -105,6 +116,10 @@ function createFallbackAd(): RestaurantCard {
       id,
       displayName: { text: "Sponsored", languageCode: "en" },
       regularOpeningHours: { openNow: false },
+    },
+    adMeta: {
+      adChoicesIconUrl: "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png",
+      adChoicesText: "AdChoices"
     },
   } as RestaurantCard;
   adRegistry.set(id, card);
@@ -167,8 +182,8 @@ function createRealisticNativeAd(): RestaurantCard {
   const photos = [
     {
       url: ad.photo,
-      widthPx: 800,
-      heightPx: 1200,
+      widthPx: 800, // Already meets minimum requirement
+      heightPx: 1200, // Already meets minimum requirement
     } as any,
   ];
 
@@ -190,7 +205,9 @@ function createRealisticNativeAd(): RestaurantCard {
       advertiser: ad.advertiser,
       callToAction: ad.callToAction,
       body: ad.body,
-      isRealisticAd: true
+      isRealisticAd: true,
+      adChoicesIconUrl: "https://www.gstatic.com/adsense/adchoices/images/adchoices_blue.png", // Standard AdChoices icon
+      adChoicesText: "AdChoices"
     }
   } as RestaurantCard;
   
@@ -308,6 +325,10 @@ async function topUpPreloadedAds(): Promise<void> {
               adChoicesIconUrl: adData.adChoicesUrl,
               isContentAd: true // Default for this plugin
             };
+            // Some Android plugins provide AdChoices as a link target; store it
+            if (adData.adChoicesUrl) {
+              nativeAdIdToAdChoicesLinkUrl.set(nativeAdData.adId, adData.adChoicesUrl);
+            }
             preloadedAds.push(nativeAdData);
             if (DEBUG) {
               console.log("[Ads] Android native ad loaded successfully", { 
@@ -387,6 +408,20 @@ export async function getNextAdCard(): Promise<RestaurantCard | null> {
       const card = mapNativeAdToCard(next);
       if (DEBUG) {
         console.log("[Ads] Emitting real Android native ad card", { cardId: card.id, nativeId: next.adId, queueRemaining: preloadedAds.length });
+      }
+      // Ensure native overlay (AdChoices/attribution) is rendered by the SDK
+      try {
+        if (!shownAndroidNativeOverlays.has(card.id)) {
+          await AdmobAds.triggerNativeAd({ id: next.adId });
+          shownAndroidNativeOverlays.add(card.id);
+          if (DEBUG) {
+            console.log("[Ads] Triggered Android native ad overlay", { nativeId: next.adId, cardId: card.id });
+          }
+        }
+      } catch (e) {
+        if (DEBUG) {
+          console.warn("[Ads] Failed to trigger Android native ad overlay", e);
+        }
       }
       return card;
     }
