@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-import { userProfileRouter } from '../services/userProfileService';
+import { userProfileRouter } from '../routes/userProfileRouter';
 
 // Mock Supabase
 jest.mock('../lib/supabase', () => ({

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import { otpRouter } from '../routes/otpRouter';
-import { userProfileRouter } from '../services/userProfileService';
+import { userProfileRouter } from '../routes/userProfileRouter';
 
 // Mock dependencies
 jest.mock('../services/smsService');

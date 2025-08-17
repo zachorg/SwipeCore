@@ -8,7 +8,7 @@ interface AwsSnsConfig {
 }
 
 class AwsSnsService {
-    private client: SNSClient;
+    private client!: SNSClient;
     private isConfigured: boolean = false;
 
     constructor() {
