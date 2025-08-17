@@ -6,36 +6,95 @@ import { initializeDeviceOptimizations } from "@/utils/deviceOptimization";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-
+import { AuthFlow } from "@/components/auth/AuthFlow";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserProfileScreen } from "@/components/UserProfileScreen";
 
 const Index = () => {
   const navigate = useNavigate();
+  const {
+    loadingVerification,
+    loadingUserProfile,
+    verificationData,
+    isProfileComplete,
+  } = useAuth();
   const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0 });
-  const [filterButton, setFilterButton] = useState<React.ReactNode>(null);
+  const [filterButton, setFilterButton] = useState<React.ReactNode | null>(
+    null
+  );
   const [showWelcome, setShowWelcome] = useState(true);
-  const [initialFilters, setInitialFilters] = useState<Array<{ filterId: string; value: any }>>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initialFilters, setInitialFilters] = useState<
+    Array<{ filterId: string; value: any }>
+  >([]);
+
+  useEffect(() => {
+    setIsAuthenticated(
+      verificationData && verificationData.verificationId !== null
+    );
+  }, [verificationData, loadingVerification]);
+
+  const handleExitWelcome = () => {
+    setShowWelcome(false);
+  };
+
+  const handleShowWelcome = () => {
+    console.log("🎉 Showing welcome screen");
+    setShowWelcome(true);
+  };
 
   // Initialize device optimizations on component mount
   useEffect(() => {
     initializeDeviceOptimizations();
-    
-    // Check if this is first launch or if we should skip welcome
-    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-    if (hasSeenWelcome === 'true') {
-      setShowWelcome(false);
-    }
   }, []);
-  
-  const handleVoiceFiltersApplied = (filters: Array<{ filterId: string; value: any }>) => {
+
+  const handleVoiceFiltersApplied = (
+    filters: Array<{ filterId: string; value: any }>
+  ) => {
     setInitialFilters(filters);
-    setShowWelcome(false);
-    localStorage.setItem('hasSeenWelcome', 'true');
+    handleExitWelcome();
   };
-  
-  const handleSkipWelcome = () => {
-    setShowWelcome(false);
-    localStorage.setItem('hasSeenWelcome', 'true');
+
+  const LoadingState = () => {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-blue-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-white text-2xl">🍕</span>
+          </div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   };
+
+  if (!isAuthenticated || loadingVerification) {
+    if (loadingVerification) {
+      return <LoadingState />;
+    }
+    console.log("🔒 User not verified show AuthFlow");
+    return <AuthFlow onComplete={handleShowWelcome} />;
+  }
+
+  if (!isProfileComplete || loadingUserProfile) {
+    if (loadingUserProfile) {
+      return <LoadingState />;
+    }
+    console.log(
+      "🔒 User verified but needs to complete profile, showing UserProfileScreen"
+    );
+    return (
+      <UserProfileScreen
+        onComplete={() => {
+          handleShowWelcome();
+        }}
+        phoneNumber={verificationData?.phoneNumber || ""}
+      />
+    );
+  }
+
+  // Show main app if user is verified and has seen welcome
+  console.log("🚀 User verified and ready, showing main app");
 
   const handleFilterButtonReady = (button: React.ReactNode) => {
     setFilterButton(button);
@@ -60,26 +119,34 @@ const Index = () => {
 
   return (
     <div className="h-screen flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden">
-      {showWelcome ? (
+      {showWelcome && (
         <WelcomeScreen
           onVoiceFiltersApplied={handleVoiceFiltersApplied}
-          onSkip={handleSkipWelcome}
+          onSkip={handleExitWelcome}
         />
-      ) : (
+      )}
+
+      {!showWelcome && (
         <>
           {/* Header */}
           <div className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm border-b border-white/20 shadow-lg">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-2xl">
-                  🍕
-                </span>
+                <span className="text-white font-bold text-2xl">🍕</span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.3)' }}>
+                <h1
+                  className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+                  style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.3)" }}
+                >
                   FoodSwipe
                 </h1>
-                <p className="text-sm text-white/80" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>Discover amazing restaurants</p>
+                <p
+                  className="text-sm text-white/80"
+                  style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}
+                >
+                  Discover amazing restaurants
+                </p>
               </div>
             </div>
 
@@ -89,7 +156,7 @@ const Index = () => {
                 variant="outline"
                 size="lg"
                 className="bg-black/40 backdrop-blur-sm hover:bg-black/60 border-white/40 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 rounded-2xl p-4 opacity-50"
-                style={{ textShadow: '2px 2px 6px rgba(0,0,0,0.9)' }}
+                style={{ textShadow: "2px 2px 6px rgba(0,0,0,0.9)" }}
                 disabled
               >
                 <Settings className="w-7 h-7" />

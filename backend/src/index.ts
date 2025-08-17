@@ -6,8 +6,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
-import { placesRouter } from './routes/places';
-
+import { placesRouter } from './routes/placesRouter';
+import { otpRouter } from './routes/otpRouter';
+import userProfileRouter from './routes/userProfileRouter';
 // Debug: Log environment loading
 console.log('🔧 Environment loaded:', {
   hasApiKey: !!process.env.GOOGLE_PLACES_API_KEY,
@@ -82,6 +83,8 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/places', placesRouter);
+app.use('/api/otp', otpRouter);
+app.use('/api/userprofile', userProfileRouter);
 
 // 404 handler
 app.use((req, res) => {
