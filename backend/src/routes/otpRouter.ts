@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { smsService } from '../services/smsService';
-import { supabase } from '../lib/supabase';
+import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 
 const router = Router();
@@ -136,7 +136,7 @@ router.post(
                 .eq('phone_number', phone)
                 .single();
 
-            if (updateError) {
+            if (updateError && !IsEmptyRowError(updateError)) {
                 console.error('Error updating user profile:', updateError);
                 throw new Error('Failed to update user profile');
             }

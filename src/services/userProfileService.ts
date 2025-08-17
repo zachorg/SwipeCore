@@ -78,6 +78,9 @@ class UserProfileService {
             const data = await response.json();
 
             if (!response.ok) {
+                if (data.errorCode === 'PROFILE_NOT_FOUND') {
+                    return null;
+                }
                 throw new Error(data.message || 'Failed to send OTP');
             }
 

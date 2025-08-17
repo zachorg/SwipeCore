@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { supabase } from '../lib/supabase';
+import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 
 const router = Router();
@@ -60,11 +60,20 @@ router.post('/get-via-verification-id', asyncHandler(async (req: Request, res: R
         const { data: userProfile, error: userProfileError } = await userProfileService.getProfileViaVerificationId(verification_id);
 
         if (userProfileError) {
-            console.error('Error getting user profile:', userProfileError);
-            throw new Error('Failed to get user profile');
+            if (IsEmptyRowError(userProfileError)) {
+                return res.json({
+                    success: false,
+                    errorCode: 'PROFILE_NOT_FOUND',
+                    message: 'User profile doesn not exist',
+                });
+            }
+            else {
+                console.error('Error getting user profile:', userProfileError);
+                throw new Error(`Failed to get user profile ${JSON.stringify(userProfileError)}`);
+            }
         }
 
-        res.json({
+        return res.json({
             success: true,
             message: 'User profile created successfully',
             userProfile,
@@ -72,7 +81,7 @@ router.post('/get-via-verification-id', asyncHandler(async (req: Request, res: R
 
     } catch (error) {
         console.error('Error managing user profile:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             errorCode: 'PROFILE_OPERATION_FAILED',
             message: 'Failed to manage user profile',
@@ -96,11 +105,20 @@ router.post('/get-via-phone-number', asyncHandler(async (req: Request, res: Resp
         const { data: userProfile, error: userProfileError } = await userProfileService.getProfileViaPhoneNumber(phone_number);
 
         if (userProfileError) {
-            console.error('Error getting user profile:', userProfileError);
-            throw new Error('Failed to get user profile');
+            if (IsEmptyRowError(userProfileError)) {
+                return res.json({
+                    success: false,
+                    errorCode: 'PROFILE_NOT_FOUND',
+                    message: 'User profile doesn not exist',
+                });
+            }
+            else {
+                console.error('Error getting user profile:', userProfileError);
+                throw new Error(`Failed to get user profile ${JSON.stringify(userProfileError)}`);
+            }
         }
 
-        res.json({
+        return res.json({
             success: true,
             message: 'User profile created successfully',
             user_profile: userProfile,
@@ -108,7 +126,7 @@ router.post('/get-via-phone-number', asyncHandler(async (req: Request, res: Resp
 
     } catch (error) {
         console.error('Error managing user profile:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             errorCode: 'PROFILE_OPERATION_FAILED',
             message: 'Failed to manage user profile',

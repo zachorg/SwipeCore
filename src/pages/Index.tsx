@@ -8,18 +8,22 @@ import { Settings } from "lucide-react";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { AuthFlow } from "@/components/auth/AuthFlow";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserProfileScreen } from "@/components/auth/UserProfileScreen";
+import { UserProfileScreen } from "@/components/UserProfileScreen";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { loading, verificationData } = useAuth();
+  const {
+    loadingVerification,
+    loadingUserProfile,
+    verificationData,
+    isProfileComplete,
+  } = useAuth();
   const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0 });
   const [filterButton, setFilterButton] = useState<React.ReactNode | null>(
     null
   );
   const [showWelcome, setShowWelcome] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [initialFilters, setInitialFilters] = useState<
     Array<{ filterId: string; value: any }>
   >([]);
@@ -28,11 +32,7 @@ const Index = () => {
     setIsAuthenticated(
       verificationData && verificationData.verificationId !== null
     );
-    setIsProfileComplete(
-      !!verificationData && !!verificationData.age && !!verificationData.gender
-    );
-    console.log("verificationData", verificationData);
-  }, [verificationData]);
+  }, [verificationData, loadingVerification]);
 
   const handleExitWelcome = () => {
     setShowWelcome(false);
@@ -54,8 +54,8 @@ const Index = () => {
     setInitialFilters(filters);
     handleExitWelcome();
   };
-  // Show loading state while auth is initializing
-  if (loading) {
+
+  const LoadingState = () => {
     return (
       <div className="h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-blue-50">
         <div className="text-center">
@@ -66,14 +66,20 @@ const Index = () => {
         </div>
       </div>
     );
-  }
+  };
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || loadingVerification) {
+    if (loadingVerification) {
+      return <LoadingState />;
+    }
     console.log("🔒 User not verified show AuthFlow");
     return <AuthFlow onComplete={handleShowWelcome} />;
   }
 
-  if (!isProfileComplete) {
+  if (!isProfileComplete || loadingUserProfile) {
+    if (loadingUserProfile) {
+      return <LoadingState />;
+    }
     console.log(
       "🔒 User verified but needs to complete profile, showing UserProfileScreen"
     );

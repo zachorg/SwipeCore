@@ -26,5 +26,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "backend/src/lib/supabase.ts"]
+  "include": ["src"]
 }

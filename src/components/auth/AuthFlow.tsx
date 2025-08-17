@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { GetStartedScreen } from "./GetStartedScreen";
+import { GetStartedScreen } from "../GetStartedScreen";
 import { PhoneVerificationScreen } from "./PhoneVerificationScreen";
-import { UserProfileScreen } from "./UserProfileScreen";
+import { UserProfileScreen } from "../UserProfileScreen";
 import { verificationService } from "@/services/verificationService";
 
 type AuthStep =
@@ -24,7 +24,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
     const checkExistingVerification = async () => {
       try {
         setIsCheckingVerification(true);
-        console.log("🔍 AuthFlow: Checking verification status...");
+        console.log("[AuthFlow]: Checking verification status...");
 
         // Check if user has valid verification stored
         const verificationStatus =
@@ -32,17 +32,17 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
 
         if (verificationStatus.isValid) {
           console.log(
-            "✅ AuthFlow: User has valid verification, going to welcome screen"
+            "[AuthFlow]: User has valid verification, going to welcome screen"
           );
           setCurrentStep("welcome");
         } else {
           console.log(
-            "ℹ️ AuthFlow: No valid verification found, starting from get-started"
+            "[AuthFlow]: No valid verification found, starting from get-started"
           );
           setCurrentStep("get-started");
         }
       } catch (error) {
-        console.error("Error checking verification status:", error);
+        console.error("[AuthFlow] Error checking verification status:", error);
         // Continue with normal flow if verification check fails
         setCurrentStep("get-started");
       } finally {
@@ -54,42 +54,35 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
   }, []);
 
   const handleGetStarted = () => {
-    console.log("🚀 User clicked get started, moving to phone verification");
+    console.log("[AuthFlow] Moving to phone verification");
     setCurrentStep("phone-verification");
   };
 
   const handleExitAuthFlow = () => {
-    console.log("👤 Profile complete, moving to welcome screen");
+    console.log("[AuthFlow] Profile complete, moving to welcome screen");
     onComplete();
   };
 
-  const handlePhoneVerified = (
-    phone: string,
-    verificationId: string,
-    isNewUser: boolean
-  ) => {
-    console.log("📱 Phone verified, moving to user profile setup");
+  const handlePhoneVerified = (phone: string, verificationId: string) => {
+    console.log("[AuthFlow] Phone verified, moving to user profile setup");
     setPhoneNumber(phone);
 
-    if (isNewUser) {
-      setCurrentStep("user-profile");
-    } else {
-      handleExitAuthFlow();
-    }
+    // setCurrentStep("user-profile");
+    handleExitAuthFlow();
   };
 
   const handleBack = () => {
     switch (currentStep) {
       case "phone-verification":
-        console.log("⬅️ Going back to get started");
+        console.log("[AuthFlow] Going back to get started");
         setCurrentStep("get-started");
         break;
       case "user-profile":
-        console.log("⬅️ Going back to phone verification");
+        console.log("[AuthFlow] Going back to phone verification");
         setCurrentStep("phone-verification");
         break;
       case "welcome":
-        console.log("⬅️ Going back to user profile");
+        console.log("[AuthFlow] Going back to user profile");
         setCurrentStep("user-profile");
         break;
       default:

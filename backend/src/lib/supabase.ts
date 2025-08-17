@@ -14,3 +14,7 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
 };
+
+export function IsEmptyRowError(error: any) {
+  return error.code === 'PGRST116';
+}

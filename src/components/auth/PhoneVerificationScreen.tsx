@@ -6,11 +6,7 @@ import { otpService } from "@/services/otpService";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PhoneVerificationScreenProps {
-  onVerified: (
-    phoneNumber: string,
-    verificationId: string,
-    isNewUser: boolean
-  ) => void;
+  onVerified: (phoneNumber: string, verificationId: string) => void;
   onBack: () => void;
 }
 
@@ -101,7 +97,7 @@ export const PhoneVerificationScreen: React.FC<
         }
 
         // Call onVerified with the verification ID from backend response
-        onVerified(phoneNumber, response.verificationId, response.isNewUser);
+        onVerified(phoneNumber, response.verificationId);
       } else {
         throw new Error(response.message || "Failed to verify OTP");
       }

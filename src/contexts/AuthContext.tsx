@@ -13,7 +13,9 @@ import userProfileService from "@/services/userProfileService";
 
 interface AuthContextType {
   verificationData: Omit<VerificationData, "verifiedAt">;
-  loading: boolean;
+  isProfileComplete: boolean;
+  loadingVerification: boolean;
+  loadingUserProfile: boolean;
   setVerificationData: (data: Omit<VerificationData, "verifiedAt">) => void;
 }
 
@@ -32,9 +34,11 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [loading, setLoading] = useState(true);
+  const [loadingVerification, setLoadingVerification] = useState(true);
+  const [loadingUserProfile, setLoadingUserProfile] = useState(true);
   const [verificationData, setVerificationData] =
     useState<VerificationData | null>(null);
+  const [isProfileComplete, setIsProfileComplete] = useState(true);
 
   const checkVerificationStatus = async () => {
     try {
@@ -73,12 +77,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             verificationData.phoneNumber
           );
         if (userProfile) {
+          setIsProfileComplete(true);
           setVerificationData({
             ...verificationData,
             age: userProfile.age,
             gender: userProfile.gender,
           });
+        } else {
+          setIsProfileComplete(false);
         }
+        setLoadingUserProfile(false);
       }
     };
     fetchUserProfile();
@@ -94,10 +102,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // First check if user has valid verification
         await checkVerificationStatus();
-        setLoading(false);
+        setLoadingVerification(false);
       } catch (error) {
         console.error("Error initializing auth:", error);
-        setLoading(false);
+        setLoadingVerification(false);
       }
     };
 
@@ -106,7 +114,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     verificationData,
-    loading,
+    isProfileComplete,
+    loadingVerification,
+    loadingUserProfile,
     setVerificationData,
   };
 
