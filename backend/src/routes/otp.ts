@@ -34,9 +34,9 @@ router.post(
             //const smsResult = await smsService.sendOtp(phone, otp);
 
             //if (smsResult.success) {
-            // console.log(
-            //     `✅ OTP ${otp} sent to ${phone} via ${smsResult.messageId}`
-            // );
+            console.log(
+                `✅ OTP ${otp} sent to ${phone}` // via ${smsResult.messageId}
+            );
 
             otpStore.set(phone, {
                 otp,

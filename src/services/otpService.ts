@@ -102,8 +102,10 @@ class OtpService {
 
             return data;
         } catch (error: any) {
-            console.error('Error checking verification:', error);
-            throw new Error(error.message || 'Failed to check verification');
+            if (error.errorCode === 'VERIFICATION_CHECK_FAILED') {
+                console.error('Error checking verification:', error);
+                throw new Error(error.message || 'Failed to check verification');
+            }
         }
     }
 

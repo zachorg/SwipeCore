@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@capacitor-community/admob": "^7.0.3",
-    "@capacitor-firebase/authentication": "^7.3.0",
     "@capacitor/android": "^7.4.2",
     "@capacitor/app": "^7.0.2",
     "@capacitor/browser": "^7.0.2",
@@ -57,7 +56,6 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
-    "firebase": "^11.10.0",
     "framer-motion": "^12.23.9",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
