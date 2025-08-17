@@ -6,10 +6,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
-import { placesRouter } from './routes/places';
-import { otpRouter } from './routes/otp';
-import { userProfileRouter } from './services/userProfileService';
-
+import { placesRouter } from './routes/placesRouter';
+import { otpRouter } from './routes/otpRouter';
+import userProfileRouter from './routes/userProfileRouter';
 // Debug: Log environment loading
 console.log('🔧 Environment loaded:', {
   hasApiKey: !!process.env.GOOGLE_PLACES_API_KEY,

@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { smsService } from '../services/smsService';
-import { supabase, userProfileApi } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+import { userProfileService } from '../services/userProfileService';
 
 const router = Router();
 
@@ -184,11 +185,7 @@ router.post(
         }
 
         try {
-            const { data: verification, error } = await supabase
-                .from('user_verification_lookups')
-                .select('*')
-                .eq('verification_id', verificationId)
-                .single();
+            const { data: verification, error } = await userProfileService.isValidVerificationId(verificationId);
 
             if (!verification) {
                 return res.status(404).json({
@@ -200,11 +197,7 @@ router.post(
 
             // expired
             if (Date.now() > verification.created_at) {
-                await supabase
-                    .from('user_verification_lookups')
-                    .delete()
-                    .eq('verification_id', verificationId);
-
+                userProfileService.deleteVerificationIdLookup(verificationId);
                 return res.status(404).json({
                     success: false,
                     errorCode: 'VERIFICATION_ID_NOT_FOUND',

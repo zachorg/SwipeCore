@@ -1,6 +1,6 @@
 import request from 'supertest';
 import express from 'express';
-import { otpRouter } from '../routes/otp';
+import { otpRouter } from '../routes/otpRouter';
 import { smsService } from '../services/smsService';
 
 // Mock dependencies
