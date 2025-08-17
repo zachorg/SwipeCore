@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useGeolocation } from "./useGeolocation";
-import { CACHE_CONFIG, useNearbyPlaces } from "./usePlaces";
+import { useNearbyPlaces } from "./usePlaces";
 import {
   RestaurantCard,
   SwipeAction,
@@ -15,13 +15,11 @@ import {
 } from "../types/Types";
 import {
   transformPlacesToCards,
-  getDefaultRestaurantImage,
   mergeCardWithDetails,
 } from "../utils/placeTransformers";
 import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { GooglePhotoResponse, placesApi } from "@/services/places";
+import { useQueryClient } from "@tanstack/react-query";
 import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
 import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
@@ -29,7 +27,6 @@ import { openUrl } from "@/utils/browser";
 import { isAdsEnabled } from "@/utils/ads";
 import {
   getNextAdCard,
-  getInterleaveInterval,
   startNativeAdsPreload,
 } from "@/services/nativeAdsProvider";
 
@@ -167,8 +164,13 @@ export function useFilteredPlaces(
     if (!isAdsEnabled()) return;
     if (cards.length === 0) return;
     adsInitStartedRef.current = true;
-    if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
-      console.log("[Ads] Starting native ads preload (after first cards available)");
+    if (
+      (import.meta as any)?.env?.VITE_ADS_DEBUG === "true" ||
+      import.meta.env.DEV
+    ) {
+      console.log(
+        "[Ads] Starting native ads preload (after first cards available)"
+      );
     }
     startNativeAdsPreload();
   }, [cards.length]);
@@ -406,54 +408,18 @@ export function useFilteredPlaces(
 
   // Build interleaved list with ads
   const buildInterleavedWithAds = useCallback(
-    async (realCards: RestaurantCard[], limit: number): Promise<RestaurantCard[]> => {
+    async (
+      realCards: RestaurantCard[],
+      limit: number
+    ): Promise<RestaurantCard[]> => {
       const hasReal = Array.isArray(realCards) && realCards.length > 0;
       if (!isAdsEnabled()) return realCards.slice(0, limit);
       // If there are no real cards, return empty (do not show ad-only deck)
       if (!hasReal) return [];
 
-      const maxLen = Math.min(realCards.length, limit);
-      const output: RestaurantCard[] = [];
-
-      // Decide how many internal ads
-      const internalAdsNeeded = maxLen >= 12 ? 2 : 1;
-
-      // Compute insertion indices roughly evenly spaced, avoid first and last positions
-      const internalIndices: number[] = [];
-      if (internalAdsNeeded === 1) {
-        internalIndices.push(Math.max(1, Math.floor(maxLen / 2)));
-      } else {
-        internalIndices.push(Math.max(1, Math.floor(maxLen / 3)));
-        internalIndices.push(Math.max(2, Math.floor((2 * maxLen) / 3)));
-      }
-
-      // Ensure uniqueness and sort
-      const uniqueInternal = Array.from(new Set(internalIndices)).filter((idx) => idx > 0 && idx < maxLen - 1).sort((a, b) => a - b);
-
-      // Walk real cards and inject on indices
-      let realIndex = 0;
-      for (let i = 0; i < maxLen; i++) {
-        output.push(realCards[realIndex++]);
-        const nextInsertSlot = uniqueInternal[0];
-        if (typeof nextInsertSlot === "number" && i + 1 === nextInsertSlot && output.length < limit) {
-          const ad = await getNextAdCard();
-          if (ad) {
-            output.push(ad);
-          }
-          uniqueInternal.shift();
-        }
-        if (output.length >= limit) break;
-      }
-
-      // Ensure one ad at the end when last is not an ad and capacity allows
-      if (
-        output.length < limit &&
-        output.length > 0 &&
-        !output[output.length - 1].isSponsored
-      ) {
-        const endAd = await getNextAdCard();
-        if (endAd) output.push(endAd);
-      }
+      const ad = await getNextAdCard();
+      const output: RestaurantCard[] = realCards.slice(0, limit);
+      output.unshift(ad);
 
       return output.slice(0, limit);
     },
@@ -487,7 +453,10 @@ export function useFilteredPlaces(
         const result = await applyFiltersToCards(currentCards);
         setFilterResult(result);
         // Rebuild with ad interleaving on every filter application
-        const withAds = await buildInterleavedWithAds(result.filteredCards as RestaurantCard[], maxCards);
+        const withAds = await buildInterleavedWithAds(
+          result.filteredCards as RestaurantCard[],
+          maxCards
+        );
         setCards(withAds);
       } catch (err) {
         console.error("Error applying filters:", err);
@@ -496,7 +465,13 @@ export function useFilteredPlaces(
         );
       }
     },
-    [enableFiltering, applyFiltersToCards, baseCards, maxCards, buildInterleavedWithAds]
+    [
+      enableFiltering,
+      applyFiltersToCards,
+      baseCards,
+      maxCards,
+      buildInterleavedWithAds,
+    ]
   );
 
   useEffect(() => {
