@@ -45,7 +45,7 @@ class VerificationService {
         try {
             const stored = await CrossPlatformStorage.getItem(this.STORAGE_KEY);
             if (!stored) {
-                console.log('ℹ️ No verification data found in storage');
+                console.log('[verificationService]  No verification data found in storage');
                 return null;
             }
 
@@ -53,12 +53,12 @@ class VerificationService {
 
             // Validate the stored data
             if (!verificationData.verificationId) {
-                console.warn('⚠️ Invalid verification data stored, removing...', verificationData);
+                console.warn('[verificationService] Invalid verification data stored, removing...', verificationData);
                 await this.clearVerification();
                 return null;
             }
 
-            console.log('📱 Retrieved stored verification data:', JSON.stringify(verificationData));
+            console.log('[verificationService] Retrieved stored verification data:', JSON.stringify(verificationData));
 
             return verificationData;
         } catch (error) {

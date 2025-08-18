@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,9 +29,25 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const uploadingUserProfile = useRef<any>(false);
+  const ageRef = useRef<string>("");
+  const genderRef = useRef<"male" | "female" | "other" | "prefer-not-to-say">(
+    "prefer-not-to-say"
+  );
+
+  useEffect(() => {
+    ageRef.current = age;
+    genderRef.current = gender;
+  }, [age, gender]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!age || !gender) {
+
+    if (uploadingUserProfile.current) {
+      return;
+    }
+
+    if (!ageRef.current || !genderRef.current) {
       setError("Please fill in all fields");
       return;
     }
@@ -55,6 +71,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         ? phoneNumber
         : `+${phoneNumber}`;
 
+      uploadingUserProfile.current = true;
+
       await userProfileService.createNewUserProfile({
         verification_id: verificationData?.verificationId,
         age: ageNum,
@@ -68,6 +86,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
         age: ageNum,
         gender,
       });
+
+      uploadingUserProfile.current = false;
 
       console.log("Profile saved successfully");
       onComplete();

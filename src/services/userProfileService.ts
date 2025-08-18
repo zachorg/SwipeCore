@@ -84,6 +84,10 @@ class UserProfileService {
                 throw new Error(data.message || 'Failed to send OTP');
             }
 
+            if (data.success === false && data.errorCode === 'PROFILE_NOT_FOUND') {
+                return null;
+            }
+
             return data.user_profile;
         } catch (error: any) {
             console.error('Error sending OTP:', error);

@@ -13,7 +13,6 @@ import userProfileService from "@/services/userProfileService";
 
 interface AuthContextType {
   verificationData: Omit<VerificationData, "verifiedAt">;
-  isProfileComplete: boolean;
   loadingVerification: boolean;
   loadingUserProfile: boolean;
   setVerificationData: (data: Omit<VerificationData, "verifiedAt">) => void;
@@ -38,29 +37,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loadingUserProfile, setLoadingUserProfile] = useState(true);
   const [verificationData, setVerificationData] =
     useState<VerificationData | null>(null);
-  const [isProfileComplete, setIsProfileComplete] = useState(true);
 
   const checkVerificationStatus = async () => {
     try {
-      console.log("🔍 Checking verification status in AuthContext...");
+      console.log(
+        "[AuthContext] Checking verification status in AuthContext..."
+      );
 
       // Get verification status from verification service
       const hasValidVerification =
         await verificationService.hasValidVerification();
 
       if (hasValidVerification) {
-        console.log("✅ User has valid verification, setting verified to true");
+        console.log(
+          "[AuthContext] User has valid verification, setting verified to true"
+        );
         const verificationData =
           await verificationService.getStoredVerification();
         setVerificationData(verificationData);
+
+        let isProfileCompleted = false;
+        if (
+          verificationData?.age !== undefined ||
+          verificationData?.gender !== undefined
+        ) {
+          isProfileCompleted = true;
+          setLoadingUserProfile(false);
+        }
       } else {
         console.log(
-          "❌ User verification invalid or expired, setting verified to false"
+          "[AuthContext] User verification invalid or expired, setting verified to false"
         );
         setVerificationData(null);
       }
     } catch (error) {
-      console.error("Error checking verification status:", error);
+      console.error("[AuthContext] Error checking verification status:", error);
     }
   };
 
@@ -71,25 +82,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         (verificationData.age === undefined ||
           verificationData.gender === undefined)
       ) {
+        console.log("[AuthContext] Fetching user profile");
         // check if user profile exists
         const userProfile =
           await userProfileService.getUserProfileViaPhoneNumber(
             verificationData.phoneNumber
           );
         if (userProfile) {
-          setIsProfileComplete(true);
-          setVerificationData({
+          const updatedVerificationData = {
             ...verificationData,
             age: userProfile.age,
             gender: userProfile.gender,
-          });
+          };
+
+          console.log(
+            "[AuthContext] Fetched user profile:",
+            updatedVerificationData
+          );
+
+          setVerificationData(updatedVerificationData);
         } else {
-          setIsProfileComplete(false);
+          console.log("[AuthContext] Failed to fetch user profile");
         }
         setLoadingUserProfile(false);
       }
     };
     fetchUserProfile();
+
     if (verificationData) {
       verificationService.storeVerification(verificationData);
     }
@@ -98,13 +117,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        console.log("🚀 Initializing authentication...");
+        console.log("[AuthContext] Initializing authentication...");
 
         // First check if user has valid verification
         await checkVerificationStatus();
         setLoadingVerification(false);
       } catch (error) {
-        console.error("Error initializing auth:", error);
+        console.error("[AuthContext] Error initializing auth:", error);
         setLoadingVerification(false);
       }
     };
@@ -114,7 +133,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     verificationData,
-    isProfileComplete,
     loadingVerification,
     loadingUserProfile,
     setVerificationData,

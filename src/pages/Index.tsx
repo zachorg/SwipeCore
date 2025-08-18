@@ -12,27 +12,32 @@ import { UserProfileScreen } from "@/components/UserProfileScreen";
 
 const Index = () => {
   const navigate = useNavigate();
-  const {
-    loadingVerification,
-    loadingUserProfile,
-    verificationData,
-    isProfileComplete,
-  } = useAuth();
+  const { loadingVerification, loadingUserProfile, verificationData } =
+    useAuth();
   const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0 });
   const [filterButton, setFilterButton] = useState<React.ReactNode | null>(
     null
   );
   const [showWelcome, setShowWelcome] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isProfileComplete, setIsProfileComplete] = useState(true);
   const [initialFilters, setInitialFilters] = useState<
     Array<{ filterId: string; value: any }>
   >([]);
 
   useEffect(() => {
-    setIsAuthenticated(
-      verificationData && verificationData.verificationId !== null
-    );
-  }, [verificationData, loadingVerification]);
+    const isVerified =
+      verificationData && verificationData.verificationId !== "";
+
+    const isProfileCompleted =
+      verificationData &&
+      verificationData?.age !== undefined &&
+      verificationData?.gender !== undefined;
+
+    console.log("[Index] isAuthenticated: ", isVerified);
+    setIsAuthenticated(isVerified);
+    setIsProfileComplete(isProfileCompleted);
+  }, [verificationData]);
 
   const handleExitWelcome = () => {
     setShowWelcome(false);
@@ -68,20 +73,22 @@ const Index = () => {
     );
   };
 
-  if (!isAuthenticated || loadingVerification) {
-    if (loadingVerification) {
-      return <LoadingState />;
-    }
-    console.log("🔒 User not verified show AuthFlow");
+  if (loadingVerification) {
+    return <LoadingState />;
+  }
+
+  if (!isAuthenticated) {
+    console.log("[Index] User not verified show AuthFlow");
     return <AuthFlow onComplete={handleShowWelcome} />;
   }
 
-  if (!isProfileComplete || loadingUserProfile) {
-    if (loadingUserProfile) {
-      return <LoadingState />;
-    }
+  if (loadingUserProfile) {
+    return <LoadingState />;
+  }
+
+  if (!isProfileComplete) {
     console.log(
-      "🔒 User verified but needs to complete profile, showing UserProfileScreen"
+      "[Index] User verified but needs to complete profile, showing UserProfileScreen"
     );
     return (
       <UserProfileScreen

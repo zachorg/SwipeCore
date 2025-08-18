@@ -5,6 +5,10 @@ const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'your-supabase-ano
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+if (supabase) {
+  console.log("[supabase] Supabase client initialized");
+}
+
 export interface UserProfile {
   id: string; // Supabase UUID
   verification_id: string;
