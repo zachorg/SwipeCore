@@ -23,6 +23,11 @@ const config: CapacitorConfig = {
     ]
   },
   plugins: {
+    StatusBar: {
+      overlays: false,
+      style: 'LIGHT',
+      backgroundColor: '#000000'
+    },
     SplashScreen: {
       launchShowDuration: 0
     },
