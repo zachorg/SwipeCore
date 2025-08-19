@@ -1,7 +1,21 @@
 // AdMob helpers
+import { AdmobConsentDebugGeography, AdmobConsentStatus } from "@capacitor-community/admob";
 import { Capacitor } from "@capacitor/core";
 
 let initialized = false;
+let intializing = false;
+
+export interface NativeAdData {
+  adId: string;
+  headline: string;
+  cta: string;
+  body: string;
+  advertiser: string;
+  iconUrl: string;
+  mediaContentUrl: string;
+  adChoicesIconUrl: string;
+  adChoicesLinkUrl: string;
+}
 
 export function getAdMobAppId(): string {
   try {
@@ -94,25 +108,12 @@ export function getBannerAdUnitId(): string {
 }
 
 export async function initMobileAds(): Promise<boolean> {
+  if (!isAdsEnabled() || intializing) return false;
   if (initialized) return true;
+  intializing = true;
   try {
-    const enabled = isAdsEnabled();
-    if (!enabled) return false;
-
-    const platform = Capacitor.getPlatform();
-    const DEBUG =
-      import.meta.env.VITE_ADS_DEBUG === "true" || import.meta.env.DEV;
-
-    // On web, act as a no-op to avoid errors during local dev/preview
-    if (platform === "web") {
-      initialized = true;
-      return true;
-    }
-
     const appId = getAdMobAppId();
-    if (DEBUG) {
-      console.log("[AdMob] Initializing Mobile Ads SDK", { appId, platform });
-    }
+    console.log("[AdMob] Initializing Mobile Ads SDK: ", appId);
 
     // Android: Use @capacitor-community/admob for initialization
     const { AdMob } = await import("@capacitor-community/admob");
@@ -120,18 +121,48 @@ export async function initMobileAds(): Promise<boolean> {
       testingDevices: [],
       initializeForTesting: false,
     });
-    if (DEBUG)
-      console.log("[AdMob] @capacitor-community/admob initialized for Android");
+    console.log("[AdMob] @capacitor-community/admob initialized for Android");
 
-    initialized = true;
 
-    if (DEBUG) {
-      console.log("[AdMob] Mobile Ads SDK initialization complete");
+    // @TODO: IOS tracking authorization
+    if (false) {
+      const [trackingInfo] = await Promise.all([
+        AdMob.trackingAuthorizationStatus()
+
+      ]);
+
+      if (trackingInfo.status === 'notDetermined') {
+        /**
+         * If you want to explain TrackingAuthorization before showing the iOS dialog,
+         * you can show the modal here.
+         * ex)
+         * const modal = await this.modalCtrl.create({
+         *   component: RequestTrackingPage,
+         * });
+         * await modal.present();
+         * await modal.onDidDismiss();  // Wait for close modal
+         **/
+
+        await AdMob.requestTrackingAuthorization();
+      }
+
+      const authorizationStatus = await AdMob.trackingAuthorizationStatus();
+      if (
+        authorizationStatus.status === 'authorized'
+      ) {
+        initialized = true;
+        throw new Error("Tracking authorization not determined");
+      }
+
     }
 
+    initialized = true;
+    console.log("[AdMob] Mobile Ads SDK initialization complete");
     return true;
   } catch (e) {
     console.warn("[AdMob] Ads init failed:", e);
     return false;
+  } finally {
+    intializing = false;
   }
 }

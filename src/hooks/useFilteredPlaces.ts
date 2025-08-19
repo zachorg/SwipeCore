@@ -26,7 +26,7 @@ import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
 import { openUrl } from "@/utils/browser";
 import { isAdsEnabled } from "@/utils/ads";
 import {
-  getNextAdCard,
+  getAvailableAd,
   startNativeAdsPreload,
 } from "@/services/nativeAdsProvider";
 
@@ -104,6 +104,8 @@ export function useFilteredPlaces(
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
   const [shouldRefilter, setShouldRefilter] = useState(false);
 
+  const numSwipesRef = useRef<number>(0);
+
   const queryClient = useQueryClient();
 
   // Prefetching integration
@@ -164,14 +166,6 @@ export function useFilteredPlaces(
     if (!isAdsEnabled()) return;
     if (cards.length === 0) return;
     adsInitStartedRef.current = true;
-    if (
-      (import.meta as any)?.env?.VITE_ADS_DEBUG === "true" ||
-      import.meta.env.DEV
-    ) {
-      console.log(
-        "[Ads] Starting native ads preload (after first cards available)"
-      );
-    }
     startNativeAdsPreload();
   }, [cards.length]);
 
@@ -211,9 +205,9 @@ export function useFilteredPlaces(
   // Current location
   const location = position?.coords
     ? {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      }
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+    }
     : null;
 
   // Check if there are active filters with meaningful values
@@ -395,9 +389,7 @@ export function useFilteredPlaces(
         setFilterResult(null);
       }
 
-      // Interleave ads per rules: 1 at end, plus 1-2 sprinkled based on list size
-      const interleaved = await buildInterleavedWithAds(newCards, maxCards);
-      setCards(interleaved);
+      setCards(newCards);
     } catch (err) {
       console.error("Error processing places:", err);
       setError(
@@ -407,24 +399,24 @@ export function useFilteredPlaces(
   };
 
   // Build interleaved list with ads
-  const buildInterleavedWithAds = useCallback(
-    async (
-      realCards: RestaurantCard[],
-      limit: number
-    ): Promise<RestaurantCard[]> => {
-      const hasReal = Array.isArray(realCards) && realCards.length > 0;
-      if (!isAdsEnabled()) return realCards.slice(0, limit);
-      // If there are no real cards, return empty (do not show ad-only deck)
-      if (!hasReal) return [];
+  // const buildInterleavedWithAds = useCallback(
+  //   async (
+  //     realCards: RestaurantCard[],
+  //     limit: number
+  //   ): Promise<RestaurantCard[]> => {
+  //     const hasReal = Array.isArray(realCards) && realCards.length > 0;
+  //     if (!isAdsEnabled()) return realCards.slice(0, limit);
+  //     // If there are no real cards, return empty (do not show ad-only deck)
+  //     if (!hasReal) return [];
 
-      const ad = await getNextAdCard();
-      const output: RestaurantCard[] = realCards.slice(0, limit);
-      output.unshift(ad);
+  //     const ad = await getNextAdCard();
+  //     const output: RestaurantCard[] = realCards.slice(0, limit);
+  //     output.unshift(ad);
 
-      return output.slice(0, limit);
-    },
-    [getNextAdCard]
-  );
+  //     return output.slice(0, limit);
+  //   },
+  //   []
+  // );
 
   // Add card view tracking effect
   useEffect(() => {
@@ -452,12 +444,8 @@ export function useFilteredPlaces(
         const currentCards = baseCards.length > 0 ? baseCards : cards;
         const result = await applyFiltersToCards(currentCards);
         setFilterResult(result);
-        // Rebuild with ad interleaving on every filter application
-        const withAds = await buildInterleavedWithAds(
-          result.filteredCards as RestaurantCard[],
-          maxCards
-        );
-        setCards(withAds);
+
+        setCards(result.filteredCards as RestaurantCard[]);
       } catch (err) {
         console.error("Error applying filters:", err);
         setError(
@@ -470,7 +458,6 @@ export function useFilteredPlaces(
       applyFiltersToCards,
       baseCards,
       maxCards,
-      buildInterleavedWithAds,
     ]
   );
 
@@ -487,11 +474,7 @@ export function useFilteredPlaces(
     } else {
       // No active filters: restore unfiltered base list
       const source = baseCards.length > 0 ? baseCards : cards;
-      // Always rebuild with ads when filter state changes back to none
-      (async () => {
-        const withAds = await buildInterleavedWithAds(source, maxCards);
-        setCards(withAds);
-      })();
+      setCards(source);
       setFilterResult(null);
     }
     setShouldRefilter(false);
@@ -503,7 +486,6 @@ export function useFilteredPlaces(
     enableFiltering,
     hasActiveFilters,
     maxCards,
-    buildInterleavedWithAds,
   ]);
 
   // Swipe card action with behavior tracking and prefetching
@@ -602,6 +584,20 @@ export function useFilteredPlaces(
       if (action.action == "menu") {
         handleExpandCard(card);
         openMenu(card);
+      }
+
+      numSwipesRef.current++;
+
+      const ad = getAvailableAd();
+      console.log("numSwipesRef.current: ", numSwipesRef.current);
+      if (numSwipesRef.current > 0 && (numSwipesRef.current + 1) % 3 === 0 && ad) {
+        console.log("Inserting ad");
+        let output: RestaurantCard[] = cards.slice(1);
+        const currentCard = output[0];
+        output = output.slice(1);
+        output.unshift(ad);
+        output.unshift(currentCard);
+        setCards(output);
       }
     },
     [trackSwipeAction, isPrefetchingEnabled, cards, prefetchCards, filters]

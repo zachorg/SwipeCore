@@ -146,7 +146,7 @@ const Index = () => {
                   className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
                   style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.3)" }}
                 >
-                  FoodSwipe
+                  NomNom
                 </h1>
                 <p
                   className="text-sm text-white/80"

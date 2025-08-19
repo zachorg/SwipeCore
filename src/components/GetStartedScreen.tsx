@@ -1,12 +1,14 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Smartphone } from 'lucide-react';
+import React from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Smartphone } from "lucide-react";
 
 interface GetStartedScreenProps {
   onGetStarted: () => void;
 }
 
-export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ onGetStarted }) => {
+export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({
+  onGetStarted,
+}) => {
   return (
     <div className="flex flex-col items-center justify-center h-full p-6 bg-gradient-to-b from-purple-50 to-blue-50">
       <div className="text-center space-y-8 max-w-md">
@@ -18,7 +20,7 @@ export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ onGetStarted
         {/* App Title */}
         <div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
-            FoodSwipe
+            NomNom
           </h1>
           <p className="text-lg text-gray-600">
             Discover amazing restaurants with a swipe
@@ -28,10 +30,10 @@ export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ onGetStarted
         {/* Description */}
         <div className="space-y-4">
           <p className="text-gray-600 leading-relaxed">
-            Get personalized restaurant recommendations based on your preferences and location. 
-            Start your culinary journey today!
+            Get personalized restaurant recommendations based on your
+            preferences and location. Start your culinary journey today!
           </p>
-          
+
           <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
             <Smartphone className="w-4 h-4" />
             <span>Quick phone verification to get started</span>

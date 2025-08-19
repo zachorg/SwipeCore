@@ -1,5 +1,7 @@
 // Domain models for the SwipeCore app - integrating Google Places API data
 
+import { NativeAdData } from "@/utils/ads";
+
 export interface GooglePlacesApiBasicDetails {
   id: string;
   displayName: {
@@ -9,11 +11,11 @@ export interface GooglePlacesApiBasicDetails {
   formattedAddress?: string;
   rating?: number;
   priceLevel?:
-    | "PRICE_LEVEL_FREE"
-    | "PRICE_LEVEL_INEXPENSIVE"
-    | "PRICE_LEVEL_MODERATE"
-    | "PRICE_LEVEL_EXPENSIVE"
-    | "PRICE_LEVEL_VERY_EXPENSIVE";
+  | "PRICE_LEVEL_FREE"
+  | "PRICE_LEVEL_INEXPENSIVE"
+  | "PRICE_LEVEL_MODERATE"
+  | "PRICE_LEVEL_EXPENSIVE"
+  | "PRICE_LEVEL_VERY_EXPENSIVE";
   photos?: Array<{
     name: string;
     widthPx: number;
@@ -93,14 +95,14 @@ export interface RestaurantCard {
   id: string;
 
   // Basic Details 
-  basicDetails: GooglePlacesApiBasicDetails; 
-  
+  basicDetails: GooglePlacesApiBasicDetails;
+
   title: string;
   subtitle?: string;
+
   // Ads
-  isSponsored?: boolean;
-  adClickUrl?: string;
-  
+  adData?: NativeAdData;
+
   // Restaurant-specific fields 
   cuisine?: string;
   rating?: number;
@@ -119,7 +121,7 @@ export interface RestaurantCard {
   };
 
   distanceInMeters?: number;
-  
+
   // Adv Details
   advDetails?: GooglePlacesApiAdvDetails;
 
@@ -239,11 +241,11 @@ export interface AppState {
 // Error handling
 export interface PlaceError {
   code:
-    | "LOCATION_DENIED"
-    | "API_ERROR"
-    | "NO_RESULTS"
-    | "NETWORK_ERROR"
-    | "UNKNOWN_ERROR";
+  | "LOCATION_DENIED"
+  | "API_ERROR"
+  | "NO_RESULTS"
+  | "NETWORK_ERROR"
+  | "UNKNOWN_ERROR";
   message: string;
   details?: any;
 }

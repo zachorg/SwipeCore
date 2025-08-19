@@ -80,8 +80,11 @@ export function SwipeCard({
   const [openMapDialogAddress, setOpenMapDialogAddress] = useState("");
   // Fire impression when a sponsored card becomes top
   useEffect(() => {
-    if (isTop && card.isSponsored) {
-      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
+    if (isTop && card.adData) {
+      if (
+        (import.meta as any)?.env?.VITE_ADS_DEBUG === "true" ||
+        import.meta.env.DEV
+      ) {
         console.log("[Ads] Top sponsored card", {
           cardId: card.id,
           title: card.title,
@@ -91,21 +94,7 @@ export function SwipeCard({
       }
       nativeAdsProvider.recordImpression(card.id);
     }
-  }, [isTop, card.isSponsored, card.id]);
-
-  // When a sponsored card is updated with real data, force a local state update
-  useEffect(() => {
-    if (!card.isSponsored) return;
-    const off = nativeAdsProvider.onAdUpdated(({ cardId, updatedCard }) => {
-      if (cardId === card.id) {
-        // Copy fields into current card reference; parent holds array state
-        Object.assign(card, updatedCard);
-        // Force re-render via a tiny state toggle
-        setCurrentImageIndex((i) => (i === 0 ? 0 : i));
-      }
-    });
-    return off;
-  }, [card.id, card.isSponsored]);
+  }, [isTop, card.adData, card.id]);
 
   // Memoize expensive callbacks for better performance
   const handleMapsClick = useCallback((resturantAddress: string) => {
@@ -227,8 +216,8 @@ export function SwipeCard({
     // Only consider as a tap if not dragging and finger didn't move much
     if (!dragMovedRef.current && deltaX < 7 && deltaY < 7 && deltaTime < 350) {
       // Sponsored cards: tap opens link via onCardTap
-      if (card.isSponsored) {
-        console.log("Sponsored card tapped", { cardId: card.id });
+      if (card.adData) {
+        console.log("Sponsored card tapped: ", card.id);
         onCardTap?.(card);
       } else {
         if (!isExpanded) {
@@ -292,7 +281,7 @@ export function SwipeCard({
       ) {
         // Map menu direction back to like for the actual swipe action
         const actualDirection = swipeDirection === "menu" ? "menu" : "pass";
-        if (card.isSponsored) {
+        if (card.adData) {
           console.log("Sponsored card swiped", {
             cardId: card.id,
             direction: actualDirection,
@@ -363,6 +352,57 @@ export function SwipeCard({
       .map((_, i) => <DollarSign key={i} className="w-3 h-3 text-green-500" />);
   };
 
+  const AdChoicesButton = () => {
+    if (!card.adData) return null;
+    return (
+      <div
+        className={`absolute ${
+          card.adData
+            ? "top-4 right-4 -translate-x-0"
+            : "top-6 left-1/2 -translate-x-1/2"
+        }`}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+            console.log("Opening AdChoices link", card.adData.adChoicesLinkUrl);
+            openUrl(card.adData.adChoicesLinkUrl);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+          }}
+          onTouchMove={(e) => {
+            e.stopPropagation();
+            e.nativeEvent.stopImmediatePropagation();
+          }}
+          className="transition-all duration-200 flex-shrink-0 hover:scale-105 relative z-10"
+          style={{
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+            WebkitUserSelect: "none",
+            userSelect: "none",
+          }}
+          title="AdChoices"
+          aria-label="AdChoices"
+        >
+          <img
+            src={card.adData.adChoicesIconUrl}
+            alt="AdChoices"
+            className="w-6 h-6 min-w-[16px] min-h-[16px]"
+            style={{ minWidth: "16px", minHeight: "16px" }}
+          />
+        </button>
+      </div>
+    );
+  };
+
   const MainContentOverlay = () => {
     const CardNameAndRating = () => {
       return (
@@ -379,7 +419,7 @@ export function SwipeCard({
     };
 
     const ExpandButton = () => {
-      if (card.isSponsored) return null;
+      if (card.adData) return null;
       return (
         <button
           onClick={() => {
@@ -404,6 +444,7 @@ export function SwipeCard({
     };
 
     const ResturantDetails = () => {
+      if (card.adData) return;
       return (
         <div className="space-y-2">
           {card.distance && (
@@ -438,6 +479,33 @@ export function SwipeCard({
       );
     };
 
+    const AdDetails = () => {
+      if (!card.adData) return null;
+      return (
+        <div className="space-y-2">
+          <div className="flex items-start gap-4">
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <span>{card.adData.body}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-green-600 font-bold">
+                <span>{card.adData.cta}</span>
+              </div>
+            </div>
+            {/* Ad Icon - Positioned relative to the text content */}
+            <div className="flex-shrink-0">
+              <img
+                src={card.adData.iconUrl}
+                alt="Ad Icon"
+                className="w-12 h-12 min-w-[16px] min-h-[16px] rounded-full shadow-lg border-2 border-white/50"
+                style={{ minWidth: "16px", minHeight: "16px" }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-6 text-gray-800 border-t border-purple-200/50 shadow-lg">
         <div className="space-y-3">
@@ -450,7 +518,10 @@ export function SwipeCard({
           </div>
 
           {/* Restaurant Details */}
-          {!card.isSponsored && <ResturantDetails />}
+          <ResturantDetails />
+
+          {/* Ad Content */}
+          <AdDetails />
         </div>
       </div>
     );
@@ -806,7 +877,9 @@ export function SwipeCard({
       >
         {/* Background Image Section - Full height */}
         <div
-          className={`absolute inset-0 ${card.isSponsored ? 'bg-contain bg-no-repeat' : 'bg-cover'} bg-center bg-gray-200`}
+          className={`absolute inset-0 ${
+            card.adData ? "bg-contain bg-no-repeat" : "bg-cover"
+          } bg-center bg-gray-200`}
           style={{
             backgroundImage: getCurrentImageUrl()
               ? `url(${getCurrentImageUrl()})`
@@ -863,42 +936,45 @@ export function SwipeCard({
           />
         }
         {/* Info Badge: show "Ad" for ads (top-left per policy), otherwise cuisine/price */}
-        <div className={`absolute ${card.isSponsored ? 'top-4 left-4 -translate-x-0' : 'top-6 left-1/2 -translate-x-1/2'} bg-white/95 backdrop-blur-sm ${card.isSponsored ? 'px-3 py-1.5 rounded-full' : 'px-6 py-3 rounded-2xl'} flex items-center gap-3 shadow-lg border border-white/50`}>
-          {card.isSponsored ? (
-            <span className="text-gray-900 font-extrabold text-sm tracking-wide leading-none">Ad</span>
-          ) : (
-            <>
-              <span className="text-gray-800 font-bold text-sm">
-                {card.cuisine}
-              </span>
-              {card.priceRange && (
-                <div className="flex items-center">
-                  {renderPriceRange(card.priceRange)}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* AdChoices Attribution - Prefer native SDK overlay; keep small fallback */}
-        {card.isSponsored && (
-          <a
-            href={card.adMeta?.adChoicesLinkUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute top-4 right-4 flex items-center gap-1 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] shadow-sm border border-white/50"
+        {!card.adData && (
+          <div
+            className={`absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg border border-white/50`}
           >
-            <img
-              src={card.adMeta?.adChoicesIconUrl}
-              alt="AdChoices"
-              className="w-4 h-4 min-w-[16px] min-h-[16px]"
-              style={{ minWidth: '16px', minHeight: '16px' }}
-            />
-            <span className="text-gray-700 font-medium">
-              {card.adMeta?.adChoicesText || 'Ad'}
+            <span className="text-gray-800 font-bold text-sm">
+              {card.cuisine}
             </span>
-          </a>
+            {card.priceRange && (
+              <div className="flex items-center">
+                {renderPriceRange(card.priceRange)}
+              </div>
+            )}
+          </div>
         )}
+
+        {card.adData && (
+          <>
+            {/* "Ad" badge - Top left */}
+            <div
+              className={`absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center shadow-lg border border-white/50`}
+            >
+              <span className="text-gray-900 font-extrabold text-sm tracking-wide leading-none">
+                Ad
+              </span>
+            </div>
+
+            {/* Advertiser name - Top center */}
+            <div
+              className={`absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm px-4 py-1.5 rounded-full flex items-center shadow-lg border border-white/50`}
+            >
+              <span className="text-gray-800 font-bold text-sm">
+                {card.adData.advertiser}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* AdChoices Attribution - Top right */}
+        <AdChoicesButton />
 
         {/* Content Overlays with AnimatePresence */}
         <AnimatePresence mode="wait">

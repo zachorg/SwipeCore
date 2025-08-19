@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SwipeCard } from "./SwipeCard";
-import { RestaurantCard, SwipeConfig, defaultSwipeConfig, androidOptimizedSwipeConfig } from "@/types/Types";
+import {
+  RestaurantCard,
+  SwipeConfig,
+  defaultSwipeConfig,
+  androidOptimizedSwipeConfig,
+} from "@/types/Types";
 import { SwipeControls } from "./SwipeControls";
 import {
   useFilteredPlaces,
@@ -203,6 +208,8 @@ export function SwipeDeck({
 
   const visibleCards = cards.slice(0, maxVisibleCards);
 
+  console.log("visibleCards", JSON.stringify(visibleCards));
+
   const handleMenuOpen = () => {
     console.log("Open menu clicked");
     handleExpand(currentCard.id);
@@ -239,8 +246,11 @@ export function SwipeDeck({
   }, [currentCard]);
 
   const handleCardTap = (card: RestaurantCard) => {
-    if (card.isSponsored) {
-      if ((import.meta as any)?.env?.VITE_ADS_DEBUG === 'true' || import.meta.env.DEV) {
+    if (card.adData) {
+      if (
+        (import.meta as any)?.env?.VITE_ADS_DEBUG === "true" ||
+        import.meta.env.DEV
+      ) {
         console.log("[Ads] Sponsored card tapped", {
           cardId: card.id,
           nativeId: (nativeAdsProvider as any)?.getNativeAdIdForCard?.(card.id),
@@ -441,7 +451,7 @@ export function SwipeDeck({
       {/* Card Stack - Full height with padding for controls */}
       <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
         {visibleCards.map((card, index) => {
-          if (card.isSponsored) {
+          if (card.adData) {
             return (
               <SwipeCard
                 key={card.id}
@@ -474,7 +484,7 @@ export function SwipeDeck({
       {/* Swipe Controls - Fixed footer */}
       <SwipeControls
         onAction={handleControlAction}
-        onMenuOpen={currentCard?.isSponsored ? undefined : handleMenuOpen}
+        onMenuOpen={currentCard?.adData ? undefined : handleMenuOpen}
         onVoiceFiltersApplied={
           enableFiltering
             ? (filters) => {
