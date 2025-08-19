@@ -61,7 +61,7 @@ export const PhoneVerificationScreen: React.FC<
       }
     } catch (error: any) {
       console.error("Error sending OTP:", error);
-      setError(`Failed to send OTP: ${error.message}`);
+      setError(`Failed to send OTP`); //: ${error.message}
     } finally {
       setIsLoading(false);
     }
