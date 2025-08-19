@@ -43,7 +43,16 @@ const config: CapacitorConfig = {
     },
     CapacitorHttp: {
       enabled: true
-    }
+    },
+    SafeArea: {
+      enabled: true,
+      customColorsForSystemBars: true,
+      statusBarColor: '#000000',
+      statusBarContent: 'dark',
+      navigationBarColor: '#000000',
+      navigationBarContent: 'dark',
+      offset: 0,
+    },
   }
 };
 

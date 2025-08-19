@@ -62,7 +62,12 @@ const Index = () => {
 
   const LoadingState = () => {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-b from-purple-50 to-blue-50">
+      <div 
+        className="flex items-center justify-center bg-gradient-to-b from-purple-50 to-blue-50"
+        style={{
+          height: `calc(100vh - var(--safe-area-inset-top))`,
+        }}
+      >
         <div className="text-center">
           <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
             <span className="text-white text-2xl">🍕</span>
@@ -125,7 +130,12 @@ const Index = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden">
+    <div 
+      className="flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden"
+      style={{
+        height: `calc(100vh - var(--safe-area-inset-top))`,
+      }}
+    >
       {showWelcome && (
         <WelcomeScreen
           onVoiceFiltersApplied={handleVoiceFiltersApplied}

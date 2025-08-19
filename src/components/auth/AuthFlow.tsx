@@ -93,7 +93,12 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
   // Show loading while checking verification
   if (isCheckingVerification) {
     return (
-      <div className="h-screen flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden">
+      <div
+        className="flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden"
+        style={{
+          height: `calc(100vh - var(--safe-area-inset-top))`,
+        }}
+      >
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -133,7 +138,12 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden">
+    <div
+      className="flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden"
+      style={{
+        height: `calc(100vh - var(--safe-area-inset-top))`,
+      }}
+    >
       {renderCurrentStep()}
     </div>
   );

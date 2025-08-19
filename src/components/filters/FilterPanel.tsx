@@ -120,7 +120,10 @@ export function FilterPanel({
 
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl flex flex-col h-full"
+        className="w-full sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl flex flex-col"
+        style={{
+          height: `calc(100vh - var(--safe-area-inset-top))`,
+        }}
       >
         <SheetHeader className="pb-6 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -181,7 +184,7 @@ export function FilterPanel({
               <NaturalLanguageSearch
                 onFiltersApplied={(filters) => {
                   // Apply each filter from the NLP result
-                  filters.forEach(filter => {
+                  filters.forEach((filter) => {
                     addFilter(filter.filterId, filter.value);
                   });
                   // Close the panel after applying filters
@@ -189,8 +192,6 @@ export function FilterPanel({
                 }}
               />
             </div>
-
-
           </div>
 
           <Accordion
@@ -233,23 +234,23 @@ export function FilterPanel({
                         value={getFilterValue(filter.id)}
                         isActive={isFilterActive(filter.id)}
                         onChange={(value) => {
-                        if (
-                          value === undefined ||
-                          value === null ||
-                          value === "" ||
-                          (Array.isArray(value) && value.length === 0)
-                        ) {
-                          removeFilter(filter.id);
-                        } else {
-                          if (isFilterActive(filter.id)) {
-                            updateFilter(filter.id, value);
+                          if (
+                            value === undefined ||
+                            value === null ||
+                            value === "" ||
+                            (Array.isArray(value) && value.length === 0)
+                          ) {
+                            removeFilter(filter.id);
                           } else {
-                            addFilter(filter.id, value);
+                            if (isFilterActive(filter.id)) {
+                              updateFilter(filter.id, value);
+                            } else {
+                              addFilter(filter.id, value);
+                            }
                           }
-                        }
-                      }}
-                    />
-                  );
+                        }}
+                      />
+                    );
                   })}
                 </AccordionContent>
               </AccordionItem>
