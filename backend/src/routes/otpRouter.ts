@@ -3,6 +3,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { smsService } from '../services/smsService';
 import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
+import { OtpCheckVerificationRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
 
 const router = Router();
 
@@ -18,13 +19,15 @@ function generateOTP() {
 router.post(
     '/send',
     asyncHandler(async (req: Request, res: Response) => {
-        const { phone } = req.body;
+        const { phoneNumber } = req.body as OtpRequest;
 
-        if (!phone) {
-            return res.status(400).json({
+        if (!phoneNumber) {
+            const response: OtpResponse = {
                 success: false,
+                errorCode: "INVALID_PHONE_NUMBER",
                 message: 'Phone number is required',
-            });
+            };
+            return res.status(400).json(response);
         }
 
         try {
@@ -36,20 +39,22 @@ router.post(
 
             //if (smsResult.success) {
             console.log(
-                `✅ OTP ${otp} sent to ${phone}` // via ${smsResult.messageId}
+                `✅ OTP ${otp} sent to ${phoneNumber}` // via ${smsResult.messageId}
             );
 
-            otpStore.set(phone, {
+            otpStore.set(phoneNumber, {
                 otp,
                 createdAt: Date.now(),
                 expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
             });
 
-            res.json({
+
+            const response: OtpResponse = {
                 success: true,
                 message: 'OTP sent successfully',
-                // smsProvider: smsResult.messageId?.split('_')[0] || 'console',
-            });
+            };
+            // smsProvider: smsResult.messageId?.split('_')[0] || 'console',
+            res.json(response);
             // } else {
             //     throw new Error(`SMS delivery failed: ${smsResult.error}`);
             // }
@@ -68,39 +73,45 @@ router.post(
 router.post(
     '/verify',
     asyncHandler(async (req: Request, res: Response) => {
-        const { phone, code } = req.body;
+        const { phoneNumber, code } = req.body as OtpVerifyRequest;
 
-        if (!phone || !code) {
-            return res.status(400).json({
+        if (!phoneNumber || !code) {
+            const response: OtpResponse = {
                 success: false,
+                errorCode: "INVALID_REQUEST_PARAMS",
                 message: 'Phone number and code are required',
-            });
+            }
+            return res.status(400).json(response);
         }
 
         try {
             // Find stored OTP
-            const foundVerification = otpStore.get(phone) as {
+            const storedOtp = otpStore.get(phoneNumber);
+            const foundVerification = storedOtp as {
                 otp: string;
                 createdAt: number;
                 expiresAt: number; // 5 minutes
             };
 
-            if (!foundVerification) {
-                return res.status(400).json({
+            if (!storedOtp) {
+                const response: OtpResponse = {
                     success: false,
+                    errorCode: "INVALID_REQUEST_PARAMS",
                     message: 'Invalid verification code',
-                });
+                }
+                return res.status(400).json(response);
             }
 
             // Check if expired
             if (Date.now() > foundVerification.expiresAt) {
                 // Clean up expired OTP
-                otpStore.delete(phone);
-                return res.status(400).json({
+                otpStore.delete(phoneNumber);
+                const response: OtpResponse = {
                     success: false,
                     errorCode: 'OTP_EXPIRED',
                     message: 'Verification code expired',
-                });
+                }
+                return res.status(400).json(response);
             }
 
             // Create or update user
@@ -111,7 +122,7 @@ router.post(
                 .upsert(
                     {
                         verification_id: verificationId,
-                        phone_number: phone,
+                        phone_number: phoneNumber,
                     },
                     {
                         onConflict: 'phone_number',
@@ -133,7 +144,7 @@ router.post(
                 .update({
                     verification_id: verificationId,
                 })
-                .eq('phone_number', phone)
+                .eq('phone_number', phoneNumber)
                 .single();
 
             if (updateError && !IsEmptyRowError(updateError)) {
@@ -144,12 +155,12 @@ router.post(
             // Generate JWT token (in production, use proper JWT library)
             const token = `token_${verificationId}_${Date.now()}`;
 
-            res.json({
+            const response: OtpResponse = {
                 success: true,
                 message: 'OTP verified successfully',
-                token,
                 verificationId, // Return verification ID to client
-            });
+            };
+            res.json(response);
         } catch (error) {
             console.error('Error verifying OTP:', error);
             res.status(500).json({
@@ -164,9 +175,9 @@ router.post(
 // Clean up expired OTPs periodically
 setInterval(() => {
     const now = Date.now();
-    for (const [verificationId, verification] of otpStore.entries()) {
-        if (now > verification.expiresAt) {
-            otpStore.delete(verificationId);
+    for (const [id, value] of otpStore.entries()) {
+        if (now > value.expiresAt) {
+            otpStore.delete(id);
         }
     }
 }, 60000); // Check every minute
@@ -175,47 +186,53 @@ setInterval(() => {
 router.post(
     '/check-verification',
     asyncHandler(async (req: Request, res: Response) => {
-        const { verificationId } = req.body;
+        const { verificationId } = req.body as OtpCheckVerificationRequest;
 
         if (!verificationId) {
-            return res.status(400).json({
+            const response: OtpResponse = {
                 success: false,
-                message: 'Verification ID is required',
-            });
+                errorCode: "INVALID_REQUEST_PARAMS",
+                message: 'Invalid Verification ID',
+            };
+            return res.status(400).json(response);
         }
 
         try {
             const { data: verification, error } = await userProfileService.isValidVerificationId(verificationId);
 
             if (!verification) {
-                return res.status(404).json({
+                const response: OtpResponse = {
                     success: false,
-                    errorCode: 'VERIFICATION_ID_NOT_FOUND',
-                    message: 'Verification ID not found',
-                });
+                    errorCode: "INVALID_REQUEST_PARAMS",
+                    message: 'Invalid Verification ID',
+                };
+                return res.status(404).json(response);
             }
 
             // expired
-            if (Date.now() > verification.created_at) {
-                userProfileService.deleteVerificationIdLookup(verificationId);
-                return res.status(404).json({
-                    success: false,
-                    errorCode: 'VERIFICATION_ID_NOT_FOUND',
-                    message: 'Verification ID not found',
-                });
-            }
+            // if (Date.now() > verification.created_at) {
+            //     userProfileService.deleteVerificationIdLookup(verificationId);
+            //     return res.status(404).json({
+            //         success: false,
+            //         errorCode: 'VERIFICATION_ID_NOT_FOUND',
+            //         message: 'Verification ID not found',
+            //     });
+            // }
 
-            res.json({
+            const response: OtpResponse = {
                 success: true,
                 message: 'User is verified',
-            });
+            };
+            res.json(response);
         } catch (error) {
             console.error('Error checking verification:', error);
-            res.status(500).json({
+
+            const response: OtpResponse = {
                 success: false,
                 errorCode: 'VERIFICATION_CHECK_FAILED',
                 message: 'Failed to check verification status',
-            });
+            };
+            res.status(500).json(response);
         }
     })
 );

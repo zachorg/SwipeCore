@@ -53,7 +53,7 @@ export const PhoneVerificationScreen: React.FC<
 
       const response = await otpService.sendOtp(formattedPhone);
 
-      if (response.success) {
+      if (response) {
         setIsOtpSent(true);
         setError("");
       } else {
@@ -82,7 +82,7 @@ export const PhoneVerificationScreen: React.FC<
 
       const response = await otpService.verifyOtp(formattedPhone, otp);
 
-      if (response.success) {
+      if (response) {
         // Store verification ID in persistent storage
         if (response.verificationId) {
           try {
@@ -103,7 +103,6 @@ export const PhoneVerificationScreen: React.FC<
       }
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
-      setError(`Verification failed: ${error.message}`);
     } finally {
       setIsLoading(false);
     }

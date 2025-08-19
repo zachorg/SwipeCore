@@ -175,8 +175,8 @@ export function FilterPanel({
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           {/* AI-Powered Search */}
-          <div className="space-y-4 pb-4 border-b border-gray-200">
-            {/* Text-based Natural Language Search */}
+          {/* Text-based Natural Language Search */}
+          {/* <div className="space-y-4 pb-4 border-b border-gray-200">
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
                 💬 Type Your Request
@@ -192,7 +192,7 @@ export function FilterPanel({
                 }}
               />
             </div>
-          </div>
+          </div> */}
 
           <Accordion
             type="multiple"
