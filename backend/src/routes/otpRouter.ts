@@ -85,15 +85,7 @@ router.post(
         }
 
         try {
-            // Find stored OTP
-            const storedOtp = otpStore.get(phoneNumber);
-            const foundVerification = storedOtp as {
-                otp: string;
-                createdAt: number;
-                expiresAt: number; // 5 minutes
-            };
-
-            if (!storedOtp) {
+            if (otpStore.has(phoneNumber)) {
                 const response: OtpResponse = {
                     success: false,
                     errorCode: "INVALID_REQUEST_PARAMS",
@@ -102,8 +94,15 @@ router.post(
                 return res.status(400).json(response);
             }
 
+            // Find stored OTP
+            const storedOtp = otpStore.get(phoneNumber) as {
+                otp: string;
+                createdAt: number;
+                expiresAt: number; // 5 minutes
+            };
+
             // Check if expired
-            if (Date.now() > foundVerification.expiresAt) {
+            if (Date.now() > storedOtp.expiresAt) {
                 // Clean up expired OTP
                 otpStore.delete(phoneNumber);
                 const response: OtpResponse = {

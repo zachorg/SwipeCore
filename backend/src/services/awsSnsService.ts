@@ -45,7 +45,7 @@ class AwsSnsService {
             const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
 
             // Create the SMS message
-            const message = `Your SwipeCore verification code is: ${otp}. Valid for 5 minutes.`;
+            const message = `Your NomNom verification code is: ${otp}. Valid for 5 minutes.`;
 
             const command = new PublishCommand({
                 Message: message,

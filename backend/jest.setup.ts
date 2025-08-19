@@ -1,4 +1,4 @@
-// Jest setup for SwipeCore Backend
+// Jest setup for NomNom Backend
 
 // Set test environment to development by default
 process.env.NODE_ENV = 'test';

@@ -69,7 +69,7 @@ export function VoiceButton({
         if (!permissionResult.granted) {
           // Show settings guidance
           alert(
-            "Microphone permission is required for voice search. Please go to Settings → Apps → SwipeCore → Permissions → Microphone and enable it."
+            "Microphone permission is required for voice search. Please go to Settings → Apps → NomNom → Permissions → Microphone and enable it."
           );
           return false;
         }
@@ -136,7 +136,7 @@ export function VoiceButton({
               // Always reset to idle state after processing
               setVoiceState("idle");
             }, 800);
-          } 
+          }
         },
         (error: string) => {
           console.error("Speech recognition error:", error);

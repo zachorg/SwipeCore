@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.swipecore.app',
-  appName: 'SwipeCore',
+  appName: 'NomNom',
   webDir: 'dist',
   server: {
     cleartext: true

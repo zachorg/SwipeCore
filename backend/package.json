@@ -1,5 +1,5 @@
 {
-  "name": "swipecore-backend",
+  "name": "NomNom-backend",
   "version": "1.0.0",
   "description": "Express API proxy for Google Places API",
   "main": "dist/index.js",

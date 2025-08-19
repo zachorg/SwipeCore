@@ -1,4 +1,4 @@
-## SwipeCore – Current State
+## NomNom – Current State
 
 A mobile-first restaurant discovery app with a swipe interface, live data from Google Places (New) API, voice-powered filtering, and device optimizations. The project includes a React + TypeScript frontend (Vite + Tailwind + Radix UI + Framer Motion) and a TypeScript Express backend proxy with unified caching.
 
@@ -19,6 +19,7 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
 #### Data and state pipeline
 
 - `useFilteredPlaces` (core hook)
+
   - Gets location via `useGeolocation` (Capacitor Geolocation + browser fallback permissions flow).
   - Queries backend via `useNearbyPlaces`/`placesApi.searchNearby` (TanStack Query) when location and the live-data feature flag are enabled.
   - Transforms Google Places results into `RestaurantCard`s (`src/utils/placeTransformers.ts`).
@@ -72,12 +73,14 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
 
 - **Tech stack**: Express 5 + TypeScript, Axios, Zod, Helmet, CORS, rate limiting, dotenv-flow.
 - **Server** (`backend/src/index.ts`):
+
   - Middleware: Helmet, CORS (localhost, emulator IPs, capacitor), JSON parsing, rate limiting.
   - Health check: `GET /health`.
   - Routes mounted at `/api/places`.
   - Central error handler with friendly messages for common upstream API errors.
 
 - **Places routes** (`backend/src/routes/places.ts`):
+
   - `GET /nearby` → Validates `lat`, `lng`, optional `radius`, `keyword`, `type`. Calls Google Places `places:searchNearby` via client.
   - `GET /nearbyAdvanced` → Text search (`places:searchText`) with optional `lat/lng/radius`.
   - `GET /:placeId` → Detailed place data.
@@ -87,6 +90,7 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
     - `GET /dev-cache/stats` → dev cache breakdown
 
 - **Google Places client** (`backend/src/google/liveClient.ts`):
+
   - Uses Places API (New) v1 endpoints with field masks for minimal payloads.
   - Wraps all calls with unified caching (`withCache`).
   - Endpoints used:
@@ -96,6 +100,7 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
     - `POST /places:searchText` (text search)
 
 - **Unified caching** (`backend/src/cache/unifiedCache.ts`):
+
   - Dev mode: file-based cache `dev-cache-nearby.json` with TTL and on-disk persistence; sections for nearby, details, photos.
   - Prod: in-memory `node-cache` with per-key TTL (defaults derived from `CACHE_TTL_DAYS`).
   - Keys: SHA1-hashed parameterized keys for nearby/textSearch; plain `details:{id}`, `photo:{ref}:{dims}`.
@@ -107,11 +112,13 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
 ### Configuration
 
 - Frontend `.env.local` (see root `README.md`):
+
   - `VITE_BACKEND_URL=http://localhost:4000`
   - `VITE_USE_LIVE_DATA=true`
   - `VITE_ENABLE_LOCATION_SERVICES=true`
 
 - Backend `backend/.env` (see `backend/README.md` and `env.example`):
+
   - `GOOGLE_PLACES_API_KEY`
   - `PLACES_BASE_URL=https://places.googleapis.com/v1`
   - `PORT=4000`
@@ -150,5 +157,3 @@ A mobile-first restaurant discovery app with a swipe interface, live data from G
 4. Voice/text queries map to structured filters via NLP and update the results accordingly.
 
 This document reflects the branch state `features/resturant-filtering` at the time of writing.
-
-

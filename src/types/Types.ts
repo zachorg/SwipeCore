@@ -1,4 +1,4 @@
-// Domain models for the SwipeCore app - integrating Google Places API data
+// Domain models for the NomNom app - integrating Google Places API data
 
 import { NativeAdData } from "@/utils/ads";
 

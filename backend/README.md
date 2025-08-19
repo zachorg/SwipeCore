@@ -1,4 +1,4 @@
-# SwipeCore Backend
+# NomNom Backend
 
 Express API proxy for Google Places API with unified caching system.
 
@@ -20,6 +20,7 @@ npm install
 ### 2. Environment Configuration
 
 Copy the example environment file:
+
 ```bash
 cp env.example .env
 ```
@@ -47,11 +48,13 @@ RATE_LIMIT_MAX_REQUESTS=100
 ## Caching System
 
 The backend uses a unified caching approach:
+
 - **Development**: File-based cache (`dev-cache-nearby.json`) for persistence across restarts
 - **Production**: In-memory NodeCache for optimal performance
 - **TTL Compliance**: Configurable cache duration up to 30 days per Google requirements
 
 ### Cache Types
+
 - **Nearby Search**: Cache ≤ 30 days (coordinates-based)
 - **Place Details**: Cache unlimited (place IDs are permanent)
 - **Photos**: Follow same rules as associated place data
@@ -96,16 +99,19 @@ These endpoints are only available when `NODE_ENV=development`.
 ## API Endpoints
 
 ### Nearby Search
+
 ```http
 GET /api/places/nearby?lat=40.7128&lng=-74.0060&radius=1500&keyword=restaurant
 ```
 
 ### Place Details
+
 ```http
 GET /api/places/ChIJN1t_tDeuEmsRUsoyG83frY4
 ```
 
 ### Place Photos
+
 ```http
 GET /api/places/photo/photo_reference?maxWidth=400&maxHeight=400
 ```
@@ -113,6 +119,7 @@ GET /api/places/photo/photo_reference?maxWidth=400&maxHeight=400
 ## Development Workflow
 
 ### 1. Development
+
 ```bash
 # Start development server
 npm run dev
@@ -122,6 +129,7 @@ curl "http://localhost:4000/api/places/nearby?lat=40.7128&lng=-74.0060&radius=15
 ```
 
 ### 2. Testing
+
 ```bash
 # Run all tests with coverage
 npm test
@@ -131,6 +139,7 @@ npm run test:watch
 ```
 
 ### 3. Production
+
 ```bash
 # Build for production
 npm run build
@@ -142,11 +151,13 @@ npm start
 ## Testing
 
 ### Test Architecture
+
 - **Comprehensive Coverage**: Jest test suites with mocked integrations
 - **Cache Testing**: Unified cache system verification
 - **Integration Tests**: End-to-end API behavior testing
 
 ### Run Tests
+
 ```bash
 # All tests with coverage
 npm test
@@ -162,6 +173,7 @@ npm run test:watch
 ## Troubleshooting
 
 ### API Key Issues
+
 ```bash
 # Verify API key in environment
 echo $GOOGLE_PLACES_API_KEY
@@ -175,6 +187,7 @@ curl "https://places.googleapis.com/v1/places:searchNearby" \
 ```
 
 ### Cache Issues
+
 ```bash
 # Clear development cache via API
 curl -X DELETE http://localhost:4000/api/places/dev-cache
@@ -186,11 +199,13 @@ npm run dev
 ## Production Considerations
 
 ### Environment Variables
+
 - Use proper `GOOGLE_PLACES_API_KEY` with appropriate quotas
 - Set `CACHE_TTL_DAYS` to respect Google's 30-day limit (max 30)
 - Configure rate limiting appropriately for your use case
 
 ### Security
+
 - Never commit `.env` files with real API keys
 - Use environment-specific configuration
 - Implement proper rate limiting

@@ -1,4 +1,4 @@
-# # SwipeCore
+# # NomNom
 
 A modern restaurant discovery app with swipe-based interface, powered by Google Places API.
 
@@ -13,7 +13,8 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 ## Setup
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or pnpm
 - Android Studio (for Android development)
 - Xcode (for iOS development, macOS only)
@@ -21,6 +22,7 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 ### Environment Configuration
 
 1. **Frontend**: Create `.env` and `.env.production` with the following (Google test IDs by default):
+
    ```bash
    # Common
    VITE_BACKEND_URL=http://localhost:4000
@@ -49,6 +51,7 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 ### Installation
 
 1. Install frontend dependencies:
+
    ```bash
    npm install
    ```
@@ -63,17 +66,20 @@ A modern restaurant discovery app with swipe-based interface, powered by Google 
 ### Development
 
 1. Start the backend server:
+
    ```bash
    cd backend
    npm run dev
    ```
 
 2. Start the frontend development server:
+
    ```bash
    npm run dev
    ```
 
 3. For mobile development:
+
    ```bash
    # Android
    npm install
@@ -112,11 +118,13 @@ Native ad cards are interleaved into the swipe deck (after roughly every 4 real 
 ## Google Places API Setup
 
 1. **Create API Key**:
+
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Enable "Places API (New)"
    - Create an API key with proper restrictions
 
 2. **Security Configuration**:
+
    - **Application restrictions**: Set to IP addresses for server-to-server
    - **API restrictions**: Enable only "Places API (New)"
    - Add your development/production server IPs
