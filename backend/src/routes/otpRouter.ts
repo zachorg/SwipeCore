@@ -85,7 +85,7 @@ router.post(
         }
 
         try {
-            if (otpStore.has(phoneNumber)) {
+            if (!otpStore.has(phoneNumber)) {
                 const response: OtpResponse = {
                     success: false,
                     errorCode: "INVALID_REQUEST_PARAMS",

@@ -39,7 +39,7 @@ class OtpService {
             return data;
         } catch (error: any) {
             console.error('Error sending OTP:', error);
-            return null;
+            throw new Error(error.message || 'Failed to send OTP');
         }
     }
 
@@ -73,7 +73,7 @@ class OtpService {
             return data;
         } catch (error: any) {
             console.error('Error verifying OTP:', error);
-            return null;
+            throw new Error(error.message || 'Failed to send OTP');
         }
     }
 

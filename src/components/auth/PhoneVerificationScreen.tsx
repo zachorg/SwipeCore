@@ -103,6 +103,7 @@ export const PhoneVerificationScreen: React.FC<
       }
     } catch (error: any) {
       console.error("Error verifying OTP:", error);
+      setError(`${error.message}`);
     } finally {
       setIsLoading(false);
     }
