@@ -10,7 +10,7 @@ import {
 } from "@/types/prefetching";
 import { prefetchingService } from "@/services/prefetcher";
 import { prefetchAnalytics } from "@/services/prefetchAnalytics";
-import { PrefetchCandidate } from "@/utils/costOptimizer";
+import { CostOptimizer, PrefetchCandidate } from "@/utils/costOptimizer";
 import { GooglePhotoResponse } from "@/services/places";
 
 export interface UsePrefetcherOptions {
@@ -153,12 +153,12 @@ export function usePrefetcher(
         }
 
         // Update budget
-        const totalCost = prefetchingService.costOptimizer.calculateCostEstimate(
-            card,
-            includePhotos
-          ).totalCost
-        await prefetchingService.updateBudgetSpend(
-          totalCost
+        await prefetchingService.updatePhotoBudgetSpend(
+          CostOptimizer.API_COSTS.PHOTO
+        );
+
+        await prefetchingService.updateDetailsBudgetSpend(
+          CostOptimizer.API_COSTS.DETAILS
         );
 
         // Emit prefetch completed event
@@ -166,7 +166,7 @@ export function usePrefetcher(
           type: "prefetch_completed",
           cardId: card.id,
           timestamp: Date.now(),
-          cost: totalCost,
+          cost: CostOptimizer.API_COSTS.PHOTO + CostOptimizer.API_COSTS.DETAILS,
           score: {} as CardScore,
           decision: {} as PrefetchDecision,
           metadata: { success: true },

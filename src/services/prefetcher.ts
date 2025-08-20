@@ -18,7 +18,7 @@ export class PrefetchingService {
   private scoringEngine: HeuristicScoringEngine;
   public costOptimizer: CostOptimizer;
   private config: PrefetchConfig;
-  private budgetStatus: BudgetStatus;
+  private budgetStatus: BudgetStatus | null;
   private eventListeners: Array<(event: PrefetchEvent) => void> = [];
   private prefetchQueue: Map<string, PrefetchCandidate> = new Map();
   private activeRequests: Set<string> = new Set();
@@ -29,7 +29,13 @@ export class PrefetchingService {
     this.scoringEngine = new HeuristicScoringEngine();
     this.costOptimizer = new CostOptimizer();
     this.config = config;
-    this.budgetStatus = this.initializeBudgetStatus();
+    // initializeBudgetStatus is async, so we must await it and handle the Promise
+    // But constructors can't be async, so we initialize with a default and update after
+    this.budgetStatus = null;
+    this.initializeBudgetStatus().then((status) => {
+      this.budgetStatus = status;
+      console.info("Initialized budget status: ", JSON.stringify(this.budgetStatus, null, 2));
+    });
 
     // Set up behavior tracking integration
     behaviorTracker.addEventListener(this.handleBehaviorEvent.bind(this));
@@ -43,6 +49,14 @@ export class PrefetchingService {
     if (!this.config.enabled) return;
 
     try {
+      if (!this.budgetStatus) {
+        console.info("Budget status not initialized");
+        setTimeout(() => {
+          this.intelligentPrefetch(cards, currentPosition, userPreferences);
+        }, 1000);
+        return;
+      }
+
       // Update budget status
       await this.updateBudgetStatus();
 
@@ -51,17 +65,17 @@ export class PrefetchingService {
       const sessionContext = behaviorTracker.getCurrentSession();
       const predictiveSignals = behaviorTracker.getPredictiveSignals();
 
-      console.log(
-        `Current: \n\t${JSON.stringify(
-          userBehavior,
-          null,
-          2
-        )} \n\n\t${JSON.stringify(
-          sessionContext,
-          null,
-          2
-        )} \n\n\t${JSON.stringify(predictiveSignals, null, 2)}`
-      );
+      // console.log(
+      //   `Current: \n\t${JSON.stringify(
+      //     userBehavior,
+      //     null,
+      //     2
+      //   )} \n\n\t${JSON.stringify(
+      //     sessionContext,
+      //     null,
+      //     2
+      //   )} \n\n\t${JSON.stringify(predictiveSignals, null, 2)}`
+      // );
 
       // Early exit if user likely to end session soon
       if (
@@ -81,24 +95,25 @@ export class PrefetchingService {
         userPreferences
       );
 
-      console.log("candidates: ", candidates);
+      console.log("candidates: ", JSON.stringify(candidates.map(candidate => candidate.card.title), null, 2));
 
       // Filter candidates based on thresholds
       const viableCandidates = this.filterViableCandidates(candidates);
 
-      console.log("filterViableCandidates: ", viableCandidates);
+      console.log("filterViableCandidates: ", JSON.stringify(viableCandidates.map(candidate => candidate.card.title), null, 2));
 
-      // Optimize selection based on budget constraints
-      const optimizedCandidates = this.costOptimizer.optimizePrefetchQueue(
+      // Optimize selection based on separate budget constraints
+      const { detailsCandidates, photoCandidates } = this.costOptimizer.optimizeSeparatePrefetchQueue(
         viableCandidates,
         this.budgetStatus,
         userBehavior.detailViewRate
       );
 
-      console.log("executePrefetchDecisions: ", optimizedCandidates);
+      console.log("Details candidates: ", JSON.stringify(detailsCandidates.map(candidate => candidate.card.title), null, 2));
+      console.log("Photo candidates: ", JSON.stringify(photoCandidates.map(candidate => candidate.card.title), null, 2));
 
-      // Execute prefetch decisions
-      await this.executePrefetchDecisions(optimizedCandidates);
+      // Execute prefetch decisions for both types
+      await this.executeSeparatePrefetchDecisions(detailsCandidates, photoCandidates);
     } catch (error) {
       console.error("Error in intelligent prefetch:", error);
       this.emitEvent({
@@ -134,6 +149,7 @@ export class PrefetchingService {
 
       // Skip if already prefetched or in progress
       if (this.isPrefetched(card.id) || this.activeRequests.has(card.id)) {
+        console.log(`Skipping ${card.title} because it's already prefetched or in progress`);
         continue;
       }
 
@@ -178,28 +194,25 @@ export class PrefetchingService {
       const meetsPosition =
         position <= this.config.thresholds.positionThreshold;
 
-      return meetsConfidence && meetsScore && meetsPosition;
+      const meetsStrictPosition = position < 3;
+
+      return (meetsConfidence && meetsScore && meetsPosition) || meetsStrictPosition;
     });
   }
 
-  public async executePrefetchDecisions(
-    candidates: PrefetchCandidate[]
+  // New method to execute separate prefetch decisions
+  public async executeSeparatePrefetchDecisions(
+    detailsCandidates: PrefetchCandidate[],
+    photoCandidates: PrefetchCandidate[]
   ): Promise<void> {
-    for (const candidate of candidates) {
+
+    // Execute photo prefetching
+    for (const candidate of photoCandidates) {
       try {
         // Mark as active
         this.activeRequests.add(candidate.card.id);
 
-        // Prefetch photos if decision says so
-        const shouldPrefetchPhotos =
-          true ||
-          this.costOptimizer.shouldPrefetchPhotos(
-            candidate.card,
-            candidate.score,
-            this.budgetStatus
-          );
-
-        // Emit prefetch started event
+        // Emit prefetch started event for photos
         this.emitEvent({
           type: "prefetch_started",
           cardId: candidate.card.id,
@@ -208,11 +221,9 @@ export class PrefetchingService {
           score: candidate.score,
           decision: {
             shouldPrefetch: true,
-            shouldPrefetchPhotos: shouldPrefetchPhotos,
+            shouldPrefetchPhotos: true,
             priority: this.getPriority(candidate.score),
-            reason: `Score: ${candidate.score.finalScore.toFixed(
-              1
-            )}, Confidence: ${(candidate.score.confidence * 100).toFixed(1)}%`,
+            reason: `Photo prefetch - Score: ${candidate.score.finalScore.toFixed(1)}, Confidence: ${(candidate.score.confidence * 100).toFixed(1)}%`,
             estimatedCost: candidate.estimatedCost,
             expectedValue: candidate.expectedValue,
             confidence: candidate.score.confidence,
@@ -221,23 +232,18 @@ export class PrefetchingService {
           metadata: {
             position: candidate.position,
             valuePerDollar: candidate.valuePerDollar,
+            type: "photos",
           },
         });
 
-        // Prefetch place details
-        await this.prefetchPlaceDetails(candidate.card.id, this.queryClient);
-
-        if (
-          shouldPrefetchPhotos &&
-          candidate.card.photos &&
-          candidate.card.photos.length > 0
-        ) {
+        // Prefetch photos
+        if (candidate.card.photos && candidate.card.photos.length > 0) {
           console.log(`Prefetching photos for ${candidate.card.title}...`);
           await this.prefetchPhotos(candidate.card, this.queryClient);
         }
 
-        // Update budget
-        await this.updateBudgetSpend(candidate.estimatedCost);
+        // Update photo budget
+        await this.updatePhotoBudgetSpend(candidate.estimatedCost);
 
         // Emit prefetch completed event
         this.emitEvent({
@@ -247,11 +253,10 @@ export class PrefetchingService {
           cost: candidate.estimatedCost,
           score: candidate.score,
           decision: {} as PrefetchDecision,
-          metadata: { success: true },
+          metadata: { success: true, type: "photos" },
         });
       } catch (error) {
-        console.error(`Failed to prefetch ${candidate.card.id}:`, error);
-
+        console.error(`Failed to prefetch photos for ${candidate.card.id}:`, error);
         this.emitEvent({
           type: "prefetch_completed",
           cardId: candidate.card.id,
@@ -259,7 +264,70 @@ export class PrefetchingService {
           cost: 0,
           score: candidate.score,
           decision: {} as PrefetchDecision,
-          metadata: { success: false, error: error.message },
+          metadata: { success: false, error: error.message, type: "photos" },
+        });
+      } finally {
+        // Remove from active requests
+        this.activeRequests.delete(candidate.card.id);
+      }
+    }
+
+    // Execute details prefetching
+    for (const candidate of detailsCandidates) {
+      try {
+        // Mark as active
+        this.activeRequests.add(candidate.card.id);
+
+        // Emit prefetch started event for details
+        this.emitEvent({
+          type: "prefetch_started",
+          cardId: candidate.card.id,
+          timestamp: Date.now(),
+          cost: candidate.estimatedCost,
+          score: candidate.score,
+          decision: {
+            shouldPrefetch: true,
+            shouldPrefetchPhotos: false,
+            priority: this.getPriority(candidate.score),
+            reason: `Details prefetch - Score: ${candidate.score.finalScore.toFixed(1)}, Confidence: ${(candidate.score.confidence * 100).toFixed(1)}%`,
+            estimatedCost: candidate.estimatedCost,
+            expectedValue: candidate.expectedValue,
+            confidence: candidate.score.confidence,
+            decidedAt: Date.now(),
+          },
+          metadata: {
+            position: candidate.position,
+            valuePerDollar: candidate.valuePerDollar,
+            type: "details",
+          },
+        });
+
+        // Prefetch place details
+        await this.prefetchPlaceDetails(candidate.card.id, this.queryClient);
+
+        // Update details budget
+        await this.updateDetailsBudgetSpend(candidate.estimatedCost);
+
+        // Emit prefetch completed event
+        this.emitEvent({
+          type: "prefetch_completed",
+          cardId: candidate.card.id,
+          timestamp: Date.now(),
+          cost: candidate.estimatedCost,
+          score: candidate.score,
+          decision: {} as PrefetchDecision,
+          metadata: { success: true, type: "details" },
+        });
+      } catch (error) {
+        console.error(`Failed to prefetch details for ${candidate.card.id}:`, error);
+        this.emitEvent({
+          type: "prefetch_completed",
+          cardId: candidate.card.id,
+          timestamp: Date.now(),
+          cost: 0,
+          score: candidate.score,
+          decision: {} as PrefetchDecision,
+          metadata: { success: false, error: error.message, type: "details" },
         });
       } finally {
         // Remove from active requests
@@ -336,16 +404,51 @@ export class PrefetchingService {
     return "low";
   }
 
-  private initializeBudgetStatus(): BudgetStatus {
+  private async initializeBudgetStatus(): Promise<BudgetStatus> {
+    const photoBudgetRatio = this.config.budgetLimits.photoBudgetRatio || 0.3;
+    const detailsBudgetRatio = this.config.budgetLimits.detailsBudgetRatio || 0.7;
+
+    const today = new Date().toDateString();
+    const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    // full budget
+    const dailySpend = (await this.getStoredSpend(`daily_${today}`)) || this.config.budgetLimits.dailyLimit;
+    const monthlySpend = (await this.getStoredSpend(`monthly_${thisMonth}`)) || this.config.budgetLimits.monthlyLimit;
+
+    // photo budget
+    const photoDaily = (await this.getStoredSpend(`daily_photos_${today}`)) || dailySpend * photoBudgetRatio;
+    const photoMonthly = (await this.getStoredSpend(`monthly_photos_${thisMonth}`)) || monthlySpend * photoBudgetRatio;
+
+    // details budget
+    const detailsDaily = (await this.getStoredSpend(`daily_details_${today}`)) || dailySpend * detailsBudgetRatio;
+    const detailsMonthly = (await this.getStoredSpend(`monthly_details_${thisMonth}`)) || monthlySpend * detailsBudgetRatio;
+
     return {
       dailyBudget: this.config.budgetLimits.dailyLimit,
       monthlyBudget: this.config.budgetLimits.monthlyLimit,
-      remainingDaily: this.config.budgetLimits.dailyLimit,
-      remainingMonthly: this.config.budgetLimits.monthlyLimit,
+      remainingDaily: dailySpend,
+      remainingMonthly: monthlySpend,
+
+      // Separate budget allocations
+      photoBudget: {
+        daily: this.config.budgetLimits.dailyLimit * photoBudgetRatio,
+        monthly: this.config.budgetLimits.monthlyLimit * photoBudgetRatio,
+        remainingDaily: photoDaily,
+        remainingMonthly: photoMonthly,
+      },
+      detailsBudget: {
+        daily: this.config.budgetLimits.dailyLimit * detailsBudgetRatio,
+        monthly: this.config.budgetLimits.monthlyLimit * detailsBudgetRatio,
+        remainingDaily: detailsDaily,
+        remainingMonthly: detailsMonthly,
+      },
+
       currentSpend: {
         daily: 0,
         monthly: 0,
         session: 0,
+        photos: 0,
+        details: 0,
       },
       predictedSpend: {
         dailyProjection: 0,
@@ -385,7 +488,7 @@ export class PrefetchingService {
     this.budgetStatus.isLowBudget =
       this.budgetStatus.remainingDaily < this.budgetStatus.dailyBudget * 0.25 ||
       this.budgetStatus.remainingMonthly <
-        this.budgetStatus.monthlyBudget * 0.25;
+      this.budgetStatus.monthlyBudget * 0.25;
 
     this.budgetStatus.isEmergencyMode =
       this.budgetStatus.remainingDaily < this.budgetStatus.emergencyThreshold ||
@@ -394,9 +497,11 @@ export class PrefetchingService {
     this.budgetStatus.budgetExceeded =
       this.budgetStatus.remainingDaily <= 0 ||
       this.budgetStatus.remainingMonthly <= 0;
+
+    console.log("updateBudgetStatus: ", JSON.stringify(this.budgetStatus, null, 2));
   }
 
-  public async updateBudgetSpend(cost: number): Promise<void> {
+  async updateBudgetSpend(cost: number): Promise<void> {
     const today = new Date().toDateString();
     const thisMonth = new Date().toISOString().slice(0, 7);
 
@@ -421,12 +526,67 @@ export class PrefetchingService {
     this.budgetStatus.currentSpend.monthly += cost;
     this.budgetStatus.remainingDaily = Math.max(
       0,
-      this.budgetStatus.remainingDaily - cost
+      this.budgetStatus.dailyBudget - currentDailySpend
     );
     this.budgetStatus.remainingMonthly = Math.max(
       0,
-      this.budgetStatus.remainingMonthly - cost
+      this.budgetStatus.monthlyBudget - currentMonthlySpend
     );
+
+    console.log("updateBudgetSpend: ", JSON.stringify(this.budgetStatus, null, 2));
+  }
+
+  // New method to update details budget specifically
+  public async updateDetailsBudgetSpend(cost: number): Promise<void> {
+    const today = new Date().toDateString();
+    const thisMonth = new Date().toISOString().slice(0, 7);
+
+    // Update stored spend
+    const currentDailySpend = (await this.getStoredSpend(`daily_details_${today}`)) || 0;
+    const currentMonthlySpend = (await this.getStoredSpend(`monthly_details_${thisMonth}`)) || 0;
+
+    await this.setStoredSpend(`daily_details_${today}`, currentDailySpend + cost);
+    await this.setStoredSpend(`monthly_details_${thisMonth}`, currentMonthlySpend + cost);
+
+    // Update budget status
+    this.budgetStatus.currentSpend.details += cost;
+    this.budgetStatus.detailsBudget.remainingDaily = Math.max(
+      0,
+      this.budgetStatus.detailsBudget.daily - currentDailySpend
+    );
+    this.budgetStatus.detailsBudget.remainingMonthly = Math.max(
+      0,
+      this.budgetStatus.detailsBudget.monthly - currentMonthlySpend
+    );
+
+    await this.updateBudgetSpend(cost);
+  }
+
+  // New method to update photo budget specifically
+  public async updatePhotoBudgetSpend(cost: number): Promise<void> {
+    const today = new Date().toDateString();
+    const thisMonth = new Date().toISOString().slice(0, 7);
+
+    // Update stored spend
+    const currentDailySpend = (await this.getStoredSpend(`daily_photos_${today}`)) || 0;
+    const currentMonthlySpend = (await this.getStoredSpend(`monthly_photos_${thisMonth}`)) || 0;
+
+    await this.setStoredSpend(`daily_photos_${today}`, currentDailySpend + cost);
+    await this.setStoredSpend(`monthly_photos_${thisMonth}`, currentMonthlySpend + cost);
+
+    // Update budget status
+    this.budgetStatus.currentSpend.photos += cost;
+
+    this.budgetStatus.photoBudget.remainingDaily = Math.max(
+      0,
+      this.budgetStatus.photoBudget.daily - currentDailySpend
+    );
+    this.budgetStatus.photoBudget.remainingMonthly = Math.max(
+      0,
+      this.budgetStatus.photoBudget.monthly - currentMonthlySpend
+    );
+
+    await this.updateBudgetSpend(cost);
   }
 
   private async getStoredSpend(key: string): Promise<number> {
@@ -554,12 +714,94 @@ export class PrefetchingService {
     return { ...this.budgetStatus };
   }
 
+  // New method to get detailed budget breakdown
+  getDetailedBudgetStatus(): {
+    total: BudgetStatus;
+    photos: {
+      daily: number;
+      monthly: number;
+      remainingDaily: number;
+      remainingMonthly: number;
+      spent: number;
+      ratio: number;
+    };
+    details: {
+      daily: number;
+      monthly: number;
+      remainingDaily: number;
+      remainingMonthly: number;
+      spent: number;
+      ratio: number;
+    };
+  } {
+    const photoRatio = this.config.budgetLimits.photoBudgetRatio || 0.3;
+    const detailsRatio = this.config.budgetLimits.detailsBudgetRatio || 0.7;
+
+    return {
+      total: { ...this.budgetStatus },
+      photos: {
+        daily: this.budgetStatus.photoBudget.daily,
+        monthly: this.budgetStatus.photoBudget.monthly,
+        remainingDaily: this.budgetStatus.photoBudget.remainingDaily,
+        remainingMonthly: this.budgetStatus.photoBudget.remainingMonthly,
+        spent: this.budgetStatus.currentSpend.photos,
+        ratio: photoRatio,
+      },
+      details: {
+        daily: this.budgetStatus.detailsBudget.daily,
+        monthly: this.budgetStatus.detailsBudget.monthly,
+        remainingDaily: this.budgetStatus.detailsBudget.remainingDaily,
+        remainingMonthly: this.budgetStatus.detailsBudget.remainingMonthly,
+        spent: this.budgetStatus.currentSpend.details,
+        ratio: detailsRatio,
+      },
+    };
+  }
+
   getConfig(): PrefetchConfig {
     return { ...this.config };
   }
 
   updateConfig(newConfig: Partial<PrefetchConfig>): void {
     this.config = { ...this.config, ...newConfig };
+
+    // If budget ratios changed, update the budget status
+    if (newConfig.budgetLimits?.photoBudgetRatio !== undefined ||
+      newConfig.budgetLimits?.detailsBudgetRatio !== undefined) {
+      this.updateBudgetAllocations();
+    }
+  }
+
+  // New method to update budget allocations when ratios change
+  private updateBudgetAllocations(): void {
+    const photoBudgetRatio = this.config.budgetLimits.photoBudgetRatio || 0.3;
+    const detailsBudgetRatio = this.config.budgetLimits.detailsBudgetRatio || 0.7;
+
+    // Calculate new budget allocations
+    const newPhotoDaily = this.config.budgetLimits.dailyLimit * photoBudgetRatio;
+    const newPhotoMonthly = this.config.budgetLimits.monthlyLimit * photoBudgetRatio;
+    const newDetailsDaily = this.config.budgetLimits.dailyLimit * detailsBudgetRatio;
+    const newDetailsMonthly = this.config.budgetLimits.monthlyLimit * detailsBudgetRatio;
+
+    // Adjust remaining budgets proportionally
+    const currentPhotoRatio = this.budgetStatus.photoBudget.remainingDaily / this.budgetStatus.photoBudget.daily;
+    const currentDetailsRatio = this.budgetStatus.detailsBudget.remainingDaily / this.budgetStatus.detailsBudget.daily;
+
+    this.budgetStatus.photoBudget = {
+      daily: newPhotoDaily,
+      monthly: newPhotoMonthly,
+      remainingDaily: newPhotoDaily * currentPhotoRatio,
+      remainingMonthly: newPhotoMonthly * currentPhotoRatio,
+    };
+
+    this.budgetStatus.detailsBudget = {
+      daily: newDetailsDaily,
+      monthly: newDetailsMonthly,
+      remainingDaily: newDetailsDaily * currentDetailsRatio,
+      remainingMonthly: newDetailsMonthly * currentDetailsRatio,
+    };
+
+    this.log(`Budget ratios updated - Photos: ${(photoBudgetRatio * 100).toFixed(1)}%, Details: ${(detailsBudgetRatio * 100).toFixed(1)}%`);
   }
 
   // Emergency methods
@@ -597,9 +839,11 @@ export const defaultPrefetchConfig: PrefetchConfig = {
   },
 
   budgetLimits: {
-    dailyLimit: 5.0, // $5 per day
-    monthlyLimit: 100.0, // $100 per month
-    sessionLimit: 1.0, // $1 per session
+    dailyLimit: 5 / 30, // $5 per day
+    monthlyLimit: 5.0, // $100 per month
+    sessionLimit: 2.5 / 30, // $1 per session
+    photoBudgetRatio: 0.9,
+    detailsBudgetRatio: 0.1,
   },
 
   maxConcurrentRequests: 3,
