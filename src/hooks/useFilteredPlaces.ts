@@ -512,50 +512,6 @@ export function useFilteredPlaces(
           minRating: 0,
         };
 
-        // Extract preferences from active filters
-        if (Array.isArray(filters)) {
-          filters.forEach((filter) => {
-            if (!filter.enabled) return;
-
-            switch (filter.id) {
-              case "priceLevel":
-                if (typeof filter.value === "number") {
-                  const priceMap = {
-                    1: "$",
-                    2: "$$",
-                    3: "$$$",
-                    4: "$$$$",
-                  } as const;
-                  const priceRange =
-                    priceMap[filter.value as keyof typeof priceMap];
-                  if (priceRange)
-                    userPreferences.preferredPriceRange = [priceRange];
-                }
-                break;
-              case "cuisine":
-                if (Array.isArray(filter.value)) {
-                  userPreferences.preferredCuisines = filter.value;
-                }
-                break;
-              case "minRating":
-                if (typeof filter.value === "number") {
-                  userPreferences.minRating = filter.value;
-                }
-                break;
-              case "openNow":
-                if (filter.value === true) {
-                  userPreferences.onlyOpenNow = true;
-                }
-                break;
-              case "distance":
-                if (typeof filter.value === "number") {
-                  userPreferences.maxDistance = filter.value * 1000; // Convert km to meters
-                }
-                break;
-            }
-          });
-        }
-
         prefetchCards(remainingCards, 0, userPreferences);
       }
 
