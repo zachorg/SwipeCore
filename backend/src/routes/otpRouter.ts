@@ -5,10 +5,16 @@ import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 import { OtpCheckVerificationRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
 
+interface OtpStore {
+    otp: string;
+    createdAt: number;
+    expiresAt: number;
+}
+
 const router = Router();
 
 // In-memory storage for demo (use database in production)
-const otpStore = new Map();
+const otpStore = new Map<string, OtpStore>();
 
 // Generate random 6-digit OTP
 function generateOTP() {
@@ -87,7 +93,15 @@ router.post(
         }
 
         try {
-            if (!otpStore.has(phoneNumber)) {
+            const hasOtp = otpStore.has(phoneNumber);
+            // Find stored OTP
+            const storedOtp = otpStore.get(phoneNumber) as {
+                otp: string;
+                createdAt: number;
+                expiresAt: number; // 5 minutes
+            };
+
+            if (!hasOtp || storedOtp === undefined || storedOtp?.otp !== code) {
                 const response: OtpResponse = {
                     success: false,
                     errorCode: "INVALID_REQUEST_PARAMS",
@@ -98,17 +112,10 @@ router.post(
                 return res.status(400).json(response);
             }
 
-            // Find stored OTP
-            const storedOtp = otpStore.get(phoneNumber) as {
-                otp: string;
-                createdAt: number;
-                expiresAt: number; // 5 minutes
-            };
-
+            otpStore.delete(phoneNumber);
             // Check if expired
             if (Date.now() > storedOtp.expiresAt) {
                 // Clean up expired OTP
-                otpStore.delete(phoneNumber);
                 const response: OtpResponse = {
                     success: false,
                     errorCode: 'OTP_EXPIRED',
