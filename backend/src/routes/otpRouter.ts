@@ -81,6 +81,8 @@ router.post(
                 errorCode: "INVALID_REQUEST_PARAMS",
                 message: 'Phone number and code are required',
             }
+
+            console.log(JSON.stringify(response));
             return res.status(400).json(response);
         }
 
@@ -91,6 +93,8 @@ router.post(
                     errorCode: "INVALID_REQUEST_PARAMS",
                     message: 'Invalid verification code',
                 }
+
+                console.log(JSON.stringify(response));
                 return res.status(400).json(response);
             }
 
@@ -110,6 +114,8 @@ router.post(
                     errorCode: 'OTP_EXPIRED',
                     message: 'Verification code expired',
                 }
+
+                console.log(JSON.stringify(response));
                 return res.status(400).json(response);
             }
 
@@ -159,6 +165,8 @@ router.post(
                 message: 'OTP verified successfully',
                 verificationId, // Return verification ID to client
             };
+
+            console.log(JSON.stringify(response));
             res.json(response);
         } catch (error) {
             console.error('Error verifying OTP:', error);
