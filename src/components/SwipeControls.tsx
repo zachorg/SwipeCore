@@ -1,7 +1,6 @@
 import { Menu, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { memo, useMemo } from "react";
-import { getDeviceInfo } from "@/utils/deviceOptimization";
+import { memo } from "react";
 import { VoiceButton } from "./VoiceButton";
 
 interface SwipeControlsProps {
@@ -50,7 +49,7 @@ const PassButton = memo(
       <Button
         variant="destructive"
         size="lg"
-        className={`flex items-center gap-3 px-10 py-4 rounded-2xl bg-red-500 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold shadow-lg transition-all duration-200 ${
+        className={`flex items-center gap-3 px-8 py-3 rounded-2xl bg-red-500 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold shadow-lg transition-all duration-200 ${
           swipeDirection === "pass"
             ? "transform scale-125 shadow-2xl shadow-red-500/40 ring-4 ring-red-300/50 from-red-600 to-pink-600"
             : swipeDirection === "menu"
@@ -84,7 +83,7 @@ const MenuButton = memo(
       <Button
         variant="default"
         size="lg"
-        className={`flex items-center gap-3 px-10 py-4 rounded-2xl bg-blue-500 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold shadow-lg transition-all duration-200 ${
+        className={`flex items-center gap-3 px-8 py-3 rounded-2xl bg-blue-500 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold shadow-lg transition-all duration-200 ${
           swipeDirection === "menu"
             ? "transform scale-125 shadow-2xl shadow-blue-500/40 ring-4 ring-blue-300/50 from-blue-600 to-purple-600"
             : swipeDirection === "pass"
@@ -114,10 +113,10 @@ function SwipeControls({
 }: SwipeControlsProps) {
   return (
     <div
-      className="w-full px-4 py-4 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-border/30 shadow-lg
-                    md:px-8 md:py-6"
+      className="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-border/30 shadow-lg md:px-8 md:py-5 
+                    transform -translate-y-[calc(clamp(10px,3vh,28px)+max(env(safe-area-inset-bottom),0px)/2)] md:-translate-y-[clamp(6px,2vh,24px)]"
     >
-      <div className="flex items-center justify-center gap-8 md:max-w-md md:mx-auto">
+      <div className="flex items-center justify-center gap-4 md:max-w-md md:mx-auto">
         {/* Undo Button */}
         {onUndo && (
           <UndoButton swipeDirection={swipeDirection} onUndo={onUndo} />

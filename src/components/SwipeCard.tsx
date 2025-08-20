@@ -820,7 +820,7 @@ export function SwipeCard({
   return (
     <motion.div
       ref={cardRef}
-      className="absolute inset-4 select-none md:desktop-centered-card"
+      className="absolute left-4 right-4 top-3 bottom-8 select-none md:desktop-centered-card"
       data-swipe-card="true"
       style={{
         x,
