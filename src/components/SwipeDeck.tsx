@@ -265,7 +265,7 @@ export function SwipeDeck({
   const handleSwipeDirection = (direction: "menu" | "pass" | null) => {
     setSwipeDirection(direction);
   };
-
+  
   const hasActiveFilters = Array.isArray(allFilters)
     ? allFilters.some((f: any) => f?.enabled)
     : false;
@@ -286,9 +286,10 @@ export function SwipeDeck({
         title: "No more matches for your filters",
         description: "Please update your filters for a wider search.",
         action: (
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 w-full">
             <ToastAction
               altText="Expand Filters"
+              className="w-full"
               onClick={() => {
                 navigate("/"); // ensure we are on home
                 // Open the filter panel by triggering a custom event the panel listens for
@@ -301,6 +302,7 @@ export function SwipeDeck({
             </ToastAction>
             <ToastAction
               altText="Ok"
+              className="w-full bg-green-600 text-white hover:bg-green-700 border-green-700"
               onClick={() => {
                 releaseExhaustedGuard();
                 dismissToast && dismissToast();

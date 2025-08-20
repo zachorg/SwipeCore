@@ -618,14 +618,28 @@ export function useFilteredPlaces(
   }, []);
 
   // Refresh cards
-  const refreshCards = useCallback(() => {
+  const refreshCards = useCallback(async () => {
     setError(null);
     setCards([]);
     setSwipeHistory([]);
     setFilterResult(null);
 
     if (usingLiveData) {
-      refetchPlaces();
+      try {
+        const result = await refetchPlaces();
+        const freshPlaces = Array.isArray(result?.data)
+          ? (result.data as any[])
+          : Array.isArray(nearbyPlaces)
+            ? (nearbyPlaces as any[])
+            : [];
+        await processPlacesWithFilters(freshPlaces);
+      } catch {
+        // If refetch fails, at least try to reprocess whatever we had cached
+        const fallback = Array.isArray(nearbyPlaces) ? (nearbyPlaces as any[]) : [];
+        if (fallback.length > 0) {
+          await processPlacesWithFilters(fallback);
+        }
+      }
     } else {
       const mockCards = generateMockCards(maxCards);
       setBaseCards(mockCards);
@@ -643,6 +657,9 @@ export function useFilteredPlaces(
     hasActiveFilters,
     maxCards,
     applyFilters,
+    refetchPlaces,
+    nearbyPlaces,
+    processPlacesWithFilters,
   ]);
 
   // Request location permission
