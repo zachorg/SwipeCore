@@ -17,7 +17,6 @@ import {
   transformPlacesToCards,
   mergeCardWithDetails,
 } from "../utils/placeTransformers";
-import { generateMockCards } from "@/lib/swipe-core";
 import { FilterResult, useFilters } from "./useFilters";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
@@ -335,13 +334,11 @@ export function useFilteredPlaces(
     }
   }, [cards]);
 
-  // Initialize with mock data if not using live data
+  // If live data is disabled, do not populate with mocks; leave empty and show error states
   useEffect(() => {
     if (!defaultFeatureFlags.useGooglePlacesApi && autoStart) {
-      console.log("SetCards with mock data");
-      const mockCards = generateMockCards(8);
-      setBaseCards(mockCards);
-      applyFilters(mockCards);
+      setBaseCards([]);
+      setCards([]);
     }
   }, [filters]);
 
@@ -597,15 +594,9 @@ export function useFilteredPlaces(
         }
       }
     } else {
-      const mockCards = generateMockCards(maxCards);
-      setBaseCards(mockCards);
-      if (enableFiltering && hasActiveFilters) {
-        // Reuse filtering pipeline
-        applyFilters(mockCards);
-      } else {
-        const limited = mockCards.slice(0, maxCards);
-        setCards(limited);
-      }
+      // Live data disabled: keep empty state
+      setBaseCards([]);
+      setCards([]);
     }
   }, [
     usingLiveData,

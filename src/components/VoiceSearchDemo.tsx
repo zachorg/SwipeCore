@@ -15,14 +15,7 @@ export function VoiceSearchDemo() {
 
   const handleFiltersApplied = (filters: Array<{ filterId: string; value: any }>) => {
     setAppliedFilters(filters);
-    
-    // Simulate showing filtered results
-    const mockResults = [
-      "🍕 Mario's Pizza Palace - $$ Italian, Outdoor seating",
-      "🍝 Bella Vista - $$$ Italian, Romantic atmosphere",
-      "🥗 Green Garden - $ Vegetarian, Family-friendly"
-    ];
-    setDemoResults(mockResults);
+    setDemoResults([]);
   };
 
   const clearDemo = () => {
@@ -133,7 +126,7 @@ export function VoiceSearchDemo() {
             {demoResults.length > 0 && (
               <div>
                 <p className="text-sm text-green-700 font-medium mb-2">
-                  Mock filtered results:
+                  Results:
                 </p>
                 <div className="space-y-2">
                   {demoResults.map((result, index) => (
