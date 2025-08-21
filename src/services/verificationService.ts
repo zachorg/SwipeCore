@@ -1,34 +1,33 @@
 import { CrossPlatformStorage } from '@/utils/crossPlatformStorage';
+import { SecureStoragePlugin } from 'capacitor-secure-storage-plugin';
 import { otpService } from './otpService';
 
 export interface VerificationData {
-    verificationId: string;
-    phoneNumber: string;
-    age?: number;
-    gender?: string;
-    verifiedAt: number;
+    accessToken: string;
+    refreshToken: string;
 }
 
 class VerificationService {
-    private readonly STORAGE_KEY = 'userVerification';
+    private readonly ACCESS_TOKEN_KEY = 'AUTH_ACCESS_TOKEN';
+    private readonly REFRESH_TOKEN_KEY = 'AUTH_REFRESH_TOKEN';
 
     /**
      * Store verification data in persistent storage
      */
     async storeVerification(data: Omit<VerificationData, 'verifiedAt'>): Promise<void> {
         try {
-            const verificationData: VerificationData = {
-                ...data,
-                verifiedAt: Date.now(),
-            };
-
             await CrossPlatformStorage.setItem(
-                this.STORAGE_KEY,
-                JSON.stringify(verificationData)
+                this.ACCESS_TOKEN_KEY,
+                data.accessToken
             );
 
+            await SecureStoragePlugin.set({
+                key: this.REFRESH_TOKEN_KEY,
+                value: data.refreshToken,
+            });
+
             console.log('✅ Verification data stored successfully:', {
-                verificationData: JSON.stringify(verificationData),
+                verificationData: JSON.stringify(data),
                 storageType: CrossPlatformStorage.getStorageType()
             });
         } catch (error) {
@@ -39,73 +38,25 @@ class VerificationService {
     }
 
     /**
-     * Get stored verification data from persistent storage
-     */
-    async getStoredVerification(): Promise<VerificationData | null> {
-        try {
-            const stored = await CrossPlatformStorage.getItem(this.STORAGE_KEY);
-            if (!stored) {
-                console.log('[verificationService]  No verification data found in storage');
-                return null;
-            }
-
-            const verificationData: VerificationData = JSON.parse(stored);
-
-            // Validate the stored data
-            if (!verificationData.verificationId) {
-                console.warn('[verificationService] Invalid verification data stored, removing...', verificationData);
-                await this.clearVerification();
-                return null;
-            }
-
-            console.log('[verificationService] Retrieved stored verification data:', JSON.stringify(verificationData));
-
-            return verificationData;
-        } catch (error) {
-            console.error('Failed to get stored verification data:', error);
-            // Clear corrupted data
-            await this.clearVerification();
-            return null;
-        }
-    }
-
-    /**
      * Check if user has a valid verification ID stored
      */
-    async hasValidVerification(): Promise<boolean> {
+    async isVerified(): Promise<boolean> {
         try {
-            const verificationStatus = await this.getVerificationStatus();
-            return verificationStatus.isValid;
+            const accessToken = await this.getStoredAccessToken();
+            return await otpService.authIsVerified(accessToken);
         } catch (error) {
             console.error('Failed to check if verification is valid:', error);
             return false;
         }
     }
 
-    /**
-     * Check if user has a valid verification ID stored
-     */
-    async verifyStoredVerificationId(verificationId: string): Promise<boolean> {
+    async refreshAccessToken(): Promise<boolean> {
         try {
-            console.log('🔍 Checking verification status...');
-
-            // Verify with backend that the stored verification ID is still valid
-            const response = await otpService.checkVerification(verificationId);
-
-            if (response.success) {
-                console.log('✅ Backend verification successful, user is verified');
-                return true;
-            } else {
-                console.log('❌ Backend verification failed:', response.message);
-                // Clear invalid verification data
-                await this.clearVerification();
-                return false;
-            }
+            const refreshToken = await this.getStoredRefreshToken();
+            return await otpService.authRefresh(refreshToken);
         } catch (error) {
-            console.error('Failed to validate stored verification:', error);
-            // If validation fails, clear the stored data
-            await this.clearVerification();
-            return false;
+            console.error('Failed to refresh access token:', error);
+            return null;
         }
     }
 
@@ -114,7 +65,8 @@ class VerificationService {
      */
     async clearVerification(): Promise<void> {
         try {
-            await CrossPlatformStorage.removeItem(this.STORAGE_KEY);
+            await CrossPlatformStorage.removeItem(this.ACCESS_TOKEN_KEY);
+            await SecureStoragePlugin.remove({ key: this.REFRESH_TOKEN_KEY });
             console.log('🗑️ Verification data cleared from storage');
         } catch (error) {
             console.error('Failed to clear verification data:', error);
@@ -122,44 +74,23 @@ class VerificationService {
         }
     }
 
-    /**
-     * Check if verification is expired (optional: add expiration logic)
-     */
-    isVerificationExpired(verifiedAt: number, maxAgeMs: number = 30 * 24 * 60 * 60 * 1000): boolean {
-        const now = Date.now();
-        const age = now - verifiedAt;
-        const isExpired = age > maxAgeMs;
-
-        if (isExpired) {
-            console.log(`⏰ Verification expired: ${Math.round(age / (1000 * 60 * 60 * 24))} days old (max: ${Math.round(maxAgeMs / (1000 * 60 * 60 * 24))} days)`);
+    async getStoredRefreshToken(): Promise<string | null> {
+        try {
+            const { value } = await SecureStoragePlugin.get({ key: this.REFRESH_TOKEN_KEY });
+            return value || null;
+        } catch (error) {
+            console.error('Failed to get stored refresh token:', error);
+            return null;
         }
-
-        return isExpired;
     }
 
-    /**
-     * Get verification status summary for debugging
-     */
-    async getVerificationStatus(): Promise<{
-        hasStoredData: boolean;
-        isValid: boolean;
-        details?: VerificationData;
-    }> {
+    async getStoredAccessToken(): Promise<string | null> {
         try {
-            const stored = await this.getStoredVerification();
-            if (!stored) {
-                return { hasStoredData: false, isValid: false };
-            }
-
-            const isValid = await this.verifyStoredVerificationId(stored.verificationId);
-            return {
-                hasStoredData: true,
-                isValid,
-                details: stored
-            };
+            const value = await CrossPlatformStorage.getItem(this.ACCESS_TOKEN_KEY);
+            return value || null;
         } catch (error) {
-            console.error('Error getting verification status:', error);
-            return { hasStoredData: false, isValid: false };
+            console.error('Failed to get stored access token:', error);
+            return null;
         }
     }
 }

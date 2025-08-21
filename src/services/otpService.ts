@@ -1,13 +1,17 @@
 // OTP Service for phone verification
 // This service handles OTP sending and verification through your backend
-import { OtpCheckVerificationRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from "backend/src/types/otpTypes";
+import { OtpRefreshRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from "backend/src/types/otpTypes";
+import verificationService from "./verificationService";
 
 class OtpService {
     private baseUrl: string;
 
     constructor() {
         // Replace with your actual backend URL
-        this.baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        this.baseUrl = import.meta.env.VITE_BACKEND_URL;
+        if (!this.baseUrl) {
+            throw new Error('VITE_BACKEND_URL is not set');
+        }
     }
 
     /**
@@ -23,7 +27,7 @@ class OtpService {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(request),
+                body: JSON.stringify({ request }),
             });
 
             const data = await response.json() as OtpResponse;
@@ -57,7 +61,7 @@ class OtpService {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(request),
+                body: JSON.stringify({ request }),
             });
 
             const data = await response.json() as OtpResponse;
@@ -80,21 +84,17 @@ class OtpService {
     /**
      * Check verification status using verification ID
      */
-    async checkVerification(verificationId: string): Promise<boolean> {
+    async authIsVerified(accessToken: string): Promise<boolean> {
         try {
-            const request: OtpCheckVerificationRequest = {
-                verificationId,
-            };
-            const response = await fetch(`${this.baseUrl}api/otp/check-verification`, {
-                method: 'POST',
+            const response = await fetch(`${this.baseUrl}api/otp/auth/is-verified`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify(request),
             });
 
             const data = await response.json() as OtpResponse;
-
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to check verification');
             }
@@ -106,6 +106,41 @@ class OtpService {
             return true;
         } catch (error: any) {
             console.error('Error checking verification:', error);
+            return false;
+        }
+    }
+
+    async authRefresh(refreshToken: string): Promise<boolean> {
+        try {
+            const request: OtpRefreshRequest = {
+                refreshToken,
+            };
+            const response = await fetch(`${this.baseUrl}api/otp/auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ request }),
+            });
+
+            const data = await response.json() as OtpResponse;
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to refresh access token');
+            }
+
+            if (!data.success) {
+                throw new Error(data.errorCode || 'Failed to refresh access token');
+            }
+
+            console.log("data", data);
+            await verificationService.storeVerification({
+                accessToken: data.accessToken,
+                refreshToken: data.refreshToken
+            });
+
+            return true;
+        } catch (error: any) {
+            console.error('Error refreshing access token:', error);
             return false;
         }
     }

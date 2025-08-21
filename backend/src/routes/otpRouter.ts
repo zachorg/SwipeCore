@@ -3,7 +3,10 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { smsService } from '../services/smsService';
 import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
-import { OtpCheckVerificationRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
+import { OtpRefreshRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
+import jwt from 'jsonwebtoken';
+import { REFRESH_SECRET, REFRESH_TTL_SECONDS, requireAuth, sessions, signAccessToken, signRefreshToken } from '../auth/auth';
+import bcrypt from 'bcryptjs';
 
 interface OtpStore {
     otp: string;
@@ -21,11 +24,21 @@ function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Clean up expired OTPs periodically
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, value] of otpStore.entries()) {
+        if (now > value.expiresAt) {
+            otpStore.delete(id);
+        }
+    }
+}, 60000); // Check every minute
+
 // Send OTP endpoint
 router.post(
     '/send',
     asyncHandler(async (req: Request, res: Response) => {
-        const { phoneNumber } = req.body as OtpRequest;
+        const { phoneNumber } = req.body.request as OtpRequest;
 
         if (!phoneNumber) {
             const response: OtpResponse = {
@@ -79,7 +92,7 @@ router.post(
 router.post(
     '/verify',
     asyncHandler(async (req: Request, res: Response) => {
-        const { phoneNumber, code } = req.body as OtpVerifyRequest;
+        const { phoneNumber, code } = req.body.request as OtpVerifyRequest;
 
         if (!phoneNumber || !code) {
             const response: OtpResponse = {
@@ -88,7 +101,6 @@ router.post(
                 message: 'Phone number and code are required',
             }
 
-            console.log(JSON.stringify(response));
             return res.status(400).json(response);
         }
 
@@ -108,7 +120,6 @@ router.post(
                     message: 'Invalid verification code',
                 }
 
-                console.log(JSON.stringify(response));
                 return res.status(400).json(response);
             }
 
@@ -122,58 +133,31 @@ router.post(
                     message: 'Verification code expired',
                 }
 
-                console.log(JSON.stringify(response));
                 return res.status(400).json(response);
             }
 
-            // Create or update user
-            const verificationId = crypto.randomUUID();
+            // create the new user profile if it doesn't exist
+            const userProfile = await userProfileService.createUniqueProfile(phoneNumber);
 
-            const { error: upsertError_lookup } = await supabase
-                .from('user_verification_lookups')
-                .upsert(
-                    {
-                        verification_id: verificationId,
-                        phone_number: phoneNumber,
-                    },
-                    {
-                        onConflict: 'phone_number',
-                    }
-                )
-                .select()
-                .single();
+            const uid = userProfile?.id;
+            // Create a session
+            const sessionId = crypto.randomUUID();
+            const refreshToken = signRefreshToken(uid, sessionId);
+            const refreshHash = await bcrypt.hash(refreshToken, 12);
+            const expiresAt = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000);
 
-            if (upsertError_lookup) {
-                console.error(
-                    'Error creating user verification lookup:',
-                    upsertError_lookup
-                );
-                throw new Error('Failed to create user verification lookup');
-            }
+            sessions.set(sessionId, { sid: sessionId, uid, refreshHash, expiresAt });
 
-            const { error: updateError } = await supabase
-                .from('user_profiles')
-                .update({
-                    verification_id: verificationId,
-                })
-                .eq('phone_number', phoneNumber)
-                .single();
-
-            if (updateError && !IsEmptyRowError(updateError)) {
-                console.error('Error updating user profile:', updateError);
-                throw new Error('Failed to update user profile');
-            }
-
-            // Generate JWT token (in production, use proper JWT library)
-            const token = `token_${verificationId}_${Date.now()}`;
+            // Issue access token + set refresh cookie
+            const accessToken = signAccessToken(sessionId);
 
             const response: OtpResponse = {
                 success: true,
                 message: 'OTP verified successfully',
-                verificationId, // Return verification ID to client
+                accessToken,
+                refreshToken,
             };
 
-            console.log(JSON.stringify(response));
             res.json(response);
         } catch (error) {
             console.error('Error verifying OTP:', error);
@@ -186,70 +170,102 @@ router.post(
     })
 );
 
-// Clean up expired OTPs periodically
-setInterval(() => {
-    const now = Date.now();
-    for (const [id, value] of otpStore.entries()) {
-        if (now > value.expiresAt) {
-            otpStore.delete(id);
-        }
-    }
-}, 60000); // Check every minute
-
 // Add new endpoint to check verification status
-router.post(
-    '/check-verification',
+router.get(
+    '/auth/is-verified',
+    requireAuth,
     asyncHandler(async (req: Request, res: Response) => {
-        const { verificationId } = req.body as OtpCheckVerificationRequest;
+        const sid = req.body.sid;
+        const session = sessions.get(sid);
 
-        if (!verificationId) {
+        if (session === undefined) {
             const response: OtpResponse = {
                 success: false,
-                errorCode: "INVALID_REQUEST_PARAMS",
-                message: 'Invalid Verification ID',
-            };
-            return res.status(400).json(response);
-        }
-
-        try {
-            const { data: verification, error } = await userProfileService.isValidVerificationId(verificationId);
-
-            if (!verification) {
-                const response: OtpResponse = {
-                    success: false,
-                    errorCode: "INVALID_REQUEST_PARAMS",
-                    message: 'Invalid Verification ID',
-                };
-                return res.status(404).json(response);
+                errorCode: "UNAUTHORIZED",
+                message: 'Unauthorized',
             }
-
-            // expired
-            // if (Date.now() > verification.created_at) {
-            //     userProfileService.deleteVerificationIdLookup(verificationId);
-            //     return res.status(404).json({
-            //         success: false,
-            //         errorCode: 'VERIFICATION_ID_NOT_FOUND',
-            //         message: 'Verification ID not found',
-            //     });
-            // }
-
-            const response: OtpResponse = {
-                success: true,
-                message: 'User is verified',
-            };
-            res.json(response);
-        } catch (error) {
-            console.error('Error checking verification:', error);
-
-            const response: OtpResponse = {
-                success: false,
-                errorCode: 'VERIFICATION_CHECK_FAILED',
-                message: 'Failed to check verification status',
-            };
-            res.status(500).json(response);
+            return res.status(401).json(response);
         }
+
+        const response: OtpResponse = {
+            success: true,
+            message: 'User is verified',
+        };
+        res.json(response);
     })
 );
+
+router.post("/auth/refresh", async (req, res) => {
+    const request = req.body.request as OtpRefreshRequest;
+
+    const refreshToken = request.refreshToken;
+
+    if (!refreshToken) {
+        const response: OtpResponse = {
+            success: false,
+            errorCode: "INVALID_REFRESH_TOKEN",
+            message: "Refresh token is invalid",
+        }
+        return res.status(401).json(response);
+    }
+
+    let payload: jwt.JwtPayload;
+    try {
+        payload = jwt.verify(refreshToken, REFRESH_SECRET) as jwt.JwtPayload;
+    } catch {
+        return res.sendStatus(401);
+    }
+
+    const { sub: userId, sid: sessionId } = payload;
+    const uid = userId as string;
+    const record = sessions.get(sessionId);
+    if (!record) {
+        // REUSE DETECTED (token valid signature but session not found)
+        // Defensive move: revoke ALL sessions for the user
+        for (const [id, s] of sessions) if (s.uid === uid) sessions.delete(id);
+
+        const response: OtpResponse = {
+            success: false,
+            errorCode: "REFRESH_TOKEN_REUSE_DETECTED",
+            message: "Refresh token reuse detected. All sessions revoked.",
+        }
+        return res.status(401).json(response);
+    }
+
+    // Compare hashes (protects if DB leaked)
+    const ok = await bcrypt.compare(refreshToken, record.refreshHash);
+    if (!ok) {
+        // REUSE DETECTED (mismatched token for existing session)
+        for (const [id, s] of sessions) if (s.uid === uid) sessions.delete(id);
+
+        const response: OtpResponse = {
+            success: false,
+            errorCode: "REFRESH_TOKEN_REUSE_DETECTED",
+            message: "Refresh token reuse detected. All sessions revoked.",
+        }
+        return res.status(401).json(response);
+    }
+
+    // Rotate: delete old, create new session + new refresh
+    sessions.delete(sessionId);
+
+    const newSessionId = crypto.randomUUID();
+    const newRefresh = signRefreshToken(uid, newSessionId);
+    const newHash = await bcrypt.hash(newRefresh, 12);
+    const expiresAt = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000);
+    sessions.set(newSessionId, { sid: newSessionId, uid, refreshHash: newHash, expiresAt });
+
+    // New access token + new refresh cookie
+    const newAccess = signAccessToken(newSessionId);
+
+    const response: OtpResponse = {
+        success: true,
+        message: 'Refresh token refreshed successfully',
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+    }
+    res.json(response);
+});
 
 // Status endpoint to check SMS service configuration
 router.get(
@@ -273,5 +289,6 @@ router.get(
         }
     })
 );
+
 
 export { router as otpRouter };

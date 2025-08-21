@@ -1,15 +1,52 @@
-import { supabase, UserProfile } from "../lib/supabase";
+import { IsEmptyRowError, supabase, UserProfile } from "../lib/supabase";
 
 export const userProfileService = {
-    async upsertProfile(profile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>) {
+    // create the new user profile if it doesn't exist
+    async createUniqueProfile(phoneNumber: string) {
         const { data, error } = await supabase
             .from('user_profiles')
             .upsert({
-                verification_id: profile.verification_id,
+                phone_number: phoneNumber,
+                created_at: new Date().toISOString(),
+            }, {
+                onConflict: 'phone_number',
+                ignoreDuplicates: true  // This will skip the update if record exists
+            }).select().single();
+
+        if (error && !IsEmptyRowError(error)) {
+            console.error('Error updating user profile:', error);
+            throw new Error('Failed to update user profile');
+        }
+
+        let userData = data;
+        if (data === null) {
+            const { data, error } = await supabase.
+                from('user_profiles').
+                select('*').
+                eq('phone_number', phoneNumber).
+                single();
+            userData = data;
+
+            if (error && !IsEmptyRowError(error)) {
+                console.error('Error updating user profile:', error);
+                throw new Error('Failed to update user profile');
+            }
+        }
+
+        return userData;
+    },
+
+    // upsert the user profile
+    async upsertProfile(profile: Omit<UserProfile, 'created_at' | 'phone_number' | 'updated_at'>) {
+        const { data, error } = await supabase
+            .from('user_profiles')
+            .upsert({
+                id: profile.id,
                 age: profile.age,
                 gender: profile.gender,
-                phone_number: profile.phone_number,
                 updated_at: new Date().toISOString(),
+            }, {
+                onConflict: 'id',
             })
             .select()
             .single();
@@ -22,31 +59,11 @@ export const userProfileService = {
         return data;
     },
 
-    async getProfileViaVerificationId(vid: string): Promise<any | null> {
+    async getProfile(uid: string): Promise<any | null> {
         const { data, error } = await supabase
             .from('user_profiles')
             .select('*')
-            .eq('verification_id', vid)
-            .single();
-
-        return { data: data, error: error };
-    },
-
-    async getProfileViaPhoneNumber(pn: string): Promise<any | null> {
-        const { data, error } = await supabase
-            .from("user_profiles")
-            .select("*")
-            .eq("phone_number", pn)
-            .single();
-
-        return { data: data, error: error };
-    },
-
-    async isValidVerificationId(vid: string): Promise<any | null> {
-        const { data, error } = await supabase
-            .from('user_verification_lookups')
-            .select('*')
-            .eq('verification_id', vid)
+            .eq('id', uid)
             .single();
 
         return { data: data, error: error };
@@ -56,18 +73,11 @@ export const userProfileService = {
         const { error } = await supabase
             .from('user_profiles')
             .delete()
-            .eq('verification_id', uid);
+            .eq('id', uid);
 
         if (error) {
             console.error('Error deleting profile:', error);
             throw error;
         }
-    },
-
-    async deleteVerificationIdLookup(vid: string): Promise<void> {
-        await supabase
-            .from('user_verification_lookups')
-            .delete()
-            .eq('verification_id', vid);
     }
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { GetStartedScreen } from "../GetStartedScreen";
 import { PhoneVerificationScreen } from "./PhoneVerificationScreen";
 import { UserProfileScreen } from "../UserProfileScreen";
-import { verificationService } from "@/services/verificationService";
+import { useAuth } from "@/contexts/AuthContext";
 
 type AuthStep =
   | "get-started"
@@ -15,22 +15,14 @@ interface AuthFlowProps {
 }
 
 export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
+  const { isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState<AuthStep>("get-started");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
 
   // Check for existing verification on mount
   useEffect(() => {
     const checkExistingVerification = async () => {
       try {
-        setIsCheckingVerification(true);
-        console.log("[AuthFlow]: Checking verification status...");
-
-        // Check if user has valid verification stored
-        const verificationStatus =
-          await verificationService.getVerificationStatus();
-
-        if (verificationStatus.isValid) {
+        if (isAuthenticated) {
           console.log(
             "[AuthFlow]: User has valid verification, going to welcome screen"
           );
@@ -45,8 +37,6 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
         console.error("[AuthFlow] Error checking verification status:", error);
         // Continue with normal flow if verification check fails
         setCurrentStep("get-started");
-      } finally {
-        setIsCheckingVerification(false);
       }
     };
 
@@ -63,10 +53,8 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
     onComplete();
   };
 
-  const handlePhoneVerified = (phone: string, verificationId: string) => {
+  const handlePhoneVerified = (phone: string) => {
     console.log("[AuthFlow] Phone verified, moving to user profile setup");
-    setPhoneNumber(phone);
-
     // setCurrentStep("user-profile");
     handleExitAuthFlow();
   };
@@ -90,27 +78,6 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
     }
   };
 
-  // Show loading while checking verification
-  if (isCheckingVerification) {
-    return (
-      <div
-        className="flex flex-col bg-white/10 backdrop-blur-xl overflow-hidden"
-        style={{
-          height: `calc(100vh - var(--safe-area-inset-top))`,
-        }}
-      >
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            </div>
-            <p className="text-gray-600">Checking verification status...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const renderCurrentStep = () => {
     switch (currentStep) {
       case "get-started":
@@ -125,12 +92,7 @@ export const AuthFlow: React.FC<AuthFlowProps> = ({ onComplete }) => {
         );
 
       case "user-profile":
-        return (
-          <UserProfileScreen
-            phoneNumber={phoneNumber}
-            onComplete={handleExitAuthFlow}
-          />
-        );
+        return <UserProfileScreen onComplete={handleExitAuthFlow} />;
 
       default:
         return <GetStartedScreen onGetStarted={handleGetStarted} />;

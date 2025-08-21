@@ -4,9 +4,11 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Smartphone, Shield } from "lucide-react";
 import { otpService } from "@/services/otpService";
 import { useAuth } from "@/contexts/AuthContext";
+import { CrossPlatformStorage } from "@/utils/crossPlatformStorage";
+import verificationService from "@/services/verificationService";
 
 interface PhoneVerificationScreenProps {
-  onVerified: (phoneNumber: string, verificationId: string) => void;
+  onVerified: (phoneNumber: string) => void;
   onBack: () => void;
 }
 
@@ -18,7 +20,7 @@ export const PhoneVerificationScreen: React.FC<
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { setVerificationData } = useAuth();
+  const { setIsAuthenticated } = useAuth();
 
   // Format phone number as user types
   const handlePhoneNumberChange = (value: string) => {
@@ -84,12 +86,13 @@ export const PhoneVerificationScreen: React.FC<
 
       if (response) {
         // Store verification ID in persistent storage
-        if (response.verificationId) {
+        if (response.accessToken) {
           try {
-            setVerificationData({
-              verificationId: response.verificationId,
-              phoneNumber: formattedPhone,
+            verificationService.storeVerification({
+              accessToken: response.accessToken,
+              refreshToken: response.refreshToken,
             });
+            setIsAuthenticated(true);
             console.log("OTP verification successful");
           } catch (storageError) {
             console.error("Failed to store verification ID:", storageError);
@@ -97,7 +100,7 @@ export const PhoneVerificationScreen: React.FC<
         }
 
         // Call onVerified with the verification ID from backend response
-        onVerified(phoneNumber, response.verificationId);
+        onVerified(phoneNumber);
       } else {
         throw new Error(response.message || "Failed to verify OTP");
       }

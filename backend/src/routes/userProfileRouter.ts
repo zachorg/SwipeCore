@@ -1,28 +1,41 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { IsEmptyRowError, supabase } from '../lib/supabase';
+import { IsEmptyRowError, supabase, UserProfile } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 import { UserProfileRequest, UserProfileResponse } from '../types/userProfileTypes';
+import { requireAuth, sessions } from '../auth/auth';
 
 const router = Router();
 
 // Create or update user profile
-router.post('/create', asyncHandler(async (req: Request, res: Response) => {
-    const { phone_number, verification_id, age, gender } = req.body as UserProfileRequest;
+router.post('/create', requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const sid = req.body.sid;
+    const session = sessions.get(sid);
 
-    if (!phone_number || !verification_id || !age || !gender) {
-        return res.status(400).json({
+    if (!session) {
+        const response: UserProfileResponse = {
             success: false,
-            message: 'Phone number, verification ID, age, and gender are required',
-        });
+            errorCode: 'UNAUTHORIZED',
+            message: 'Unauthorized',
+        }
+        return res.status(401).json(response);
+    }
+
+    const { age, gender } = req.body.request as UserProfileRequest;
+    if (!age || !gender) {
+        const response: UserProfileResponse = {
+            success: false,
+            errorCode: 'BAD_REQUEST',
+            message: 'age, and gender are required',
+        }
+        return res.status(400).json(response);
     }
 
     try {
         const { error: insertError } = await userProfileService.upsertProfile({
-            phone_number,
+            id: session.uid,
             age,
             gender,
-            verification_id,
         });
 
         if (insertError) {
@@ -30,35 +43,38 @@ router.post('/create', asyncHandler(async (req: Request, res: Response) => {
             throw new Error('Failed to create user profile');
         }
 
-        console.log(`✅ Created new user profile for ${phone_number}`);
-
-        res.json({
+        const response: UserProfileResponse = {
             success: true,
             message: 'User profile created successfully',
-        });
+        }
+        return res.json(response);
 
     } catch (error) {
         console.error('Error managing user profile:', error);
-        res.status(500).json({
+
+        const response: UserProfileResponse = {
             success: false,
             errorCode: 'PROFILE_OPERATION_FAILED',
-            message: 'Failed to manage user profile',
-        });
+            message: 'Failed to create user profile',
+        }
+        return res.status(500).json(response);
     }
 }));
 
-router.post('/get-via-verification-id', asyncHandler(async (req: Request, res: Response) => {
-    const { verification_id } = req.body as UserProfileRequest;
+router.get("/me", requireAuth, asyncHandler(async (req: Request, res: Response) => {
+    const sid = req.body.sid;
+    const session = sessions.get(sid);
 
-    if (!verification_id) {
-        return res.status(400).json({
+    if (session === undefined) {
+        return res.status(401).json({
             success: false,
-            message: 'Verification ID is required',
+            errorCode: 'UNAUTHORIZED',
+            message: 'Unauthorized',
         });
     }
 
     try {
-        const { data: userProfile, error: userProfileError } = await userProfileService.getProfileViaVerificationId(verification_id);
+        const { data: userProfile, error: userProfileError } = await userProfileService.getProfile(session.uid);
 
         if (userProfileError) {
             if (IsEmptyRowError(userProfileError)) {
@@ -74,11 +90,21 @@ router.post('/get-via-verification-id', asyncHandler(async (req: Request, res: R
             }
         }
 
-        return res.json({
+        const userProfileResponse: Omit<UserProfile, 'id'> = {
+            age: userProfile.age,
+            gender: userProfile.gender,
+            phone_number: userProfile.phone_number,
+            created_at: userProfile.created_at,
+            updated_at: userProfile.updated_at,
+        };
+
+        const response: UserProfileResponse = {
             success: true,
-            message: 'User profile created successfully',
-            userProfile,
-        });
+            message: 'User profile fetched successfully',
+            userProfile: userProfileResponse,
+        }
+
+        return res.json(response);
 
     } catch (error) {
         console.error('Error managing user profile:', error);
@@ -87,58 +113,6 @@ router.post('/get-via-verification-id', asyncHandler(async (req: Request, res: R
             errorCode: 'PROFILE_OPERATION_FAILED',
             message: 'Failed to manage user profile',
         });
-    }
-}));
-
-router.post('/get-via-phone-number', asyncHandler(async (req: Request, res: Response) => {
-    const { phone_number } = req.body as UserProfileRequest;
-
-
-
-    if (!phone_number) {
-        const response: UserProfileResponse = {
-            success: false,
-            errorCode: 'PHONE_NUMBER_REQUIRED',
-            message: 'Phone number is required',
-        };
-        return res.status(400).json(response);
-    }
-
-    console.log('Getting user profile via phone number:', phone_number);
-
-    try {
-        const { data: userProfile, error: userProfileError } = await userProfileService.getProfileViaPhoneNumber(phone_number);
-
-        if (userProfileError) {
-            if (IsEmptyRowError(userProfileError)) {
-                const response = {
-                    success: false,
-                    errorCode: 'PROFILE_NOT_FOUND',
-                    message: 'User profile doesn not exist',
-                }
-                return res.json(response);
-            }
-            else {
-                console.error('Error getting user profile:', userProfileError);
-                throw new Error(`Failed to get user profile ${JSON.stringify(userProfileError)}`);
-            }
-        }
-
-        const response = {
-            success: true,
-            message: 'User profile created successfully',
-            userProfile,
-        }
-        return res.json(response);
-
-    } catch (error) {
-        console.error('Error managing user profile:', error);
-        const response = {
-            success: false,
-            errorCode: 'PROFILE_OPERATION_FAILED',
-            message: 'Failed to manage user profile',
-        };
-        return res.status(500).json(response);
     }
 }));
 

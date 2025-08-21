@@ -5,17 +5,18 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import {
-  VerificationData,
-  verificationService,
-} from "@/services/verificationService";
-import userProfileService from "@/services/userProfileService";
+import { verificationService } from "@/services/verificationService";
+import userProfileService, { UserProfile } from "@/services/userProfileService";
 
 interface AuthContextType {
-  verificationData: Omit<VerificationData, "verifiedAt">;
-  loadingVerification: boolean;
+  userProfile: Omit<UserProfile, "id" | "created_at" | "updated_at"> | null;
+  loadingAuthentication: boolean;
+  isAuthenticated: boolean;
   loadingUserProfile: boolean;
-  setVerificationData: (data: Omit<VerificationData, "verifiedAt">) => void;
+  setUserProfile: (
+    profile: Omit<UserProfile, "id" | "created_at" | "updated_at">
+  ) => void;
+  setIsAuthenticated: (isAuthenticated: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,109 +34,90 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [loadingVerification, setLoadingVerification] = useState(true);
+  const [loadingAuthentication, setLoadingAuthentication] = useState(true);
   const [loadingUserProfile, setLoadingUserProfile] = useState(true);
-  const [verificationData, setVerificationData] =
-    useState<VerificationData | null>(null);
+  const [userProfile, setUserProfile] = useState<Omit<
+    UserProfile,
+    "id" | "created_at" | "updated_at"
+  > | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const checkVerificationStatus = async () => {
+  const initializeAuth = async () => {
     try {
-      console.log(
-        "[AuthContext] Checking verification status in AuthContext..."
-      );
+      console.log("[AuthContext] Initializing authentication...");
+      setLoadingAuthentication(true);
 
       // Get verification status from verification service
-      const hasValidVerification =
-        await verificationService.hasValidVerification();
-
-      if (hasValidVerification) {
+      const isVerified =
+        (await verificationService.isVerified()) ||
+        (await verificationService.refreshAccessToken());
+      if (isVerified) {
         console.log(
           "[AuthContext] User has valid verification, setting verified to true"
         );
-        const verificationData =
-          await verificationService.getStoredVerification();
-        setVerificationData(verificationData);
-
-        let isProfileCompleted = false;
-        if (
-          verificationData?.age !== undefined ||
-          verificationData?.gender !== undefined
-        ) {
-          isProfileCompleted = true;
-          setLoadingUserProfile(false);
-        }
+        setIsAuthenticated(true);
       } else {
-        console.log(
-          "[AuthContext] User verification invalid or expired, setting verified to false"
-        );
-        setVerificationData(null);
+        console.info("User verification invalid or expired");
       }
     } catch (error) {
       console.error("[AuthContext] Error checking verification status:", error);
+    } finally {
+      setLoadingAuthentication(false);
     }
   };
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (
-        verificationData !== null &&
-        (verificationData.age === undefined ||
-          verificationData.gender === undefined)
-      ) {
-        console.log("[AuthContext] Fetching user profile");
-        // check if user profile exists
-        const userProfile =
-          await userProfileService.getUserProfileViaPhoneNumber(
-            verificationData.phoneNumber
-          );
-        if (userProfile) {
-          const updatedVerificationData = {
-            ...verificationData,
-            age: userProfile.age,
-            gender: userProfile.gender,
-          };
+      try {
+        if (isAuthenticated && userProfile === null) {
+          console.log("[AuthContext] Fetching user profile");
+          // check if user profile exists
+          const userProfile = await userProfileService.getUserProfile();
+          if (userProfile) {
+            console.log(
+              "[AuthContext] Fetched user profile:",
+              JSON.stringify(userProfile)
+            );
 
-          console.log(
-            "[AuthContext] Fetched user profile:",
-            updatedVerificationData
-          );
-
-          setVerificationData(updatedVerificationData);
-        } else {
-          console.log("[AuthContext] Failed to fetch user profile");
+            setUserProfile(userProfile);
+            setLoadingUserProfile(false);
+          } else {
+            throw new Error("Failed to fetch user profile");
+          }
         }
+      } catch (error) {
+        console.error("[AuthContext] Error fetching user profile:", error);
         setLoadingUserProfile(false);
       }
     };
     fetchUserProfile();
+  }, [isAuthenticated]);
 
-    if (verificationData) {
-      verificationService.storeVerification(verificationData);
-    }
-  }, [verificationData]);
-
+  // Initialize authentication only once when component mounts
   useEffect(() => {
-    const initializeAuth = async () => {
+    const initializeAuthOnce = async () => {
       try {
         console.log("[AuthContext] Initializing authentication...");
 
         // First check if user has valid verification
-        await checkVerificationStatus();
-        setLoadingVerification(false);
+        await initializeAuth();
       } catch (error) {
         console.error("[AuthContext] Error initializing auth:", error);
-        setLoadingVerification(false);
+      } finally {
+        setLoadingAuthentication(false);
       }
     };
 
-    initializeAuth();
-  }, []);
+    initializeAuthOnce();
+  }, []); // Empty dependency array ensures this runs only once
 
   const value: AuthContextType = {
-    verificationData,
-    loadingVerification,
+    isAuthenticated,
+    userProfile,
+    loadingAuthentication: loadingAuthentication,
     loadingUserProfile,
-    setVerificationData,
+    setUserProfile,
+    setIsAuthenticated,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

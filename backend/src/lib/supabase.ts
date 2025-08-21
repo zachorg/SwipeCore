@@ -11,7 +11,6 @@ if (supabase) {
 
 export interface UserProfile {
   id: string; // Supabase UUID
-  verification_id: string;
   age: number;
   gender: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   phone_number: string;

@@ -13,15 +13,13 @@ import userProfileService from "@/services/userProfileService";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface UserProfileScreenProps {
-  phoneNumber: string;
   onComplete: () => void;
 }
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
-  phoneNumber,
   onComplete,
 }) => {
-  const { verificationData, setVerificationData } = useAuth();
+  const { isAuthenticated, setUserProfile } = useAuth();
   const [age, setAge] = useState("");
   const [gender, setGender] = useState<
     "male" | "female" | "other" | "prefer-not-to-say"
@@ -58,7 +56,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
       return;
     }
 
-    if (!verificationData?.verificationId) {
+    if (!isAuthenticated) {
       setError("User not authenticated");
       return;
     }
@@ -67,24 +65,17 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
     setError("");
 
     try {
-      const formattedPhone = phoneNumber.startsWith("+")
-        ? phoneNumber
-        : `+${phoneNumber}`;
-
       uploadingUserProfile.current = true;
 
       await userProfileService.createNewUserProfile({
-        verification_id: verificationData?.verificationId,
         age: ageNum,
         gender,
-        phone_number: formattedPhone,
       });
 
-      setVerificationData({
-        ...verificationData,
-        verificationId: verificationData?.verificationId,
+      setUserProfile({
         age: ageNum,
         gender,
+        phone_number: "",
       });
 
       uploadingUserProfile.current = false;
@@ -191,11 +182,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({
             )}
           </Button>
         </form>
-
-        {/* Phone Number Display */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-500">Phone: {phoneNumber}</p>
-        </div>
       </div>
     </div>
   );
