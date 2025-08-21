@@ -7,8 +7,8 @@ android {
         applicationId "com.swipecore.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.5"
         // Provide manifest placeholder for AdMob App ID
         manifestPlaceholders = [
             VITE_ADMOB_APP_ID_ANDROID: 'ca-app-pub-1638652278312904~7072049423'
