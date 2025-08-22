@@ -220,7 +220,6 @@
 		};
 		E0965BDC2E59247300528937 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -234,7 +233,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/bash\ncd \"${SRCROOT}\"\nif [ -f \"Podfile\" ]; then\n    echo \"Installing CocoaPods...\"\n    pod install\nelse\n    echo \"No Podfile found\"\nfi\n";
+			shellScript = "#!/bin/bash\necho \"=== PRE-BUILD SCRIPT STARTED ===\"\necho \"Current directory: $(pwd)\"\necho \"SRCROOT: ${SRCROOT}\"\necho \"Contents of SRCROOT:\"\nls -la \"${SRCROOT}\"\n\ncd \"${SRCROOT}\"\necho \"Changed to: $(pwd)\"\n\nif [ -f \"Podfile\" ]; then\n    echo \"Podfile found, installing pods...\"\n    pod --version\n    pod install --verbose\n    echo \"Pod install completed\"\n    echo \"Checking if xcconfig files exist:\"\n    ls -la \"Pods/Target Support Files/Pods-App/\" || echo \"Directory not found\"\nelse\n    echo \"No Podfile found at ${SRCROOT}\"\n    echo \"Looking for Podfile in subdirectories:\"\n    find . -name \"Podfile\" -type f\n    exit 1\nfi\n\necho \"=== PRE-BUILD SCRIPT COMPLETED ===\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
