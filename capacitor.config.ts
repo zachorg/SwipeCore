@@ -11,16 +11,13 @@ const config: CapacitorConfig = {
     // Android-specific performance optimizations
     webContentsDebuggingEnabled: false,
     allowMixedContent: true,
-    captureInput: true,
-    webViewPresentationStyle: 'fullscreen',
-    // Audio permissions for voice search
-    permissions: [
-      'android.permission.INTERNET',
-      'android.permission.ACCESS_NETWORK_STATE',
-      'android.permission.RECORD_AUDIO',
-      'android.permission.MODIFY_AUDIO_SETTINGS',
-      'android.permission.WRITE_EXTERNAL_STORAGE'
-    ]
+    captureInput: true
+  },
+  ios: {
+    // iOS-specific configurations
+    scheme: 'swipecore',
+    limitsNavigationsToAppBoundDomains: false,
+    allowsLinkPreview: false
   },
   plugins: {
     StatusBar: {
