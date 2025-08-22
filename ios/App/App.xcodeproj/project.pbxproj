@@ -107,6 +107,7 @@
 				504EC3021FED79650016851F /* Resources */,
 				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
 				CEE17249F8E870D8C518913C /* [CP] Copy Pods Resources */,
+				E0965BDC2E59247300528937 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -216,6 +217,24 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-App/Pods-App-resources.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		E0965BDC2E59247300528937 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#!/bin/bash\ncd \"${SRCROOT}\"\nif [ -f \"Podfile\" ]; then\n    echo \"Installing CocoaPods...\"\n    pod install\nelse\n    echo \"No Podfile found\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
