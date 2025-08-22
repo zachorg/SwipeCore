@@ -1,14 +1,22 @@
 apply plugin: 'com.android.application'
 
 android {
+    signingConfigs {
+        release {
+            storeFile file('D:\\Vrij\\Android\\keystores\\nomnom\\nomnom-app.jks')
+            storePassword '@2025nomnom2025@'
+            keyAlias 'key0'
+            keyPassword '@2025nomnom2025@'
+        }
+    }
     namespace "com.swipecore.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.swipecore.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.0.5"
+        versionCode 6
+        versionName "1.0.6"
         // Provide manifest placeholder for AdMob App ID
         manifestPlaceholders = [
             VITE_ADMOB_APP_ID_ANDROID: 'ca-app-pub-1638652278312904~7072049423'
@@ -19,11 +27,13 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+        signingConfig signingConfigs.release
     }
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     
