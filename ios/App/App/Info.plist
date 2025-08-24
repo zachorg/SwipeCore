@@ -45,5 +45,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>NomNom needs access to your microphone to enable voice search functionality, allowing you to search for restaurants and places by speaking naturally.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>NomNom uses speech recognition to convert your voice commands into text for searching restaurants and places, making it easier to find what you're looking for.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>NomNom uses your location to show nearby restaurants and places, provide accurate search results, and offer personalized recommendations based on where you are.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>NomNom uses your location to show nearby restaurants and places, provide accurate search results, and offer personalized recommendations based on where you are.</string>
 </dict>
 </plist>
