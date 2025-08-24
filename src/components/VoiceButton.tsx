@@ -22,17 +22,9 @@ export function VoiceButton({
 
   useEffect(() => {
     // Check if speech recognition is supported
-    const checkSupport = () => {
+    const checkSupport = async () => {
       try {
-        if (
-          !speechToTextService ||
-          typeof speechToTextService.isSupported !== "function"
-        ) {
-          setIsSupported(false);
-          return;
-        }
-
-        const supported = speechToTextService.isSupported();
+        const supported = await speechToTextService.isAvailable();
         setIsSupported(supported);
       } catch (error) {
         console.error("Error checking speech recognition support:", error);
@@ -43,75 +35,7 @@ export function VoiceButton({
     checkSupport();
   }, []);
 
-  const checkAndRequestPermissions = async () => {
-    if (!isSupported || !speechToTextService) {
-      console.log("Voice search not supported");
-      return false;
-    }
-
-    try {
-      if (isMobile()) {
-        // Use Capacitor permission system
-        const { capacitorPermissions } = await import(
-          "../utils/capacitorPermissions"
-        );
-
-        // Fast check if we already have permission
-        const quickCheck =
-          await capacitorPermissions.checkMicrophonePermission();
-        if (quickCheck.granted) {
-          return true;
-        }
-
-        // Request permission
-        const permissionResult =
-          await capacitorPermissions.requestMicrophonePermission();
-        if (!permissionResult.granted) {
-          // Show settings guidance
-          alert(
-            "Microphone permission is required for voice search. Please go to Settings → Apps → NomNom → Permissions → Microphone and enable it."
-          );
-          return false;
-        }
-
-        return true;
-      } else {
-        // Web browser - first check if permission is already granted
-        const permissionStatus =
-          await speechToTextService.checkMicrophonePermission();
-        console.log("Browser permission status:", permissionStatus);
-
-        if (permissionStatus === "granted") {
-          console.log("Browser permission already granted");
-          return true;
-        }
-
-        // Only request permission if not already granted
-        const permissionResult =
-          await speechToTextService.requestMicrophonePermission();
-        if (!permissionResult.granted) {
-          alert(
-            "Microphone permission is required for voice search. Please allow microphone access when prompted."
-          );
-          return false;
-        }
-
-        return true;
-      }
-    } catch (error) {
-      console.error("Permission check failed:", error);
-      alert("Could not check microphone permissions. Please try again.");
-      return false;
-    }
-  };
-
   const startListening = async () => {
-    // First check and request permissions
-    const hasPermission = await checkAndRequestPermissions();
-    if (!hasPermission) {
-      return; // Don't start listening if no permission
-    }
-
     setVoiceState("listening");
 
     try {

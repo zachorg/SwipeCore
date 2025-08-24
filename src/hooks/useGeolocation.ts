@@ -39,6 +39,56 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     maximumAge,
   };
 
+  const logLocationError = (error: any): any => {
+    let errorMessage = 'Failed to get current location';
+
+    // Handle GeolocationPositionError properly
+    if (error && typeof error === 'object') {
+      if (error.code !== undefined) {
+        switch (error.code) {
+          case 1: // PERMISSION_DENIED
+            errorMessage = 'Location access denied. Please enable location services.';
+            break;
+          case 2: // POSITION_UNAVAILABLE
+            errorMessage = 'Location services are currently unavailable.';
+            break;
+          case 3: // TIMEOUT
+            errorMessage = 'Location request timed out. Please try again.';
+            break;
+          default:
+            errorMessage = error.message || 'Unknown location error occurred.';
+        }
+      } else if (error.message) {
+        // Fallback to message-based checking
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Location request timed out. Please try again.';
+        } else if (error.message.includes('denied')) {
+          errorMessage = 'Location access denied. Please enable location services.';
+        } else if (error.message.includes('unavailable')) {
+          errorMessage = 'Location services are currently unavailable.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+    }
+
+    console.error('Geolocation permission error details:', {
+      error,
+      errorType: typeof error,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      finalErrorMessage: errorMessage
+    });
+
+    return {
+      error,
+      errorType: typeof error,
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      finalErrorMessage: errorMessage
+    };
+  }
+
   const requestPermissions = async (): Promise<boolean> => {
     try {
       // For web browsers, we use the navigator.geolocation API
@@ -46,27 +96,45 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
         console.error('Geolocation is not supported by this browser');
         return false;
       }
-      
+
+      // Check if we're in a Capacitor environment
+      if (Capacitor.isNativePlatform()) {
+        console.log('Running on native platform, checking Capacitor permissions...');
+        try {
+          // For Capacitor, try to get current position directly
+          const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 5000 });
+          console.log('Capacitor geolocation successful:', position);
+          return true;
+        } catch (capError: any) {
+          console.log('Capacitor geolocation failed:', capError);
+          // If Capacitor fails, fall back to browser API
+        }
+      }
+
       // Request permission by attempting to get the current position
       return new Promise((resolve) => {
+        console.log('Requesting browser geolocation permissions...');
         navigator.geolocation.getCurrentPosition(
-          () => resolve(true), // Success callback - user granted permission
+          (position) => {
+            console.log('Browser geolocation permission granted:', position);
+            resolve(true); // Success callback - user granted permission
+          },
           (error) => {
-            console.error('Error requesting geolocation permissions:', error);
+            logLocationError(error);
             resolve(false); // Error callback - user denied permission or error occurred
           },
           { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       });
     } catch (error) {
-      console.error('Error requesting geolocation permissions:', error);
+      logLocationError(error);
       return false;
     }
   };
 
   const getCurrentPosition = async (): Promise<Position | null> => {
     console.log('📍 Starting geolocation request...', { isSupported: state.isSupported });
-    
+
     if (!state.isSupported) {
       console.error('Geolocation not supported');
       setState(prev => ({
@@ -84,7 +152,7 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
       console.log('Requesting geolocation permissions...');
       const hasPermission = await requestPermissions();
       console.log('Permission result:', hasPermission);
-      
+
       if (!hasPermission) {
         console.error('Location permission denied');
         setState(prev => ({
@@ -102,7 +170,7 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
         lng: position.coords.longitude,
         accuracy: position.coords.accuracy
       });
-      
+
       setState(prev => ({
         ...prev,
         position,
@@ -112,21 +180,11 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
       return position;
     } catch (error: any) {
-      let errorMessage = 'Failed to get current location';
-      
-      if (error.message?.includes('timeout')) {
-        errorMessage = 'Location request timed out. Please try again.';
-      } else if (error.message?.includes('denied')) {
-        errorMessage = 'Location access denied. Please enable location services.';
-      } else if (error.message?.includes('unavailable')) {
-        errorMessage = 'Location services are currently unavailable.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      const { finalErrorMessage } = logLocationError(error);
 
       setState(prev => ({
         ...prev,
-        error: errorMessage,
+        error: finalErrorMessage.errorMessage,
         loading: false,
       }));
 
@@ -155,9 +213,11 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
       const watchId = await Geolocation.watchPosition(positionOptions, (position, error) => {
         if (error) {
+          const { finalErrorMessage } = logLocationError(error);
+
           setState(prev => ({
             ...prev,
-            error: error.message || 'Failed to watch position',
+            error: finalErrorMessage.errorMessage,
           }));
         } else if (position) {
           setState(prev => ({
@@ -170,9 +230,10 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
 
       return watchId;
     } catch (error: any) {
+      const { finalErrorMessage } = logLocationError(error);
       setState(prev => ({
         ...prev,
-        error: error.message || 'Failed to start watching position',
+        error: finalErrorMessage.errorMessage,
       }));
       return null;
     }
@@ -195,7 +256,7 @@ export const useGeolocation = (options: UseGeolocationOptions = {}) => {
     if (requestOnMount && state.isSupported) {
       if (watchPosition) {
         let watchId: string | null = null;
-        
+
         watchCurrentPosition().then((id) => {
           if (id) {
             watchId = id;

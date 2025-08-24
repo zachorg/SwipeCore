@@ -13,12 +13,14 @@ def capacitor_pods
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCommunityAdmob', :path => '../../node_modules/@capacitor-community/admob'
   pod 'CapacitorCommunitySafeArea', :path => '../../node_modules/@capacitor-community/safe-area'
+  pod 'CapacitorCommunitySpeechRecognition', :path => '../../node_modules/@capacitor-community/speech-recognition'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
   pod 'CapacitorBrowser', :path => '../../node_modules/@capacitor/browser'
   pod 'CapacitorGeolocation', :path => '../../node_modules/@capacitor/geolocation'
   pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
   pod 'CapacitorAdmobAds', :path => '../../node_modules/capacitor-admob-ads'
   pod 'CapacitorSecureStoragePlugin', :path => '../../node_modules/capacitor-secure-storage-plugin'
+  pod 'CapacitorVoiceRecorder', :path => '../../node_modules/capacitor-voice-recorder'
 end
 
 target 'App' do

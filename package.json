@@ -15,6 +15,7 @@
   "dependencies": {
     "@capacitor-community/admob": "^7.0.3",
     "@capacitor-community/safe-area": "^7.0.0-alpha.1",
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor/android": "^7.4.2",
     "@capacitor/app": "^7.0.2",
     "@capacitor/browser": "^7.0.2",

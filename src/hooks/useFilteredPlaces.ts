@@ -312,7 +312,7 @@ export function useFilteredPlaces(
   );
 
   // Computed values
-  const isLoading = isPlacesLoading && cards.length === 0;
+  const [isLoading, SetIsLoading] = useState<boolean>(true);
   const hasLocation = Boolean(location);
   const usingLiveData = defaultFeatureFlags.useGooglePlacesApi && hasLocation;
   const currentCard = cards.length > 0 ? cards[0] : null;
@@ -332,6 +332,7 @@ export function useFilteredPlaces(
         );
       }
     }
+    SetIsLoading(isPlacesLoading && cards.length === 0);
   }, [cards]);
 
   // If live data is disabled, do not populate with mocks; leave empty and show error states

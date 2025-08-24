@@ -201,7 +201,7 @@ const Index = () => {
                     minRating: 3.0,
                   },
                   autoStart: true,
-                  maxCards: 20,
+                  maxCards: 2,
                   prefetchDetails: true,
                   enableFiltering: true,
                 }}

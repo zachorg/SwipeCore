@@ -98,7 +98,7 @@ export function SwipeDeck({
   } = useFilteredPlaces({
     ...swipeOptions,
     enableFiltering,
-    maxCards: 20,
+    maxCards: 2,
   });
 
   // Create and pass filter button to parent
@@ -265,7 +265,7 @@ export function SwipeDeck({
   const handleSwipeDirection = (direction: "menu" | "pass" | null) => {
     setSwipeDirection(direction);
   };
-  
+
   const hasActiveFilters = Array.isArray(allFilters)
     ? allFilters.some((f: any) => f?.enabled)
     : false;
@@ -332,175 +332,197 @@ export function SwipeDeck({
   }, [cards]);
 
   // Loading state
-  if ((isLoading || isFilterLoading) && cards.length === 0) {
+  const LoadingState = () => {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center space-y-4 bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-white drop-shadow-lg" />
-          <div>
-            <h2
-              className="text-xl font-semibold text-white mb-2"
-              style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}
-            >
-              {isLocationLoading
-                ? "Getting your location..."
-                : isFilterLoading
-                ? "Applying filters..."
-                : "Finding restaurants..."}
-            </h2>
-            <p
-              className="text-white/80"
-              style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6)" }}
-            >
-              {usingLiveData
-                ? "Loading restaurants near you"
-                : "Preparing your restaurant deck"}
-            </p>
+      isLoading &&
+      (isFilterLoading || cards.length === 0) && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4 bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-white drop-shadow-lg" />
+            <div>
+              <h2
+                className="text-xl font-semibold text-white mb-2"
+                style={{ textShadow: "1px 1px 3px rgba(0,0,0,0.8)" }}
+              >
+                {isLocationLoading
+                  ? "Getting your location..."
+                  : isFilterLoading
+                  ? "Applying filters..."
+                  : "Finding restaurants..."}
+              </h2>
+              <p
+                className="text-white/80"
+                style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.6)" }}
+              >
+                {usingLiveData
+                  ? "Loading restaurants near you"
+                  : "Preparing your restaurant deck"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )
     );
-  }
+  };
 
-  // Error state
-  if (error) {
+  const ErrorState = () => {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4 max-w-md bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
-          <AlertCircle className="w-12 h-12 mx-auto text-white drop-shadow-lg" />
-          <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
-            <AlertCircle className="h-4 w-4 text-white inline mr-2" />
-            <span
-              className="text-white"
-              style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
-            >
-              {error}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {!hasLocation && (
+      error && (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-4 max-w-md bg-white/10 backdrop-blur-sm p-8 rounded-3xl border border-white/20 shadow-lg">
+            <AlertCircle className="w-12 h-12 mx-auto text-white drop-shadow-lg" />
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl border border-white/30">
+              <AlertCircle className="h-4 w-4 text-white inline mr-2" />
+              <span
+                className="text-white"
+                style={{ textShadow: "1px 1px 2px rgba(0,0,0,0.8)" }}
+              >
+                {error}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {!hasLocation && (
+                <Button
+                  onClick={requestLocation}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Enable Location Services
+                </Button>
+              )}
               <Button
-                onClick={requestLocation}
-                variant="outline"
+                onClick={refreshCards}
+                variant="default"
                 className="w-full"
               >
-                <MapPin className="w-4 h-4 mr-2" />
-                Enable Location Services
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
               </Button>
-            )}
-            <Button onClick={refreshCards} variant="default" className="w-full">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
-            </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )
     );
-  }
+  };
 
   // No location permission state
-  if (!hasLocation && !isLocationLoading && usingLiveData) {
+  const LocationState = () => {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4 max-w-md">
-          <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
-          <div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">
-              Location Access Needed
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              We need your location to find restaurants near you. Don't worry,
-              we only use it to show nearby options.
-            </p>
-          </div>
-          <Button onClick={requestLocation} className="w-full">
-            <MapPin className="w-4 h-4 mr-2" />
-            Enable Location Services
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // No cards available state (consider injected sponsored)
-  if (cards.length === 0 && !isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center space-y-4 w-full max-w-md">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              No more restaurants!
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              {usingLiveData
-                ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
-                : "Check back later for more options."}
-            </p>
-          </div>
-          {usingLiveData && (
-            <Button onClick={handleRefreshClick} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Results
+      !hasLocation &&
+      !isLocationLoading &&
+      usingLiveData && (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-4 max-w-md">
+            <MapPin className="w-12 h-12 mx-auto text-muted-foreground" />
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                Location Access Needed
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                We need your location to find restaurants near you. Don't worry,
+                we only use it to show nearby options.
+              </p>
+            </div>
+            <Button onClick={requestLocation} className="w-full">
+              <MapPin className="w-4 h-4 mr-2" />
+              Enable Location Services
             </Button>
-          )}
+          </div>
         </div>
-      </div>
+      )
     );
-  }
+  };
+
+  const NoCardsAvailable = () => {
+    return (
+      cards.length === 0 &&
+      !isLoading && (
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-4 w-full max-w-md">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">
+                No more restaurants!
+              </h2>
+              <p className="text-muted-foreground mb-4">
+                {usingLiveData
+                  ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
+                  : "Check back later for more options."}
+              </p>
+            </div>
+            {usingLiveData && (
+              <Button onClick={handleRefreshClick} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh Results
+              </Button>
+            )}
+          </div>
+        </div>
+      )
+    );
+  };
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Card Stack - Full height with padding for controls */}
-      <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
-        {visibleCards.map((card, index) => {
-          if (card.adData) {
-            return (
-              <SwipeCard
-                key={card.id}
-                card={card}
-                onSwipe={() => handleSponsoredSwipe(card.id)}
-                config={swipeConfig}
-                isTop={index === 0}
-                index={index}
-                onCardTap={handleCardTap}
-                onSwipeDirection={handleSwipeDirection}
-              />
-            );
-          }
-          return (
-            <SwipeCard
-              key={card.id}
-              card={card}
-              onSwipe={handleSwipe}
-              config={swipeConfig}
-              isTop={index === 0}
-              index={index}
-              onCardTap={handleCardTap}
-              handleOnExpand={handleExpand}
-              onSwipeDirection={handleSwipeDirection}
-            />
-          );
-        })}
-      </div>
-
-      {/* Swipe Controls - Fixed footer */}
-      <SwipeControls
-        onAction={handleControlAction}
-        onMenuOpen={currentCard?.adData ? undefined : handleMenuOpen}
-        onVoiceFiltersApplied={
-          enableFiltering
-            ? (filters) => {
-                // Apply each filter from the voice result
-                filters.forEach((filter) => {
-                  addFilter(filter.filterId, filter.value);
-                });
-                // Trigger new filters applied callback
-                onNewFiltersApplied();
+    <>
+      <LoadingState />
+      <ErrorState />
+      <LocationState />
+      <NoCardsAvailable />
+      {cards.length > 0 && (
+        <div className="flex-1 flex flex-col">
+          {/* Card Stack - Full height with padding for controls */}
+          <div className="flex-1 relative p-4 md:flex md:items-center md:justify-center md:p-0 md:overflow-hidden">
+            {visibleCards.map((card, index) => {
+              if (card.adData) {
+                return (
+                  <SwipeCard
+                    key={card.id}
+                    card={card}
+                    onSwipe={() => handleSponsoredSwipe(card.id)}
+                    config={swipeConfig}
+                    isTop={index === 0}
+                    index={index}
+                    onCardTap={handleCardTap}
+                    onSwipeDirection={handleSwipeDirection}
+                  />
+                );
               }
-            : undefined
-        }
-        swipeDirection={swipeDirection}
-      />
-    </div>
+              return (
+                <SwipeCard
+                  key={card.id}
+                  card={card}
+                  onSwipe={handleSwipe}
+                  config={swipeConfig}
+                  isTop={index === 0}
+                  index={index}
+                  onCardTap={handleCardTap}
+                  handleOnExpand={handleExpand}
+                  onSwipeDirection={handleSwipeDirection}
+                />
+              );
+            })}
+          </div>
+
+          {/* Swipe Controls - Fixed footer */}
+          <SwipeControls
+            onAction={handleControlAction}
+            onMenuOpen={currentCard?.adData ? undefined : handleMenuOpen}
+            onVoiceFiltersApplied={
+              enableFiltering
+                ? (filters) => {
+                    // Apply each filter from the voice result
+                    filters.forEach((filter) => {
+                      addFilter(filter.filterId, filter.value);
+                    });
+                    // Trigger new filters applied callback
+                    onNewFiltersApplied();
+                  }
+                : undefined
+            }
+            swipeDirection={swipeDirection}
+          />
+        </div>
+      )}
+    </>
   );
 }
