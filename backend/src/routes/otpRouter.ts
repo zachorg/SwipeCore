@@ -54,29 +54,28 @@ router.post(
             const otp = generateOTP();
 
             // Send OTP via SMS service (this actually sends the message)
-            //const smsResult = await smsService.sendOtp(phone, otp);
+            const smsResult = await smsService.sendOtp(phoneNumber, otp);
 
-            //if (smsResult.success) {
-            console.log(
-                `✅ OTP ${otp} sent to ${phoneNumber}` // via ${smsResult.messageId}
-            );
+            if (smsResult.success) {
+                console.log(
+                    `✅ OTP ${otp} sent to ${phoneNumber} via ${smsResult.messageId}`
+                );
 
-            otpStore.set(phoneNumber, {
-                otp,
-                createdAt: Date.now(),
-                expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-            });
+                otpStore.set(phoneNumber, {
+                    otp,
+                    createdAt: Date.now(),
+                    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+                });
 
 
-            const response: OtpResponse = {
-                success: true,
-                message: 'OTP sent successfully',
-            };
-            // smsProvider: smsResult.messageId?.split('_')[0] || 'console',
-            res.json(response);
-            // } else {
-            //     throw new Error(`SMS delivery failed: ${smsResult.error}`);
-            // }
+                const response: OtpResponse = {
+                    success: true,
+                    message: 'OTP sent successfully',
+                };
+                res.json(response);
+            } else {
+                throw new Error(`SMS delivery failed: ${smsResult.error}`);
+            }
         } catch (error) {
             console.error('Error sending OTP:', error);
             res.status(500).json({
