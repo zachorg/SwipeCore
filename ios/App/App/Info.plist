@@ -94,7 +94,7 @@
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<!-- Crash prevention and stability settings -->
+	<!-- Basic stability settings -->
 	<key>UIApplicationExitsOnSuspend</key>
 	<false/>
 	<key>UIRequiresPersistentWiFi</key>
@@ -107,24 +107,5 @@
 	<string>UIStatusBarStyleDefault</string>
 	<key>UIRequiresFullScreen</key>
 	<false/>
-	<key>UISupportedInterfaceOrientations~iphone</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<!-- Memory management and crash prevention -->
-	<key>NSProcessInfo</key>
-	<dict>
-		<key>NSProcessInfoLowPowerModeEnabled</key>
-		<false/>
-	</dict>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-		<string>audio</string>
-	</array>
 </dict>
 </plist>
