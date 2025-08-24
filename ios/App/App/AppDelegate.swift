@@ -1,14 +1,39 @@
 import UIKit
 import Capacitor
 
-@UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        
+        // Ensure the window is properly initialized
+        if window == nil {
+            window = UIWindow(frame: UIScreen.main.bounds)
+        }
+        
+        // Set up the main view controller
+        let storyboard = UIStoryboard(name: "Main", bundle: nil)
+        if let viewController = storyboard.instantiateInitialViewController() {
+            window?.rootViewController = viewController
+            window?.makeKeyAndVisible()
+        }
+        
+        // Add error handling for Capacitor
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCapacitorError),
+            name: NSNotification.Name("capacitorError"),
+            object: nil
+        )
+        
         return true
+    }
+
+    @objc func handleCapacitorError(_ notification: Notification) {
+        // Handle any Capacitor-related errors gracefully
+        print("Capacitor error handled: \(notification)")
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -31,6 +56,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillTerminate(_ application: UIApplication) {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
+        
+        // Remove observers to prevent crashes
+        NotificationCenter.default.removeObserver(self)
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
@@ -46,4 +74,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // Add memory warning handling
+    func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
+        // Handle memory warnings gracefully
+        print("Memory warning received")
+    }
+
+    deinit {
+        // Clean up observers
+        NotificationCenter.default.removeObserver(self)
+    }
 }

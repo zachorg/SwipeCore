@@ -17,7 +17,12 @@ const config: CapacitorConfig = {
     // iOS-specific configurations
     scheme: 'swipecore',
     limitsNavigationsToAppBoundDomains: false,
-    allowsLinkPreview: false
+    allowsLinkPreview: false,
+    // Network security configuration
+    webContentsDebuggingEnabled: false,
+    // Crash prevention settings
+    contentInset: 'automatic',
+    scrollEnabled: true
   },
   plugins: {
     StatusBar: {
@@ -26,7 +31,10 @@ const config: CapacitorConfig = {
       backgroundColor: '#000000'
     },
     SplashScreen: {
-      launchShowDuration: 0
+      launchShowDuration: 0,
+      // Add iOS-specific splash screen settings
+      iosSpinnerStyle: 'small',
+      spinnerColor: '#000000'
     },
     Geolocation: {
       // Geolocation plugin configuration
@@ -50,6 +58,11 @@ const config: CapacitorConfig = {
       navigationBarContent: 'dark',
       offset: 0,
     },
+    // Add App plugin for better lifecycle management
+    App: {
+      url: 'swipecore://',
+      appId: 'com.swipecore.app'
+    }
   }
 };
 
