@@ -20,7 +20,6 @@ def capacitor_pods
   pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
   pod 'CapacitorAdmobAds', :path => '../../node_modules/capacitor-admob-ads'
   pod 'CapacitorSecureStoragePlugin', :path => '../../node_modules/capacitor-secure-storage-plugin'
-  pod 'CapacitorVoiceRecorder', :path => '../../node_modules/capacitor-voice-recorder'
 end
 
 target 'App' do
@@ -30,4 +29,19 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+  
+  # Fix Info.plist generation for Capacitor pods
+  installer.pods_project.targets.each do |target|
+    if target.name.start_with?('Capacitor') || 
+       target.name == 'CapacitorCordova' || 
+       target.name == 'CapacitorAdmobAds' || 
+       target.name == 'CapacitorSecureStoragePlugin' ||
+       target.name == 'SwiftKeychainWrapper'
+      
+      target.build_configurations.each do |config|
+        config.build_settings['GENERATE_INFOPLIST_FILE'] = 'YES'
+        config.build_settings['INFOPLIST_FILE'] = ''
+      end
+    end
+  end
 end
