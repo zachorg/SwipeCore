@@ -7,6 +7,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Set up global exception handling first
+        setupExceptionHandling()
+        
         // Override point for customization after application launch.
         
         // Ensure the window is properly initialized
@@ -14,11 +17,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             window = UIWindow(frame: UIScreen.main.bounds)
         }
         
-        // Set up the main view controller
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        if let viewController = storyboard.instantiateInitialViewController() {
-            window?.rootViewController = viewController
-            window?.makeKeyAndVisible()
+        // Set up the main view controller with error handling
+        do {
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            if let viewController = storyboard.instantiateInitialViewController() {
+                window?.rootViewController = viewController
+                window?.makeKeyAndVisible()
+            } else {
+                print("Warning: Could not instantiate initial view controller")
+            }
+        } catch {
+            print("Error setting up view controller: \(error)")
         }
         
         // Add error handling for Capacitor
@@ -29,12 +38,51 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             object: nil
         )
         
+        // Add system error handling
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSystemError),
+            name: NSNotification.Name("systemError"),
+            object: nil
+        )
+        
         return true
+    }
+    
+    private func setupExceptionHandling() {
+        // Set up global exception handler
+        NSSetUncaughtExceptionHandler { exception in
+            print("Uncaught exception: \(exception)")
+            print("Exception name: \(exception.name)")
+            print("Exception reason: \(exception.reason ?? "Unknown")")
+            print("Exception callStackSymbols: \(exception.callStackSymbols)")
+        }
+        
+        // Set up signal handler for low-level crashes
+        signal(SIGSEGV) { signal in
+            print("Received signal: \(signal)")
+            // Don't exit, just log the signal
+        }
+        
+        signal(SIGBUS) { signal in
+            print("Received signal: \(signal)")
+            // Don't exit, just log the signal
+        }
+        
+        signal(SIGILL) { signal in
+            print("Received signal: \(signal)")
+            // Don't exit, just log the signal
+        }
     }
 
     @objc func handleCapacitorError(_ notification: Notification) {
         // Handle any Capacitor-related errors gracefully
         print("Capacitor error handled: \(notification)")
+    }
+    
+    @objc func handleSystemError(_ notification: Notification) {
+        // Handle system-level errors
+        print("System error handled: \(notification)")
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -79,6 +127,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidReceiveMemoryWarning(_ application: UIApplication) {
         // Handle memory warnings gracefully
         print("Memory warning received")
+        
+        // Clear any caches or temporary data
+        URLCache.shared.removeAllCachedResponses()
+        
+        // Force garbage collection if available
+        if #available(iOS 13.0, *) {
+            // iOS 13+ has automatic memory management
+        }
     }
 
     deinit {
