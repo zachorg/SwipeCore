@@ -6,14 +6,19 @@ class CustomBridgeViewController: CAPBridgeViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Add error handling for web view
-        webView?.navigationDelegate = self
-        
         // Set up error handling for Capacitor
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleCapacitorError),
             name: NSNotification.Name("capacitorError"),
+            object: nil
+        )
+        
+        // Add error handling for view lifecycle
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleViewError),
+            name: NSNotification.Name("viewError"),
             object: nil
         )
     }
@@ -22,9 +27,8 @@ class CustomBridgeViewController: CAPBridgeViewController {
         super.viewWillAppear(animated)
         
         // Ensure proper view setup
-        if webView == nil {
-            print("Warning: WebView is nil, attempting to recreate")
-            setupWebView()
+        if view.window == nil {
+            print("Warning: View window is nil, attempting to recover")
         }
     }
     
@@ -38,42 +42,12 @@ class CustomBridgeViewController: CAPBridgeViewController {
         }
     }
     
-    private func setupWebView() {
-        // Recreate web view if needed
-        let webView = WKWebView()
-        webView.navigationDelegate = self
-        self.webView = webView
+    @objc func handleViewError(_ notification: Notification) {
+        // Handle view-related errors
+        print("View error in bridge view controller: \(notification)")
     }
     
     deinit {
         NotificationCenter.default.removeObserver(self)
-    }
-}
-
-// MARK: - WKNavigationDelegate
-extension CustomBridgeViewController: WKNavigationDelegate {
-    
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        print("WebView failed to load: \(error.localizedDescription)")
-        
-        // Handle loading failures gracefully
-        if let urlError = error as? URLError {
-            switch urlError.code {
-            case .notConnectedToInternet:
-                print("No internet connection")
-            case .timedOut:
-                print("Request timed out")
-            default:
-                print("Other URL error: \(urlError.code)")
-            }
-        }
-    }
-    
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        print("WebView navigation failed: \(error.localizedDescription)")
-    }
-    
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        print("WebView loaded successfully")
     }
 }
