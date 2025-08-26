@@ -1,9 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">NomNom</string>
-    <string name="title_activity_main">NomNom</string>
-    <string name="package_name">com.swipecore.app</string>
-    <string name="custom_url_scheme">com.swipecore.app</string>
-  <!-- Set to Google test App ID during development -->
-  <string name="admob_app_id">ca-app-pub-1638652278312904~7072049423</string>
-</resources>
