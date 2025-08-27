@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { Platform } from "react-native"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -7,11 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 
 // Detect Android devices for performance optimization
 export function isAndroid() {
-  return /Android/i.test(navigator.userAgent);
+  return Platform.OS === 'android';
 }
 
 export function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return Platform.OS === 'ios';
 }
 
 export function isMobile() {

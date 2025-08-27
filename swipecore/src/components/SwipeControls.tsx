@@ -1,13 +1,15 @@
-import { Menu, X, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { memo } from "react";
 import { VoiceButton } from "./VoiceButton";
+import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface SwipeControlsProps {
   onAction: (action: "pass") => void;
   onMenuOpen?: () => void;
   onUndo?: () => void;
-  onVoiceFiltersApplied?: (filters: Array<{ filterId: string; value: any }>) => void;
+  onVoiceFiltersApplied?: (
+    filters: Array<{ filterId: string; value: any }>
+  ) => void;
   swipeDirection?: "menu" | "pass" | null;
 }
 
@@ -20,19 +22,16 @@ const UndoButton = memo(
     onUndo?: () => void;
   }) => {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium shadow-md transition-all duration-300 ${
-          swipeDirection
-            ? "opacity-50"
-            : "hover:scale-105 hover:shadow-lg hover:border-gray-400"
-        }`}
-        onClick={onUndo}
+      <TouchableOpacity
+        style={[
+          styles.undoButton,
+          swipeDirection ? styles.buttonDisabled : styles.buttonActive,
+        ]}
+        onPress={onUndo}
       >
-        <RotateCcw className="w-4 h-4" />
-        Undo
-      </Button>
+        <Ionicons name="refresh" size={16} color="#374151" />
+        <Text style={styles.buttonText}>Undo</Text>
+      </TouchableOpacity>
     );
   }
 );
@@ -46,26 +45,24 @@ const PassButton = memo(
     onAction: (action: "pass") => void;
   }) => {
     return (
-      <Button
-        variant="destructive"
-        size="lg"
-        className={`flex items-center gap-3 px-8 py-3 rounded-2xl bg-red-500 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-semibold shadow-lg transition-all duration-200 ${
+      <TouchableOpacity
+        style={[
+          styles.passButton,
           swipeDirection === "pass"
-            ? "transform scale-125 shadow-2xl shadow-red-500/40 ring-4 ring-red-300/50 from-red-600 to-pink-600"
+            ? styles.passButtonActive
             : swipeDirection === "menu"
-            ? "transform scale-90 opacity-60"
-            : "hover:transform hover:scale-110 hover:shadow-xl"
-        }`}
-        style={{ willChange: swipeDirection ? "transform" : "auto" }}
-        onClick={() => onAction("pass")}
+            ? styles.passButtonInactive
+            : styles.passButtonDefault,
+        ]}
+        onPress={() => onAction("pass")}
       >
-        <X
-          className={`transition-all duration-200 ${
-            swipeDirection === "pass" ? "w-6 h-6" : "w-5 h-5"
-          }`}
+        <Ionicons
+          name="close"
+          size={swipeDirection === "pass" ? 24 : 20}
+          color="#FFFFFF"
         />
-        Pass
-      </Button>
+        <Text style={styles.passButtonText}>Pass</Text>
+      </TouchableOpacity>
     );
   }
 );
@@ -80,26 +77,24 @@ const MenuButton = memo(
     onMenuOpen?: () => void;
   }) => {
     return (
-      <Button
-        variant="default"
-        size="lg"
-        className={`flex items-center gap-3 px-8 py-3 rounded-2xl bg-blue-500 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold shadow-lg transition-all duration-200 ${
+      <TouchableOpacity
+        style={[
+          styles.menuButton,
           swipeDirection === "menu"
-            ? "transform scale-125 shadow-2xl shadow-blue-500/40 ring-4 ring-blue-300/50 from-blue-600 to-purple-600"
+            ? styles.menuButtonActive
             : swipeDirection === "pass"
-            ? "transform scale-90 opacity-60"
-            : "hover:transform hover:scale-110 hover:shadow-xl"
-        }`}
-        style={{ willChange: swipeDirection ? "transform" : "auto" }}
-        onClick={onMenuOpen}
+            ? styles.menuButtonInactive
+            : styles.menuButtonDefault,
+        ]}
+        onPress={onMenuOpen}
       >
-        <Menu
-          className={`transition-all duration-200 ${
-            swipeDirection === "menu" ? "w-6 h-6" : "w-5 h-5"
-          }`}
+        <Ionicons
+          name="menu"
+          size={swipeDirection === "menu" ? 24 : 20}
+          color="#FFFFFF"
         />
-        Menu
-      </Button>
+        <Text style={styles.menuButtonText}>Menu</Text>
+      </TouchableOpacity>
     );
   }
 );
@@ -112,35 +107,147 @@ function SwipeControls({
   swipeDirection,
 }: SwipeControlsProps) {
   return (
-    <div
-      className="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-t border-border/30 shadow-lg md:px-8 md:py-5 
-                    transform -translate-y-[calc(clamp(10px,3vh,28px)+max(env(safe-area-inset-bottom),0px)/2)] md:-translate-y-[clamp(6px,2vh,24px)]"
-    >
-      <div className="flex items-center justify-center gap-4 md:max-w-md md:mx-auto">
-        {/* Undo Button */}
-        {onUndo && (
-          <UndoButton swipeDirection={swipeDirection} onUndo={onUndo} />
-        )}
+    <View style={styles.buttonContainer}>
+      {/* Pass Button */}
+      <PassButton swipeDirection={swipeDirection} onAction={onAction} />
 
-        {/* Pass Button */}
-        <PassButton
-          swipeDirection={swipeDirection}
-          onAction={onAction}
-        />
-
-        {/* Voice Button */}
-        {onVoiceFiltersApplied && (
-          <VoiceButton
-            onFiltersApplied={onVoiceFiltersApplied}
-            swipeDirection={swipeDirection}
-          />
-        )}
-
-        {/* Open Menu Button */}
-        <MenuButton swipeDirection={swipeDirection} onMenuOpen={onMenuOpen} />
-      </div>
-    </div>
+      {/* Open Menu Button */}
+      <MenuButton swipeDirection={swipeDirection} onMenuOpen={onMenuOpen} />
+    </View>
   );
 }
 
 export { SwipeControls };
+
+const styles = StyleSheet.create({
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 20,
+    paddingVertical: 16,
+    paddingBottom: 36,
+  },
+  buttonGap: {
+    width: 12,
+  },
+  undoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  buttonActive: {
+    opacity: 1,
+    transform: [{ scale: 1.01 }],
+    borderColor: "#10B981",
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+    transform: [{ scale: 1 }],
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  passButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: "#EF4444",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  passButtonActive: {
+    transform: [{ scale: 1.01 }],
+    shadowColor: "#FCA5A5",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  passButtonInactive: {
+    transform: [{ scale: 0.9 }],
+    opacity: 0.6,
+  },
+  passButtonDefault: {
+    transform: [{ scale: 1 }],
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  passButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  menuButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: "#3B82F6",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  menuButtonActive: {
+    transform: [{ scale: 1.01 }],
+    shadowColor: "#93C5FD",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  menuButtonInactive: {
+    transform: [{ scale: 0.9 }],
+    opacity: 0.6,
+  },
+  menuButtonDefault: {
+    transform: [{ scale: 1 }],
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  menuButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+});

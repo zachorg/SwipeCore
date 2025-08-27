@@ -3,33 +3,9 @@
 import * as SecureStore from 'expo-secure-store';
 import { verificationService } from './verificationService';
 import { API_CONFIG, buildApiUrl, getAuthHeaders } from '../config/api';
+import { UserProfile } from 'backend/src/lib/supabase';
+import { UserProfileRequest, UserProfileResponse } from 'backend/src/types/userProfileTypes';
 
-// Types for User Profile API
-export interface UserProfileRequest {
-    age: number;
-    gender: string;
-}
-
-export interface UserProfileResponse {
-    success: boolean;
-    message?: string;
-    errorCode?: string;
-    userProfile?: UserProfile;
-}
-
-export interface UserProfile {
-    id: string;
-    created_at: string;
-    updated_at: string;
-    phone_number: string;
-    age: number | null;
-    gender: string | null;
-    preferences?: {
-        cuisine: string[];
-        price_range: string[];
-        max_distance: number;
-    };
-}
 
 class UserProfileService {
     private baseUrl: string;
@@ -42,7 +18,7 @@ class UserProfileService {
         }
     }
 
-    async getUserProfile(): Promise<UserProfile | null> {
+    async getUserProfile(): Promise<Omit<UserProfile, "id"> | null> {
         try {
             const accessToken = await verificationService.getAccessToken();
 
@@ -58,11 +34,14 @@ class UserProfileService {
                 headers: getAuthHeaders(accessToken),
             });
 
-            const data = await response.json() as UserProfileResponse;
-
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to fetch user profile');
+                if (response.status === 401) {
+                    throw new Error('Unauthorized');
+                }
+                throw new Error(response.statusText || 'Failed to fetch user profile');
             }
+
+            const data = await response.json() as UserProfileResponse;
 
             if (!data.success) {
                 throw new Error(data.errorCode || 'Failed to fetch user profile');
@@ -94,7 +73,7 @@ class UserProfileService {
         }
     }
 
-    async createUserProfile(profile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<UserProfile> {
+    async createUserProfile(profile: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<Omit<UserProfile, 'id'>> {
         try {
             const accessToken = await verificationService.getAccessToken();
 
@@ -139,7 +118,7 @@ class UserProfileService {
         }
     }
 
-    async updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>>): Promise<UserProfile | null> {
+    async updateUserProfile(updates: Partial<Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>>): Promise<Omit<UserProfile, 'id'> | null> {
         try {
             const accessToken = await verificationService.getAccessToken();
 
@@ -217,7 +196,7 @@ class UserProfileService {
         }
     }
 
-    async createNewUserProfile(profile: { age: number; gender: string }): Promise<UserProfile> {
+    async createNewUserProfile(profile: { age: number; gender: "male" | "female" | "other" | "prefer-not-to-say" }): Promise<Omit<UserProfile, 'id'>> {
         try {
             const accessToken = await verificationService.getAccessToken();
 

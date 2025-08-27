@@ -28,6 +28,7 @@ import {
   getAvailableAd,
   startNativeAdsPreload,
 } from "@/services/nativeAdsProvider";
+import { getRandomRestaurantCards } from "@/utils/mockData";
 
 export interface UseFilteredPlacesOptions {
   searchConfig?: Partial<PlaceSearchConfig>;
@@ -338,8 +339,9 @@ export function useFilteredPlaces(
   // If live data is disabled, do not populate with mocks; leave empty and show error states
   useEffect(() => {
     if (!FEATURE_FLAGS.GOOGLE_PLACES_ENABLED && autoStart) {
-      setBaseCards([]);
-      setCards([]);
+      const cards = getRandomRestaurantCards(3)
+      setBaseCards(cards);
+      setCards(cards);
     }
   }, [filters]);
 

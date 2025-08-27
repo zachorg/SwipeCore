@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { SwipeCard } from "./SwipeCard";
 import { SwipeControls } from "./SwipeControls";
@@ -31,6 +32,7 @@ import { Platform } from "react-native";
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
   onSwipeAction?: (cardId: string, action: "menu" | "pass") => void;
+  statusBarHeight?: number;
   maxVisibleCards?: number;
   onCardTap?: (card: RestaurantCard) => void;
   swipeOptions?: UseFilteredPlacesOptions;
@@ -43,6 +45,7 @@ export function SwipeDeck({
   config = {},
   onSwipeAction,
   maxVisibleCards = 3,
+  statusBarHeight = 0,
   onCardTap,
   swipeOptions = {},
   enableFiltering = true,
@@ -194,9 +197,38 @@ export function SwipeDeck({
 
   return (
     <View style={styles.container}>
+      {/* Status Bar */}
+      {showLoading && (
+        <View style={styles.statusBar}>
+          <ActivityIndicator size="small" color="#3B82F6" />
+          <Text style={styles.statusText}>
+            {isLocationLoading
+              ? "Getting your location..."
+              : isFilterLoading
+              ? "Applying filters..."
+              : "Finding restaurants..."}
+          </Text>
+        </View>
+      )}
+
+      {showError && (
+        <View style={[styles.statusBar, { paddingTop: statusBarHeight }]}>
+          <Ionicons name="alert-circle" size={16} color="#EF4444" />
+          <Text style={styles.statusText}>Error: {String(error)}</Text>
+        </View>
+      )}
+
+      {showLocationNeeded && (
+        <View style={[styles.statusBar, { paddingTop: statusBarHeight }]}>
+          <Ionicons name="location" size={16} color="#F59E0B" />
+          <Text style={styles.statusText}>Location access needed</Text>
+        </View>
+      )}
+
+      {/* Main Content */}
       {showLoading && (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+          <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>
             {isLocationLoading
               ? "Getting your location..."
@@ -272,8 +304,16 @@ export function SwipeDeck({
       )}
 
       {visibleCards.length > 0 && (
-        <View style={styles.stackContainer}>
-          <View style={styles.cardsArea}>
+        <View
+          style={[styles.stackContainer, { paddingTop: statusBarHeight - 16 }]}
+        >
+          <View
+            style={[
+              styles.cardsArea,
+              { marginBottom: statusBarHeight - 16 },
+              { marginHorizontal: statusBarHeight - 16 },
+            ]}
+          >
             {visibleCards.map((card, index) => {
               if (card.adData) {
                 return (
@@ -300,6 +340,7 @@ export function SwipeDeck({
                   onCardTap={handleCardTapInternal}
                   handleOnExpand={handleExpand}
                   onSwipeDirection={setSwipeDirection}
+                  statusBarHeight={statusBarHeight}
                 />
               );
             })}
@@ -328,6 +369,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  statusBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: "#111827",
+    borderBottomWidth: 1,
+    borderBottomColor: "#374151",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  statusText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  statusBarContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  statusBarActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  statusBarButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
   },
   center: {
     flex: 1,
@@ -403,8 +483,6 @@ const styles = StyleSheet.create({
   },
   stackContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
   },
   cardsArea: {
     flex: 1,

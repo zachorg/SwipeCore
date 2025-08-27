@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, SafeAreaView, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  Dimensions,
+  Platform,
+  StatusBar,
+} from "react-native";
 import { SwipeDeck } from "../components/SwipeDeck";
 import { RestaurantCard } from "../types/Types";
 import { initializeDeviceOptimizations } from "../utils/deviceOptimization";
@@ -8,6 +16,24 @@ import { useAuth } from "../contexts/AuthContext";
 const Index = () => {
   const { isAuthenticated, userProfile } = useAuth();
   const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0 });
+
+  // Get status bar height dynamically
+  const getStatusBarHeight = () => {
+    if (Platform.OS === "ios") {
+      // iOS: Approximate based on device type
+      const { height } = Dimensions.get("window");
+      const isIPhoneX = height >= 812; // iPhone X and newer
+      return isIPhoneX ? 44 : 20;
+    } else {
+      // Android: Use StatusBar.currentHeight
+      return StatusBar.currentHeight || 0;
+    }
+  };
+
+  const statusBarHeight = getStatusBarHeight();
+
+  // Log status bar height for debugging
+  console.log("Status bar height:", statusBarHeight, "Platform:", Platform.OS);
 
   // Initialize device optimizations on component mount
   useEffect(() => {
@@ -38,7 +64,7 @@ const Index = () => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: statusBarHeight + 20 }]}>
         <View style={styles.headerContent}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>🍕</Text>
@@ -56,6 +82,7 @@ const Index = () => {
         onCardTap={handleCardTap}
         onFilterButtonReady={handleFilterButtonReady}
         enableFiltering={true}
+        statusBarHeight={statusBarHeight}
         initialFilters={[]}
         swipeOptions={{
           searchConfig: {
@@ -69,13 +96,6 @@ const Index = () => {
           enableFiltering: true,
         }}
       />
-
-      {/* Debug Stats */}
-      {__DEV__ && (
-        <View style={styles.debugStats}>
-          <Text style={styles.debugText}>👍 {swipeStats.likes} | 👎 {swipeStats.passes}</Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 };
@@ -85,14 +105,19 @@ const { width, height } = Dimensions.get("window");
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
   header: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    backgroundColor: "#F8FAFC",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    borderBottomColor: "#E2E8F0",
     paddingVertical: 16,
     paddingHorizontal: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerContent: {
     flexDirection: "row",
@@ -102,10 +127,15 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 48,
     height: 48,
-    backgroundColor: "#8B5CF6",
+    backgroundColor: "#3B82F6",
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoText: {
     fontSize: 24,
@@ -118,12 +148,12 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#8B5CF6",
+    color: "#1E293B",
     marginBottom: 4,
   },
   appSubtitle: {
     fontSize: 14,
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "#64748B",
   },
   debugStats: {
     position: "absolute",

@@ -2,15 +2,8 @@
 import * as SecureStore from 'expo-secure-store';
 import { otpService } from './otpService';
 
-const VERIFICATION_KEY = 'verification_status';
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
-
-export interface VerificationStatus {
-    isVerified: boolean;
-    expiresAt: number;
-    userId?: string;
-}
 
 export interface VerificationData {
     accessToken: string;
@@ -18,23 +11,13 @@ export interface VerificationData {
 }
 
 class VerificationService {
-    private verificationStatus: VerificationStatus | null = null;
-
     async isVerified(): Promise<boolean> {
         try {
-            if (this.verificationStatus) {
-                return this.verificationStatus.isVerified &&
-                    this.verificationStatus.expiresAt > Date.now();
+            const stored = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+            if (!stored) {
+                return false;
             }
-
-            const stored = await SecureStore.getItemAsync(VERIFICATION_KEY);
-            if (stored) {
-                this.verificationStatus = JSON.parse(stored);
-                return !!(this.verificationStatus?.isVerified &&
-                    this.verificationStatus?.expiresAt > Date.now());
-            }
-
-            return false;
+            return await otpService.authIsVerified(stored);
         } catch (error) {
             console.error('[VerificationService] Error checking verification status:', error);
             return false;
@@ -54,28 +37,6 @@ class VerificationService {
         } catch (error) {
             console.error('[VerificationService] Error refreshing access token:', error);
             return false;
-        }
-    }
-
-    async setVerificationStatus(status: VerificationStatus): Promise<void> {
-        try {
-            this.verificationStatus = status;
-            await SecureStore.setItemAsync(VERIFICATION_KEY, JSON.stringify(status));
-            console.log('[VerificationService] Verification status updated');
-        } catch (error) {
-            console.error('[VerificationService] Error setting verification status:', error);
-        }
-    }
-
-    async clearVerificationStatus(): Promise<void> {
-        try {
-            this.verificationStatus = null;
-            await SecureStore.deleteItemAsync(VERIFICATION_KEY);
-            await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
-            await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
-            console.log('[VerificationService] Verification status cleared');
-        } catch (error) {
-            console.error('[VerificationService] Error clearing verification status:', error);
         }
     }
 
@@ -110,11 +71,6 @@ class VerificationService {
         try {
             await this.setAccessToken(verification.accessToken);
             await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, verification.refreshToken);
-            await this.setVerificationStatus({
-                isVerified: true,
-                expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-                userId: 'user_' + Date.now(),
-            });
             console.log('[VerificationService] Verification stored successfully');
         } catch (error) {
             console.error('[VerificationService] Error storing verification:', error);

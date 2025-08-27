@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mic, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { TouchableOpacity, Text, StyleSheet, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { speechToTextService } from "@/utils/speechToText";
 import { parseNaturalLanguageQuery } from "@/utils/nlpFilters";
 import { isMobile } from "@/lib/utils";
@@ -10,7 +10,6 @@ type VoiceState = "idle" | "listening" | "processing";
 interface VoiceButtonProps {
   onFiltersApplied: (filters: Array<{ filterId: string; value: any }>) => void;
   swipeDirection?: "menu" | "pass" | null;
-  className?: string;
 }
 
 export function VoiceButton({
@@ -103,24 +102,24 @@ export function VoiceButton({
   const getButtonStyle = useCallback(() => {
     switch (voiceState) {
       case "listening":
-        return `border-red-400 bg-red-50 text-red-600 animate-pulse`;
+        return [styles.voiceButton, styles.listeningState];
       case "processing":
-        return "border-blue-400 bg-blue-50 text-blue-600";
+        return [styles.voiceButton, styles.processingState];
       default:
-        return `border-purple-300 bg-white text-purple-600`;
+        return [styles.voiceButton, styles.idleState];
     }
   }, [voiceState]);
 
   const getIcon = useCallback(() => {
     // Always ensure we have an icon - never return null or undefined
     if (voiceState === "listening") {
-      return <Square className="w-4 h-4" />;
+      return <Ionicons name="square" size={16} color="#DC2626" />;
     } else if (voiceState === "processing") {
-      return <Mic className="w-5 h-5 animate-pulse" />;
+      return <Ionicons name="mic" size={20} color="#2563EB" />;
     } else {
       // Default to microphone icon for any other state
       console.log("Voice state:", voiceState);
-      return <Mic className="w-5 h-5 color-purple" />;
+      return <Ionicons name="mic" size={20} color="#7C3AED" />;
     }
   }, [voiceState]);
 
@@ -133,20 +132,51 @@ export function VoiceButton({
   const isMobileDevice = isMobile();
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className={`w-12 h-12 rounded-full border-2 shadow-md transition-all duration-200 ${getButtonStyle()} ${
-        swipeDirection
-          ? "opacity-50"
-          : isMobileDevice
-          ? ""
-          : "hover:scale-105 hover:shadow-lg"
-      }`}
-      onClick={handleVoiceClick}
+    <TouchableOpacity
+      style={[
+        ...getButtonStyle(),
+        swipeDirection ? styles.buttonDisabled : null,
+      ]}
+      onPress={handleVoiceClick}
       disabled={voiceState === "processing"}
     >
       {getIcon()}
-    </Button>
+    </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  voiceButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  idleState: {
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+  },
+  listeningState: {
+    borderColor: "#EF4444",
+    backgroundColor: "#FEF2F2",
+    borderRadius: 24,
+  },
+  processingState: {
+    borderColor: "#3B82F6",
+    backgroundColor: "#EFF6FF",
+    borderRadius: 24,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+});

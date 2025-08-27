@@ -15,43 +15,96 @@ import { PhoneVerificationScreen } from "./components/auth/PhoneVerificationScre
 import { GetStartedScreen } from "./components/GetStartedScreen";
 import { UserProfileScreen } from "./components/UserProfileScreen";
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { useInAppBrowser } from "./hooks/useInAppBrowser";
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
 
+const GoToScreenBasedOnAuth = (
+  navigation: any,
+  loadingAuthentication: boolean,
+  isAuthenticated: boolean,
+  loadingUserProfile: boolean,
+  userProfile: any
+) => {
+  const auth = !loadingAuthentication && isAuthenticated;
+  const profile = !loadingUserProfile && userProfile;
+
+  if (auth) {
+    if (profile) {
+      navigation.navigate("Welcome" as never);
+    } else {
+      navigation.navigate("UserProfile" as never);
+    }
+  } else {
+    navigation.navigate("PhoneVerification" as never);
+  }
+};
+
 // Navigation wrapper components
 const GetStartedScreenWrapper = () => {
   const navigation = useNavigation();
+  const {
+    loadingAuthentication,
+    isAuthenticated,
+    loadingUserProfile,
+    userProfile,
+  } = useAuth();
 
   const handleComplete = () => {
     navigation.navigate("PhoneVerification" as never);
   };
 
+  useEffect(() => {
+    GoToScreenBasedOnAuth(
+      navigation,
+      loadingAuthentication,
+      isAuthenticated,
+      loadingUserProfile,
+      userProfile
+    );
+  }, [isAuthenticated]);
+
+  if (loadingAuthentication) {
+    return <LoadingState />;
+  }
   return <GetStartedScreen onComplete={handleComplete} />;
 };
 
 const PhoneVerificationScreenWrapper = () => {
   const navigation = useNavigation();
-  const { loadingAuthentication, isAuthenticated } = useAuth();
+  const {
+    loadingAuthentication,
+    isAuthenticated,
+    loadingUserProfile,
+    userProfile,
+  } = useAuth();
 
   const handleComplete = () => {
     navigation.navigate("UserProfile" as never);
-    return <LoadingState />;
   };
 
-  if (isAuthenticated) {
-    return handleComplete();
+  // Use useEffect to handle navigation when authenticated
+  useEffect(() => {
+    GoToScreenBasedOnAuth(
+      navigation,
+      loadingAuthentication,
+      isAuthenticated,
+      loadingUserProfile,
+      userProfile
+    );
+  }, [isAuthenticated]);
+
+  if (loadingAuthentication) {
+    return <LoadingState />;
   }
 
-  return (
-    <>
-      {loadingAuthentication ? (
-        <LoadingState />
-      ) : (
-        <PhoneVerificationScreen onComplete={handleComplete} />
-      )}
-    </>
-  );
+  // If authenticated, show loading while navigating
+  if (isAuthenticated) {
+    return <LoadingState />;
+  }
+
+  return <PhoneVerificationScreen onComplete={handleComplete} />;
 };
 
 const UserProfileScreenWrapper = () => {
@@ -60,22 +113,25 @@ const UserProfileScreenWrapper = () => {
 
   const handleComplete = () => {
     navigation.navigate("Welcome" as never);
-    return <LoadingState />;
   };
 
-  if (userProfile?.phone_number && userProfile?.age) {
-    return handleComplete();
+  // Use useEffect to handle navigation when profile is complete
+  useEffect(() => {
+    if (userProfile?.phone_number && userProfile?.age) {
+      handleComplete();
+    }
+  }, [userProfile]);
+
+  if (loadingUserProfile) {
+    return <LoadingState />;
   }
 
-  return (
-    <>
-      {loadingUserProfile ? (
-        <LoadingState />
-      ) : (
-        <UserProfileScreen onComplete={handleComplete} />
-      )}
-    </>
-  );
+  // If profile is complete, show loading while navigating
+  if (userProfile?.phone_number && userProfile?.age) {
+    return <LoadingState />;
+  }
+
+  return <UserProfileScreen onComplete={handleComplete} />;
 };
 
 const WelcomeScreenWrapper = () => {
@@ -100,18 +156,21 @@ const WelcomeScreenWrapper = () => {
 };
 
 export default function App() {
+  // Initialize InAppBrowser
+  useInAppBrowser();
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
-          <StatusBar style="light" backgroundColor="#000000" />
+          <StatusBar style="dark" backgroundColor="#FFFFFF" />
           <AuthProvider>
             <NavigationContainer>
               <Stack.Navigator
                 initialRouteName="GetStarted"
                 screenOptions={{
                   headerShown: false,
-                  cardStyle: { backgroundColor: "#000000" },
+                  cardStyle: { backgroundColor: "#FFFFFF" },
                 }}
               >
                 <Stack.Screen
