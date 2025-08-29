@@ -6,6 +6,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
+import { View, Text } from "react-native";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LoadingState } from "./components/LoadingState";
@@ -16,6 +17,7 @@ import { GetStartedScreen } from "./components/GetStartedScreen";
 import { UserProfileScreen } from "./components/UserProfileScreen";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { useInAppBrowser } from "./hooks/useInAppBrowser";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
@@ -93,14 +95,9 @@ const PhoneVerificationScreenWrapper = () => {
       loadingUserProfile,
       userProfile
     );
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadingAuthentication]);
 
-  if (loadingAuthentication) {
-    return <LoadingState />;
-  }
-
-  // If authenticated, show loading while navigating
-  if (isAuthenticated) {
+  if (loadingAuthentication || isAuthenticated) {
     return <LoadingState />;
   }
 
@@ -156,43 +153,74 @@ const WelcomeScreenWrapper = () => {
 };
 
 export default function App() {
-  // Initialize InAppBrowser
-  useInAppBrowser();
+  console.log("=== APP STARTING ===");
 
-  return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <StatusBar style="dark" backgroundColor="#FFFFFF" />
-          <AuthProvider>
-            <NavigationContainer>
-              <Stack.Navigator
-                initialRouteName="GetStarted"
-                screenOptions={{
-                  headerShown: false,
-                  cardStyle: { backgroundColor: "#FFFFFF" },
-                }}
-              >
-                <Stack.Screen
-                  name="GetStarted"
-                  component={GetStartedScreenWrapper}
-                />
-                <Stack.Screen
-                  name="PhoneVerification"
-                  component={PhoneVerificationScreenWrapper}
-                />
-                <Stack.Screen
-                  name="UserProfile"
-                  component={UserProfileScreenWrapper}
-                />
-                <Stack.Screen name="Welcome" component={WelcomeScreenWrapper} />
-                <Stack.Screen name="Index" component={Index} />
-                <Stack.Screen name="NotFound" component={NotFound} />
-              </Stack.Navigator>
-            </NavigationContainer>
-          </AuthProvider>
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
-  );
+  // Initialize InAppBrowser - TEMPORARILY COMMENTED OUT FOR DEBUGGING
+  // useInAppBrowser();
+
+  console.log("Rendering main App component...");
+
+  try {
+    return (
+      <ErrorBoundary>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <QueryClientProvider client={queryClient}>
+            <SafeAreaProvider>
+              <StatusBar style="dark" backgroundColor="#FFFFFF" />
+              <AuthProvider>
+                <NavigationContainer>
+                  <Stack.Navigator
+                    initialRouteName="GetStarted"
+                    screenOptions={{
+                      headerShown: false,
+                      cardStyle: { backgroundColor: "#FFFFFF" },
+                    }}
+                  >
+                    <Stack.Screen
+                      name="GetStarted"
+                      component={GetStartedScreenWrapper}
+                    />
+                    <Stack.Screen
+                      name="PhoneVerification"
+                      component={PhoneVerificationScreenWrapper}
+                    />
+                    <Stack.Screen
+                      name="UserProfile"
+                      component={UserProfileScreenWrapper}
+                    />
+                    <Stack.Screen
+                      name="Welcome"
+                      component={WelcomeScreenWrapper}
+                    />
+                    <Stack.Screen name="Index" component={Index} />
+                    <Stack.Screen name="NotFound" component={NotFound} />
+                  </Stack.Navigator>
+                </NavigationContainer>
+              </AuthProvider>
+            </SafeAreaProvider>
+          </QueryClientProvider>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
+    );
+  } catch (error) {
+    console.error("=== CRITICAL ERROR IN APP COMPONENT ===", error);
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 20,
+        }}
+      >
+        <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
+          Critical Error!
+        </Text>
+        <Text style={{ fontSize: 14, textAlign: "center", marginBottom: 10 }}>
+          The app encountered a critical error during initialization.
+        </Text>
+        <Text style={{ fontSize: 12, color: "red" }}>{error?.toString()}</Text>
+      </View>
+    );
+  }
 }

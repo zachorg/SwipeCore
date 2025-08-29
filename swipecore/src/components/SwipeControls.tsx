@@ -13,32 +13,8 @@ interface SwipeControlsProps {
   swipeDirection?: "menu" | "pass" | null;
 }
 
-const UndoButton = memo(
-  ({
-    swipeDirection,
-    onUndo,
-  }: {
-    swipeDirection?: "menu" | "pass" | null;
-    onUndo?: () => void;
-  }) => {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.undoButton,
-          swipeDirection ? styles.buttonDisabled : styles.buttonActive,
-        ]}
-        onPress={onUndo}
-      >
-        <Ionicons name="refresh" size={16} color="#374151" />
-        <Text style={styles.buttonText}>Undo</Text>
-      </TouchableOpacity>
-    );
-  }
-);
-
 const PassButton = memo(
   ({
-    swipeDirection,
     onAction,
   }: {
     swipeDirection?: "menu" | "pass" | null;
@@ -46,21 +22,10 @@ const PassButton = memo(
   }) => {
     return (
       <TouchableOpacity
-        style={[
-          styles.passButton,
-          swipeDirection === "pass"
-            ? styles.passButtonActive
-            : swipeDirection === "menu"
-            ? styles.passButtonInactive
-            : styles.passButtonDefault,
-        ]}
+        style={[styles.passButton, styles.passButtonDefault]}
         onPress={() => onAction("pass")}
       >
-        <Ionicons
-          name="close"
-          size={swipeDirection === "pass" ? 24 : 20}
-          color="#FFFFFF"
-        />
+        <Ionicons name="close" size={20} color="#FFFFFF" />
         <Text style={styles.passButtonText}>Pass</Text>
       </TouchableOpacity>
     );
@@ -70,7 +35,6 @@ const PassButton = memo(
 // Dynamic button for low-end devices (with swipe direction feedback)
 const MenuButton = memo(
   ({
-    swipeDirection,
     onMenuOpen,
   }: {
     swipeDirection?: "menu" | "pass" | null;
@@ -78,21 +42,10 @@ const MenuButton = memo(
   }) => {
     return (
       <TouchableOpacity
-        style={[
-          styles.menuButton,
-          swipeDirection === "menu"
-            ? styles.menuButtonActive
-            : swipeDirection === "pass"
-            ? styles.menuButtonInactive
-            : styles.menuButtonDefault,
-        ]}
+        style={[styles.menuButton, styles.menuButtonDefault]}
         onPress={onMenuOpen}
       >
-        <Ionicons
-          name="menu"
-          size={swipeDirection === "menu" ? 24 : 20}
-          color="#FFFFFF"
-        />
+        <Ionicons name="menu" size={20} color="#FFFFFF" />
         <Text style={styles.menuButtonText}>Menu</Text>
       </TouchableOpacity>
     );
@@ -109,10 +62,10 @@ function SwipeControls({
   return (
     <View style={styles.buttonContainer}>
       {/* Pass Button */}
-      <PassButton swipeDirection={swipeDirection} onAction={onAction} />
+      <PassButton onAction={onAction} />
 
       {/* Open Menu Button */}
-      <MenuButton swipeDirection={swipeDirection} onMenuOpen={onMenuOpen} />
+      <MenuButton onMenuOpen={onMenuOpen} />
     </View>
   );
 }

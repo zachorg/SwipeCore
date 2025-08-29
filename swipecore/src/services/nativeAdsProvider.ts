@@ -1,97 +1,128 @@
 import { RestaurantCard } from "@/types/Types";
-import { areAdsEnabled } from "@/utils/ads";
-type AdResult = any;
+import { areAdsEnabled, getNativeAdUnitId, isDebugMode } from "@/utils/ads";
+import { Platform } from 'react-native';
+import {
+  AdManager,
+  MAX_AD_CONTENT_RATING,
+  NativeAd,
+  TestIds,
+} from 'react-native-admob-native-ads';
+import { useAuth } from "@/contexts/AuthContext";
 
-// Simple in-memory ad inventory and tracking. Safe no-ops on web/dev.
-
-const AD_INTERVAL_ENV = Number(process.env.EXPO_PUBLIC_ADS_NATIVE_INTERVAL) || undefined;
+// Simple in-memory ad inventory and tracking
+const AD_INTERVAL_ENV = Number(process.env.EXPO_PUBLIC_ADS_NATIVE_INTERVAL) || 5;
 const AD_INTERVAL_DEFAULT = 5;
-const DEBUG = __DEV__;
+const DEBUG = isDebugMode();
 
 let adCounter = 0;
 const adRegistry = new Map<string, RestaurantCard>();
 const cardIdToNativeId = new Map<string, string>();
 
-// Maintain a small preload queue for smoother interleaving
-const preloadedAds: AdResult[] = [];
-const MAX_PRELOADED_ADS = 5; // Increased to support more real ads
-// Removed duplicate initialization - now using unified initMobileAds() from @/utils/ads
+// Repository name for native ads
+const REPOSITORY_NAME = 'swipecore_native_ads';
 
-// Track AdChoices link URLs for Android ads (plugin returns link, not icon)
+// Track AdChoices link URLs for Android ads
 const nativeAdIdToAdChoicesLinkUrl = new Map<string, string>();
 
-// Simple event listeners to notify UI when an ad card has been updated with real content
-// type AdUpdateListener = (payload: {
-//   cardId: string;
-//   updatedCard: RestaurantCard;
-// }) => void;
-// const adUpdateListeners = new Set<AdUpdateListener>();
+// Initialize the ad repository
+async function initializeAdRepository(): Promise<boolean> {
+  try {
+    const adUnitId = getNativeAdUnitId();
+    if (!adUnitId) {
+      console.warn('[Ads] No ad unit ID configured');
+      return false;
+    }
 
-// export function onAdUpdated(listener: AdUpdateListener): () => void {
-//   adUpdateListeners.add(listener);
-//   return () => adUpdateListeners.delete(listener);
-// }
+    const { userProfile } = useAuth();
 
-// function emitAdUpdated(cardId: string, updatedCard: RestaurantCard): void {
-//   adUpdateListeners.forEach((fn) => {
-//     try {
-//       fn({ cardId, updatedCard });
-//     } catch { }
-//   });
-// }
+    let contentRating: MAX_AD_CONTENT_RATING = 'UNSPECIFIED';
+    if (userProfile?.age < 13) {
+      contentRating = 'G';
+    } else if (userProfile?.age < 17) {
+      contentRating = 'PG';
+    } else if (userProfile?.age < 19) {
+      contentRating = 'T';
+    } else if (userProfile?.age >= 21) {
+      contentRating = 'MA';
+    }
 
-function mapNativeAdToCard(native: AdResult, targetCardId?: string): RestaurantCard {
-  const id = targetCardId ?? `native-${native.id}`;
-  const photoUrl = native.cover;
-  const fallbackUrl =
-    "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=1200&fit=crop";
+    // Configure AdManager
+    await AdManager.setRequestConfiguration({
+      testDeviceIds: [],
+      maxAdContentRating: contentRating,
+      tagForChildDirectedTreatment: false,
+      tagForUnderAgeConsent: false,
+    });
+
+    // Register repository for native ads
+    const success = await AdManager.registerRepository({
+      name: REPOSITORY_NAME,
+      adUnitId: adUnitId,
+      numOfAds: 10, // Preload 10 ads
+      expirationPeriod: 3600000, // 1 hour
+      adChoicesPlacement: 'topRight',
+      mediaAspectRatio: 'any',
+    });
+
+    if (DEBUG) {
+      console.log('[Ads] Ad repository initialized:', success ? 'success' : 'failed');
+    }
+
+    return success;
+  } catch (error) {
+    console.error('[Ads] Failed to initialize ad repository:', error);
+    return false;
+  }
+}
+
+function mapNativeAdToCard(native: NativeAd, nativeAdId: string, targetCardId?: string): RestaurantCard {
+  const id = targetCardId ?? `native-${adCounter++}`;
+
+  // Extract ad data from the real native ad
+  const headline = native.headline || "Sponsored";
+  const body = native.tagline || "";
+  const cta = native.callToAction || "Learn More";
+  const advertiser = native.advertiser || "Advertiser";
+  const iconUrl = native.icon || "";
+  const mediaUrl = native.images?.[0]?.url || "";
+
+  const fallbackUrl = "https://images.unsplash.com/photo-1557683316-973673baf926?w=800&h=1200&fit=crop";
   const photos = [
     {
-      url: photoUrl || fallbackUrl,
-      widthPx: Math.max(native.cover ? 800 : 150, 150), // Ensure minimum 150px (well above 32dp requirement)
-      heightPx: Math.max(native.cover ? 600 : 150, 150), // Ensure minimum 150px
+      url: mediaUrl || fallbackUrl,
+      widthPx: Math.max(mediaUrl ? 800 : 150, 150),
+      heightPx: Math.max(mediaUrl ? 600 : 150, 150),
     } as any,
   ];
 
   if (DEBUG) {
-    console.log("[Ads] Mapping native ad to card: ", JSON.stringify(native));
+    console.log("[Ads] Mapping real native ad to card: ", JSON.stringify(native));
   }
-
-  const adChoicesLink = native.adChoicesUrl;
 
   const card: RestaurantCard = {
     id,
-    title: native.headline || "Sponsored",
-    subtitle: native.body,
+    title: headline, // Add the missing title property
+    name: headline,
+    subtitle: body,
     cuisine: undefined,
     rating: undefined,
     priceRange: undefined,
-    distance: native.cta,
+    distance: cta,
     address: undefined,
     isOpenNow: undefined,
     photos,
-    images: photos.map((p) => p.url), // Add images array for SwipeCard navigation
+    images: photos.map((p) => p.url),
     basicDetails: {
       id,
-      displayName: { text: native.headline || "Sponsored", languageCode: "en" },
+      displayName: { text: headline, languageCode: "en" },
       regularOpeningHours: { openNow: false },
     },
     // Preserve native ad metadata for tracking
-    adData: {
-      adId: native.id,
-      headline: native.headline,
-      cta: native.cta,
-      body: native.body,
-      advertiser: native.advertiser,
-      iconUrl: native.icon,
-      mediaContentUrl: native.cover,
-      adChoicesIconUrl: "https://storage.googleapis.com/interactive-media-ads/hosted-samples/wta/icon_adchoices.png",
-      adChoicesLinkUrl: adChoicesLink,
-    },
+    adData: native,
   } as RestaurantCard;
 
   adRegistry.set(id, card);
-  cardIdToNativeId.set(id, native.id);
+  cardIdToNativeId.set(id, nativeAdId);
 
   if (DEBUG) {
     console.log("[Ads] Final mapped card", JSON.stringify(card.adData));
@@ -103,40 +134,80 @@ function mapNativeAdToCard(native: AdResult, targetCardId?: string): RestaurantC
 export function startNativeAdsPreload(): void {
   try {
     if (!areAdsEnabled()) return;
-    if (DEBUG) console.log("[Ads] startNativeAdsPreload: queued init");
-    fetchNativeAds();
-  } catch {
-    // ignore
+    if (DEBUG) console.log("[Ads] startNativeAdsPreload: initializing repository");
+
+    // Initialize ad repository
+    initializeAdRepository().then(success => {
+      if (success) {
+        if (DEBUG) console.log("[Ads] Repository initialized, ads will be loaded automatically");
+      }
+    });
+  } catch (error) {
+    console.warn('[Ads] startNativeAdsPreload failed:', error);
   }
 }
 
 export function getAvailableAd(): RestaurantCard | null {
   if (!areAdsEnabled()) return null;
 
-  console.log("[Ads] Getting the next available ad: ", preloadedAds.length);
-  const next = preloadedAds.shift();
-  if (next) {
-    return mapNativeAdToCard(next);
-  }
+  // Check if repository has ads available
+  AdManager.hasAd(REPOSITORY_NAME).then(hasAd => {
+    if (hasAd && DEBUG) {
+      console.log("[Ads] Repository has ads available");
+    }
+  });
 
-  fetchNativeAds();
+  // For now, return null as ads are loaded through the repository system
+  // The actual ad display will be handled by the NativeAdView component
   return null;
-}
-
-async function fetchNativeAds(): Promise<void> {
-  // No-op stub to remove Capacitor dependency while keeping app stable
-  return;
 }
 
 export function recordImpression(adId: string): void {
   if (!adRegistry.has(adId)) return;
-  // No-op
+
+  if (DEBUG) {
+    console.log("[Ads] Recording impression for real ad: ", adId);
+  }
+
+  // The impression is automatically recorded by the ad component
+  // when it becomes visible, so this is mainly for logging
 }
 
 export function handleClick(adId: string): void {
-  // No-op
+  const nativeId = cardIdToNativeId.get(adId);
+
+  if (DEBUG) {
+    console.log("[Ads] Handling click for real ad: ", adId, "native ID:", nativeId);
+  }
+
+  // The click is automatically handled by the ad component
+  // This function is mainly for logging and analytics
 }
 
 export function getNativeAdIdForCard(cardId: string): string | undefined {
   return cardIdToNativeId.get(cardId);
+}
+
+// Get repository name for use in NativeAdView components
+export function getRepositoryName(): string {
+  return REPOSITORY_NAME;
+}
+
+// Clean up function for when the app is backgrounded or destroyed
+export function cleanupAds(): void {
+  try {
+    // Unregister repository
+    AdManager.unRegisterRepository(REPOSITORY_NAME);
+
+    // Clear local caches
+    adRegistry.clear();
+    cardIdToNativeId.clear();
+    nativeAdIdToAdChoicesLinkUrl.clear();
+
+    if (DEBUG) {
+      console.log('[Ads] Real ads cleaned up');
+    }
+  } catch (error) {
+    console.warn('[Ads] Cleanup failed:', error);
+  }
 }

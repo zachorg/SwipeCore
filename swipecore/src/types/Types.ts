@@ -1,7 +1,7 @@
 // Domain models for the NomNom app - integrating Google Places API data
 
-import { NativeAdData } from "../utils/ads";
 import { getFeatureFlags } from '../config/env';
+import { NativeAd } from 'react-native-admob-native-ads';
 
 // Get feature flags from environment variables
 const featureFlags = getFeatureFlags();
@@ -116,7 +116,7 @@ export interface RestaurantCard {
   subtitle?: string;
 
   // Ads
-  adData?: NativeAdData;
+  adData?: NativeAd;
 
   // Restaurant-specific fields
   cuisine?: string;
@@ -223,7 +223,7 @@ export interface SwipeConfig {
 }
 
 export const defaultSwipeConfig: SwipeConfig = {
-  threshold: 100,
+  threshold: 50, // Lowered from 100 to make swiping easier
   snapBackDuration: 0.3,
   swipeOutDuration: 0.3,
   maxRotation: 15,
@@ -231,7 +231,7 @@ export const defaultSwipeConfig: SwipeConfig = {
 
 // Optimized config for Android devices
 export const androidOptimizedSwipeConfig: SwipeConfig = {
-  threshold: 80, // Lower threshold for more responsive feel
+  threshold: 40, // Lowered from 80 to make swiping easier
   snapBackDuration: 0.2, // Faster snap back
   swipeOutDuration: 0.25, // Slightly faster swipe out
   maxRotation: 12, // Reduced rotation for smoother animation

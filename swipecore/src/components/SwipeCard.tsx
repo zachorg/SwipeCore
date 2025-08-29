@@ -1,6 +1,4 @@
 import {
-  Animated,
-  PanResponder,
   View,
   Text,
   TouchableOpacity,
@@ -8,11 +6,13 @@ import {
   Image,
   Dimensions,
   Linking,
+  Animated,
 } from "react-native";
-import { phoneCall } from "react-native-phone-call";
+import Swiper from "react-native-deck-swiper";
+
 import { RestaurantCard, SwipeConfig } from "@/types/Types";
 import { Ionicons } from "@expo/vector-icons";
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 
 import { openUrl, getDomainFromUrl } from "@/utils/browser";
 import { ReactNativeModal } from "@/components/ui/modal";
@@ -25,46 +25,15 @@ import * as nativeAdsProvider from "@/services/nativeAdsProvider";
 
 interface SwipeCardProps {
   card: RestaurantCard;
-  onSwipe: (cardId: string, direction: "menu" | "pass") => void;
-  config: SwipeConfig;
-  isTop: boolean;
-  index: number;
+  //onSwipe: (cardId: string, direction: "menu" | "pass") => void;
   onCardTap?: (card: RestaurantCard) => void;
-  handleOnExpand?: (cardId: string) => void;
-  onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
-  statusBarHeight?: number;
+  expandCard?: (params: { cardId: string; timestamp: number }) => void;
+  //onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
 }
 
-export function SwipeCard({
-  card,
-  onSwipe,
-  config,
-  isTop,
-  index,
-  onCardTap,
-  handleOnExpand,
-  onSwipeDirection,
-  statusBarHeight = 0,
-}: SwipeCardProps) {
-  const cardRef = useRef<View | null>(null);
-  const pan = useRef(new Animated.ValueXY()).current;
-  const scale = useRef(new Animated.Value(1)).current;
-  const rotate = useRef(new Animated.Value(0)).current;
+export function SwipeCard({ card, onCardTap, expandCard }: SwipeCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [dragStartTime, setDragStartTime] = useState(0);
-
-  const [isDragging, setIsDragging] = useState(false);
-  const dragMovedRef = useRef(false);
-  const lastDirectionUpdateRef = useRef(0);
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(
-    null
-  );
-
-  // Get device-optimized settings
-  const deviceInfo = getDeviceInfo();
-  const performanceConfig = getOptimizedPerformanceConfig(deviceInfo);
-  const DRAG_START_THRESHOLD = performanceConfig.optimizedDragThreshold;
 
   const [openMapDialog, setOpenMapDialog] = useState(false);
   const [openMapDialogAddress, setOpenMapDialogAddress] = useState("");
@@ -72,123 +41,52 @@ export function SwipeCard({
   // Memoize dialog state setters to prevent unnecessary re-renders
   const closeMapDialog = useCallback(() => setOpenMapDialog(false), []);
 
-  // PanResponder for drag gestures
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => isTop && !isExpanded,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        const { dx, dy } = gestureState;
-        return (
-          Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > DRAG_START_THRESHOLD
-        );
-      },
-      onPanResponderGrant: () => {
-        setIsDragging(true);
-        setDragStartTime(Date.now());
-        pan.setOffset({
-          x: (pan.x as any)._value || 0,
-          y: (pan.y as any)._value || 0,
-        });
-        pan.setValue({ x: 0, y: 0 });
+  // Swiper event handlers
+  // const onSwipedLeft = useCallback(
+  //   (cardIndex: number) => {
+  //     if (__DEV__) {
+  //       console.log("👈 SWIPED LEFT:", { cardId: card.id, cardIndex });
+  //     }
+  //     onSwipe(card.id, "pass");
+  //     onSwipeDirection?.("pass");
+  //   },
+  //   [card.id, onSwipe, onSwipeDirection]
+  // );
 
-        // Scale animation on drag start
-        if (!deviceInfo.isLowEndDevice) {
-          Animated.spring(scale, {
-            toValue: 1.01,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
-      onPanResponderMove: (_, gestureState) => {
-        const { dx } = gestureState;
-        pan.x.setValue(dx);
+  // const onSwipedRight = useCallback(
+  //   (cardIndex: number) => {
+  //     if (__DEV__) {
+  //       console.log("👉 SWIPED RIGHT:", { cardId: card.id, cardIndex });
+  //     }
+  //     onSwipe(card.id, "menu");
+  //     onSwipeDirection?.("menu");
+  //   },
+  //   [card.id, onSwipe, onSwipeDirection]
+  // );
 
-        // Smooth rotation based on drag distance
-        const rotationAngle = dx * 0.4; // Much more sensitive for very visible rotation
-        rotate.setValue(rotationAngle);
+  // const onSwipedTop = useCallback(
+  //   (cardIndex: number) => {
+  //     if (__DEV__) {
+  //       console.log("⬆️ SWIPED TOP:", { cardId: card.id, cardIndex });
+  //     }
+  //     // You can customize this action if needed
+  //     onSwipe(card.id, "pass");
+  //     onSwipeDirection?.("pass");
+  //   },
+  //   [card.id, onSwipe, onSwipeDirection]
+  // );
 
-        // Debug rotation values
-        if (__DEV__) {
-          console.log("Rotation:", { dx, rotationAngle });
-        }
-
-        // Update direction for visual feedback
-        if (Math.abs(dx) > 10) {
-          const direction = dx > 0 ? "menu" : "pass";
-          if (Date.now() - lastDirectionUpdateRef.current > 100) {
-            onSwipeDirection?.(direction);
-            lastDirectionUpdateRef.current = Date.now();
-          }
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const { dx, vx } = gestureState;
-        const dragDistance = Math.abs(dx);
-        const dragVelocity = Math.abs(vx);
-
-        setIsDragging(false);
-        pan.flattenOffset();
-
-        // Determine if swipe should trigger
-        const shouldSwipe =
-          dragDistance > config.threshold ||
-          (dragDistance > config.threshold * 0.5 && dragVelocity > 0.5);
-
-        if (shouldSwipe) {
-          const direction = dx > 0 ? "menu" : "pass";
-          onSwipe(card.id, direction);
-        } else {
-          // Snap back to center
-          Animated.spring(pan, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-          }).start();
-          onSwipeDirection?.(null);
-        }
-
-        // Reset scale and rotation
-        if (!deviceInfo.isLowEndDevice) {
-          Animated.parallel([
-            Animated.spring(scale, {
-              toValue: 1,
-              useNativeDriver: true,
-            }),
-            Animated.spring(rotate, {
-              toValue: 0,
-              useNativeDriver: true,
-              tension: 100,
-              friction: 8,
-            }),
-          ]).start();
-        } else {
-          // For low-end devices, just reset rotation
-          Animated.spring(rotate, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 100,
-            friction: 8,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  // Fire impression when a sponsored card becomes top
-  useEffect(() => {
-    if (isTop && card.adData) {
-      if (__DEV__) {
-        console.log("[Ads] Top sponsored card", {
-          cardId: card.id,
-          title: card.title,
-          hasPhotos: Array.isArray(card.images) && card.images.length > 0,
-          firstPhoto: card.images?.[0],
-        });
-      }
-      nativeAdsProvider.recordImpression(card.id);
-    }
-  }, [isTop, card.adData, card.id]);
+  // const onSwipedBottom = useCallback(
+  //   (cardIndex: number) => {
+  //     if (__DEV__) {
+  //       console.log("⬇️ SWIPED BOTTOM:", { cardId: card.id, cardIndex });
+  //     }
+  //     // You can customize this action if needed
+  //     onSwipe(card.id, "pass");
+  //     onSwipeDirection?.("pass");
+  //   },
+  //   [card.id, onSwipe, onSwipeDirection]
+  // );
 
   // Memoize expensive callbacks for better performance
   const handleMapsClick = useCallback((resturantAddress: string) => {
@@ -209,13 +107,14 @@ export function SwipeCard({
     }
 
     try {
-      // Try phone call with skipPrompt option first (most direct approach)
+      // Use expo-linking for phone calls
       if (isIOS() || isAndroid()) {
         try {
-          await phoneCall(phoneNumber, true); // true = skipPrompt
+          const phoneUrl = `tel:${phoneNumber}`;
+          await Linking.openURL(phoneUrl);
           if (typeof __DEV__ !== "undefined" && __DEV__) {
             console.log(
-              "Phone call initiated successfully with skipPrompt:",
+              "Phone call initiated successfully via React Native Linking:",
               phoneNumber
             );
           }
@@ -223,7 +122,7 @@ export function SwipeCard({
         } catch (phoneCallError) {
           if (typeof __DEV__ !== "undefined" && __DEV__) {
             console.log(
-              "Phone call with skipPrompt failed, trying fallback:",
+              "Phone call via React Native Linking failed, trying fallback:",
               phoneCallError
             );
           }
@@ -395,9 +294,12 @@ export function SwipeCard({
   );
 
   const getCurrentImageUrl = useCallback(() => {
-    if (!card.images || card.images.length === 0) return null;
-    return card.images[currentImageIndex];
-  }, [card.images, currentImageIndex]);
+    if (!card.photos || card.photos.length === 0) return null;
+    return (
+      card.photos[currentImageIndex]?.url ||
+      card.photos[currentImageIndex]?.googleUrl
+    );
+  }, [card.photos, currentImageIndex]);
 
   const renderStars = useCallback((rating: number) => {
     const stars = [];
@@ -442,94 +344,18 @@ export function SwipeCard({
   // Image navigation handlers
   const handleImageNavigation = useCallback(
     (direction: "left" | "right") => {
-      if (!card.images || card.images.length <= 1) return;
+      if (!card.photos || card.photos.length <= 1) return;
 
       setCurrentImageIndex((prevIndex) => {
         if (direction === "left") {
-          return prevIndex === 0 ? card.images.length - 1 : prevIndex - 1;
+          return prevIndex === 0 ? card.photos.length - 1 : prevIndex - 1;
         } else {
-          return prevIndex === card.images.length - 1 ? 0 : prevIndex + 1;
+          return prevIndex === card.photos.length - 1 ? 0 : prevIndex + 1;
         }
       });
     },
-    [card.images]
+    [card.photos]
   );
-
-  // Touch handlers for mobile
-  const handleTouchStart = useCallback((e: any) => {
-    touchStartRef.current = {
-      x: e.nativeEvent.pageX,
-      y: e.nativeEvent.pageY,
-      time: Date.now(),
-    };
-  }, []);
-
-  const handleTouchMove = useCallback((e: any) => {
-    if (touchStartRef.current) {
-      const touch = e.nativeEvent;
-      const deltaX = touch.pageX - touchStartRef.current.x;
-      const deltaY = touch.pageY - touchStartRef.current.y;
-
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-        dragMovedRef.current = true;
-      }
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(
-    (e: any) => {
-      if (touchStartRef.current && !dragMovedRef.current) {
-        const touchDuration = Date.now() - touchStartRef.current.time;
-        if (touchDuration < 200) {
-          onCardTap?.(card);
-        }
-      }
-
-      touchStartRef.current = null;
-      dragMovedRef.current = false;
-    },
-    [onCardTap, card]
-  );
-
-  // AdChoices button component
-  const AdChoicesButton = () => {
-    if (!card.adData) return null;
-    return (
-      <View
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          zIndex: 10,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            console.log("Opening AdChoices link", card.adData.adChoicesLinkUrl);
-            openUrl(card.adData.adChoicesLinkUrl);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="AdChoices"
-        >
-          <View
-            style={{
-              width: 24,
-              height: 24,
-              minWidth: 16,
-              minHeight: 16,
-              borderRadius: 12,
-              overflow: "hidden",
-            }}
-          >
-            <Image
-              source={{ uri: card.adData.adChoicesIconUrl }}
-              style={{ width: "100%", height: "100%" }}
-            />
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  };
 
   // Main content overlay component
   const MainContentOverlay = () => {
@@ -570,8 +396,8 @@ export function SwipeCard({
         <TouchableOpacity
           onPress={() => {
             if (!isExpanded) {
-              if (handleOnExpand) {
-                handleOnExpand(card.id);
+              if (expandCard) {
+                expandCard({ cardId: card.id, timestamp: Date.now() });
               }
             }
             setIsExpanded((value) => !value);
@@ -652,54 +478,6 @@ export function SwipeCard({
       );
     };
 
-    const AdDetails = () => {
-      if (!card.adData) return null;
-      return (
-        <View style={{ marginTop: 8 }}>
-          <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
-            <View style={{ flex: 1, marginRight: 16 }}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <Text style={{ fontSize: 14, color: "#6b7280" }}>
-                  {card.adData.body}
-                </Text>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text
-                  style={{ fontSize: 14, color: "#16a34a", fontWeight: "bold" }}
-                >
-                  {card.adData.cta}
-                </Text>
-              </View>
-            </View>
-            {/* Ad Icon */}
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                minWidth: 16,
-                minHeight: 16,
-                borderRadius: 999,
-                backgroundColor: "white",
-                borderWidth: 2,
-                borderColor: "rgba(255,255,255,0.5)",
-              }}
-            >
-              <Image
-                source={{ uri: card.adData.iconUrl }}
-                style={{ width: "100%", height: "100%" }}
-              />
-            </View>
-          </View>
-        </View>
-      );
-    };
-
     return (
       <View
         style={{
@@ -732,9 +510,6 @@ export function SwipeCard({
 
           {/* Restaurant Details */}
           <ResturantDetails />
-
-          {/* Ad Content */}
-          <AdDetails />
         </View>
       </View>
     );
@@ -1114,7 +889,7 @@ export function SwipeCard({
     };
 
     return (
-      <Animated.View
+      <View
         style={{
           position: "absolute",
           top: 0,
@@ -1126,8 +901,21 @@ export function SwipeCard({
           borderColor: "rgba(139,69,19,0.05)",
           borderRadius: 20,
           overflow: "hidden",
+          zIndex: 3,
         }}
       >
+        {/* Tap to close area at the very top - smaller to allow scrolling */}
+        <TouchableOpacity
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 20,
+            zIndex: 4,
+          }}
+          onPress={() => setIsExpanded(false)}
+        />
         {/* Ensure the ScrollView also has rounded corners */}
         <View
           style={{
@@ -1141,6 +929,7 @@ export function SwipeCard({
             contentContainerStyle={{
               flexGrow: 1,
               padding: 24,
+              paddingTop: 44, // Add extra top padding to account for tap area
               backgroundColor: "transparent",
             }}
             showsVerticalScrollIndicator={false}
@@ -1167,7 +956,7 @@ export function SwipeCard({
             {card.reviews && card.reviews.length > 0 && <ReviewsSection />}
           </ScrollView>
         </View>
-      </Animated.View>
+      </View>
     );
   };
 
@@ -1246,293 +1035,205 @@ export function SwipeCard({
     );
   }, [openMapDialog, openMapsApp, isIOS]);
 
-  return (
-    <>
-      {/* Backdrop - Shows when card is expanded */}
-      {isExpanded && (
-        <Animated.View
+  // Single card renderer
+  const renderCard = () => (
+    <View
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        backgroundColor: "white",
+        borderRadius: 20,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(139,69,19,0.05)",
+      }}
+    >
+      {/* Background Image Section - Full height with rounded corners */}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "#f3f4f6",
+          borderRadius: 20,
+          overflow: "hidden",
+        }}
+      >
+        {getCurrentImageUrl() ? (
+          <Image
+            source={{ uri: getCurrentImageUrl()! }}
+            style={{
+              width: "100%",
+              height: "100%",
+              resizeMode: card.adData ? "contain" : "cover",
+              borderRadius: 20,
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#f3f4f6",
+              borderRadius: 20,
+            }}
+          >
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                marginBottom: 8,
+                alignSelf: "center",
+              }}
+            >
+              <Ionicons name="location" size={64} color="#9CA3AF" />
+            </View>
+            <Text style={{ color: "#9CA3AF", fontSize: 14 }}>
+              No image available
+            </Text>
+          </View>
+        )}
+
+        {/* Image Navigation Areas - Only show if multiple photos and not expanded */}
+        {card.photos && card.photos.length > 1 && !isExpanded && (
+          <>
+            {/* Left navigation area */}
+            <TouchableOpacity
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "33%",
+                height: "100%",
+                zIndex: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              onPress={() => handleImageNavigation("left")}
+            />
+            {/* Right navigation area */}
+            <TouchableOpacity
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "33%",
+                height: "100%",
+                zIndex: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              onPress={() => handleImageNavigation("right")}
+            />
+            {/* Image indicators */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 16,
+                left: "50%",
+                transform: [{ translateX: -20 }], // Center indicators
+                flexDirection: "row",
+                gap: 4,
+                zIndex: 10,
+              }}
+            >
+              {card.photos.map((_: any, index: number) => (
+                <View
+                  key={index}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor:
+                      index === currentImageIndex
+                        ? "white"
+                        : "rgba(255,255,255,0.5)",
+                  }}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+      {/* Gradient Overlay - Simplified during drag for performance */}
+      {
+        <View
           style={{
             position: "absolute",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.7)",
-            zIndex: 4,
+            backgroundColor: "rgba(0,0,0,0.6)",
             borderRadius: 20,
-            overflow: "hidden",
           }}
-          onTouchEnd={() => setIsExpanded(false)}
         />
-      )}
-      <Animated.View
-        ref={cardRef}
+      }
+
+      <View
         style={{
           position: "absolute",
-          left: 0, // Removed left margin to use full width
-          right: 0, // Removed right margin to use full width
-          top: 0, // Absolute minimum top margin
-          bottom: 0, // Removed bottom margin to maximize height
-          zIndex: isTop ? 5 : 5 - index,
-          borderRadius: 20,
-          overflow: "hidden",
-          transform: [
-            { translateX: pan.x },
-            { translateY: pan.y },
-            { scale: scale },
-            {
-              rotate: rotate.interpolate({
-                inputRange: [-100, 0, 100],
-                outputRange: ["-40deg", "0deg", "40deg"],
-              }),
-            },
-          ],
+          top: 16,
+          left: "50%",
+          transform: [{ translateX: -60 }], // Center badge using fixed pixel value
+          backgroundColor: "rgba(255,255,255,1)",
+          borderRadius: 12,
+          paddingHorizontal: 40, // Increased horizontal padding for wider badge
+          paddingVertical: 12,
+          minWidth: 120, // Ensure minimum width for better appearance
         }}
-        {...panResponder.panHandlers}
-        onTouchStart={!isExpanded ? handleTouchStart : undefined}
-        onTouchMove={!isExpanded ? handleTouchMove : undefined}
-        onTouchEnd={!isExpanded ? handleTouchEnd : undefined}
       >
-        {/* Card Container - Modern vibrant design with responsive styling */}
         <View
           style={{
-            position: "relative",
-            width: "100%",
-            height: "100%",
-            backgroundColor: "white",
-            borderRadius: 20,
-            overflow: "hidden",
-            borderWidth: 1,
-            borderColor: "rgba(139,69,19,0.05)",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {/* Background Image Section - Full height with rounded corners */}
+          <Text
+            style={{
+              color: "#374151",
+              fontWeight: "bold",
+              fontSize: 14,
+            }}
+          >
+            {card.cuisine}
+          </Text>
+          {card.priceRange && (
+            <Text style={{ fontSize: 14, color: "#00ff00", marginLeft: 8 }}>
+              {card.priceRange}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Content Overlays */}
+      {isExpanded ? <DetailedContentContainer /> : <MainContentOverlay />}
+    </View>
+  );
+
+  return (
+    <>
+      {!card.adData && (
+        <>
           <View
             style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "#f3f4f6",
+              width: "100%",
+              height: "100%",
               borderRadius: 20,
               overflow: "hidden",
             }}
           >
-            {getCurrentImageUrl() ? (
-              <Image
-                source={{ uri: getCurrentImageUrl() }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  resizeMode: card.adData ? "contain" : "cover",
-                  borderRadius: 20,
-                }}
-              />
-            ) : (
-              <View
-                style={{
-                  flex: 1,
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: "#f3f4f6",
-                  borderRadius: 20,
-                }}
-              >
-                <View
-                  style={{
-                    width: 64,
-                    height: 64,
-                    marginBottom: 8,
-                    alignSelf: "center",
-                  }}
-                >
-                  <Ionicons name="location" size={64} color="#9CA3AF" />
-                </View>
-                <Text style={{ color: "#9CA3AF", fontSize: 14 }}>
-                  No image available
-                </Text>
-              </View>
-            )}
-
-            {/* Image Navigation Areas - Only show if multiple images and not expanded */}
-            {card.images && card.images.length > 1 && !isExpanded && (
-              <>
-                {/* Left navigation area */}
-                <TouchableOpacity
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "33%",
-                    height: "100%",
-                    zIndex: 10,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  onPress={() => handleImageNavigation("left")}
-                />
-                {/* Right navigation area */}
-                <TouchableOpacity
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    right: 0,
-                    width: "33%",
-                    height: "100%",
-                    zIndex: 10,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                  onPress={() => handleImageNavigation("right")}
-                />
-                {/* Image indicators */}
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 16,
-                    left: "50%",
-                    transform: [{ translateX: -20 }], // Center indicators
-                    flexDirection: "row",
-                    gap: 4,
-                    zIndex: 10,
-                  }}
-                >
-                  {card.images.map((_: string, index: number) => (
-                    <View
-                      key={index}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor:
-                          index === currentImageIndex
-                            ? "white"
-                            : "rgba(255,255,255,0.5)",
-                      }}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
+            {renderCard()}
           </View>
-          {/* Gradient Overlay - Simplified during drag for performance */}
-          {
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0,0,0,0.6)",
-                borderRadius: 20,
-              }}
-            />
-          }
-          {/* Info Badge: show "Ad" for ads (top-left per policy), otherwise cuisine/price */}
-          {!card.adData && (
-            <View
-              style={{
-                position: "absolute",
-                top: 16,
-                left: "50%",
-                transform: [{ translateX: "-50%" }], // Center badge using percentage transform
-                backgroundColor: "rgba(255,255,255,1)",
-                borderRadius: 12,
-                paddingHorizontal: 40, // Increased horizontal padding for wider badge
-                paddingVertical: 12,
-                minWidth: 120, // Ensure minimum width for better appearance
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#374151",
-                    fontWeight: "bold",
-                    fontSize: 14,
-                  }}
-                >
-                  {card.cuisine}
-                </Text>
-                {card.priceRange && (
-                  <Text
-                    style={{ fontSize: 14, color: "#00ff00", marginLeft: 8 }}
-                  >
-                    {card.priceRange}
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
 
-          {card.adData && (
-            <>
-              {/* "Ad" badge - Top left */}
-              <View
-                style={{
-                  position: "absolute",
-                  top: 16,
-                  left: 16,
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#1f2937",
-                    fontWeight: "900",
-                    fontSize: 14,
-                    letterSpacing: 0.5,
-                    lineHeight: 1,
-                  }}
-                >
-                  Ad
-                </Text>
-              </View>
-
-              {/* Advertiser name - Top center */}
-              <View
-                style={{
-                  position: "absolute",
-                  top: 16,
-                  left: "50%",
-                  transform: [{ translateX: -40 }], // Center badge
-                  backgroundColor: "rgba(255,255,255,0.95)",
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 6,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#374151",
-                    fontWeight: "bold",
-                    fontSize: 14,
-                  }}
-                >
-                  {card.adData.advertiser}
-                </Text>
-              </View>
-            </>
-          )}
-
-          {/* AdChoices Attribution - Top right */}
-          <AdChoicesButton />
-
-          {/* Content Overlays */}
-          {isExpanded ? <DetailedContentContainer /> : <MainContentOverlay />}
-        </View>
-        {openMapDialog && <MapsDialog />}
-      </Animated.View>
+          {openMapDialog && <MapsDialog />}
+        </>
+      )}
     </>
   );
 }

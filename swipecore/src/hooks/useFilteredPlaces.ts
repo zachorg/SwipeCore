@@ -163,8 +163,6 @@ export function useFilteredPlaces(
   const adsInitStartedRef = useRef(false);
   useEffect(() => {
     if (adsInitStartedRef.current) return;
-    if (!areAdsEnabled()) return;
-    if (cards.length === 0) return;
     adsInitStartedRef.current = true;
     startNativeAdsPreload();
   }, [cards.length]);
@@ -340,6 +338,10 @@ export function useFilteredPlaces(
   useEffect(() => {
     if (!FEATURE_FLAGS.GOOGLE_PLACES_ENABLED && autoStart) {
       const cards = getRandomRestaurantCards(3)
+      const ad = getAvailableAd();
+      if (ad) {
+        cards.unshift(ad);
+      }
       setBaseCards(cards);
       setCards(cards);
     }
@@ -397,26 +399,6 @@ export function useFilteredPlaces(
       );
     }
   };
-
-  // Build interleaved list with ads
-  // const buildInterleavedWithAds = useCallback(
-  //   async (
-  //     realCards: RestaurantCard[],
-  //     limit: number
-  //   ): Promise<RestaurantCard[]> => {
-  //     const hasReal = Array.isArray(realCards) && realCards.length > 0;
-  //     if (!isAdsEnabled()) return realCards.slice(0, limit);
-  //     // If there are no real cards, return empty (do not show ad-only deck)
-  //     if (!hasReal) return [];
-
-  //     const ad = await getNextAdCard();
-  //     const output: RestaurantCard[] = realCards.slice(0, limit);
-  //     output.unshift(ad);
-
-  //     return output.slice(0, limit);
-  //   },
-  //   []
-  // );
 
   // Add card view tracking effect
   useEffect(() => {
@@ -491,8 +473,25 @@ export function useFilteredPlaces(
   // Swipe card action with behavior tracking and prefetching
   const swipeCard = useCallback(
     (action: SwipeAction) => {
+      console.log("Swiping card: ", action);
       const card = cards.find((c) => c.id === action.cardId);
-      setCards((prev) => prev.slice(1));
+
+      let remainingCards = cards.slice(1, cards.length);
+
+
+      numSwipesRef.current++;
+
+      const ad = getAvailableAd();
+      console.log("ad: ", ad);
+      if (numSwipesRef.current > 0 && (numSwipesRef.current + 1) % 3 === 0 && ad) {
+        console.log("Inserting ad");
+        remainingCards.unshift(ad);
+        setCards(remainingCards);
+      }
+      else {
+        setCards(remainingCards);
+
+      }
       setSwipeHistory((prev) => [...prev, action]);
 
       // Track the swipe action for behavior analysis
@@ -500,7 +499,6 @@ export function useFilteredPlaces(
 
       // Trigger intelligent prefetching for remaining cards
       if (isPrefetchingEnabled && cards.length > 1) {
-        const remainingCards = cards.slice(1);
         // Create user preferences from current filters
         const userPreferences: UserPreferences = {
           maxDistance: 5000, // 5km default
@@ -513,48 +511,35 @@ export function useFilteredPlaces(
         prefetchCards(remainingCards, 0, userPreferences);
       }
 
-      const openMenu = async (swipedCard: RestaurantCard) => {
-        if (swipedCard.website) {
-          openUrl(swipedCard.website);
-        }
-
-        if (!swipedCard.website) {
-          const detailsData = queryClient.getQueryData([
-            "places",
-            "details",
-            swipedCard.id,
-          ]) as GooglePlacesApiAdvDetails;
-
-          if (!detailsData) {
-            setTimeout(() => {
-              openMenu(swipedCard);
-            }, 100);
-          }
-          if (detailsData && detailsData.websiteUri) {
-            openUrl(detailsData.websiteUri);
-          }
-        }
-      };
       if (action.action == "menu" && card) {
+        const openMenu = async (swipedCard: RestaurantCard) => {
+          if (swipedCard.website) {
+            openUrl(swipedCard.website);
+          }
+
+          if (!swipedCard.website) {
+            const detailsData = queryClient.getQueryData([
+              "places",
+              "details",
+              swipedCard.id,
+            ]) as GooglePlacesApiAdvDetails;
+
+            if (!detailsData) {
+              setTimeout(() => {
+                openMenu(swipedCard);
+              }, 100);
+            }
+            if (detailsData && detailsData.websiteUri) {
+              openUrl(detailsData.websiteUri);
+            }
+          }
+        };
+
         handleExpandCard(card);
         openMenu(card);
       }
-
-      numSwipesRef.current++;
-
-      const ad = getAvailableAd();
-      console.log("numSwipesRef.current: ", numSwipesRef.current);
-      if (numSwipesRef.current > 0 && (numSwipesRef.current + 1) % 3 === 0 && ad) {
-        console.log("Inserting ad");
-        let output: RestaurantCard[] = cards.slice(1);
-        const currentCard = output[0];
-        output = output.slice(1);
-        output.unshift(ad);
-        output.unshift(currentCard);
-        setCards(output);
-      }
     },
-    [trackSwipeAction, isPrefetchingEnabled, cards, prefetchCards, filters]
+    []
   );
 
   const handleExpandCard = (card: RestaurantCard) => {

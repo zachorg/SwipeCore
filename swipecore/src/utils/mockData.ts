@@ -2,7 +2,26 @@ import { RestaurantCard } from "../types/Types";
 
 export const mockRestaurantCard: RestaurantCard = {
     id: "mock-restaurant-001",
+    basicDetails: {
+        id: "mock-restaurant-001",
+        displayName: {
+            text: "The Golden Dragon",
+            languageCode: "en"
+        },
+        formattedAddress: "123 Main Street, Downtown, NY 10001",
+        rating: 4.6,
+        priceLevel: "PRICE_LEVEL_MODERATE",
+        types: ["restaurant", "food", "chinese_restaurant"],
+        location: {
+            latitude: 40.7589,
+            longitude: -73.9851
+        },
+        regularOpeningHours: {
+            openNow: true
+        }
+    },
     title: "The Golden Dragon",
+    subtitle: "Authentic Chinese Cuisine",
     cuisine: "Chinese",
     priceRange: "$$",
     rating: 4.6,
@@ -12,9 +31,24 @@ export const mockRestaurantCard: RestaurantCard = {
     distance: "0.8 km away",
     openingHours: "Open until 10:00 PM",
     isOpenNow: true,
+    // Use images for backward compatibility with SwipeCard component
     images: [
         "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
     ],
+    photos: [
+        {
+            googleUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
+            url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop",
+            name: "restaurant-interior",
+            widthPx: 800,
+            heightPx: 600
+        }
+    ],
+    location: {
+        latitude: 40.7589,
+        longitude: -73.9851
+    },
+    distanceInMeters: 800,
     placeDetails: {
         editorialSummary: {
             text: "The Golden Dragon is a beloved local Chinese restaurant known for its authentic flavors and warm atmosphere. Our chefs bring traditional recipes to life with fresh, locally-sourced ingredients. From our famous Peking duck to our signature dim sum, every dish tells a story of culinary excellence passed down through generations."

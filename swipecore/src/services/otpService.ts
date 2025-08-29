@@ -55,11 +55,11 @@ class OtpService {
                 body: JSON.stringify({ request }),
             });
 
-            const data = await response.json() as OtpResponse;
-
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to send OTP');
+                throw new Error(response.statusText || 'Failed to send OTP');
             }
+
+            const data = await response.json() as OtpResponse;
 
             if (!data.success) {
                 throw new Error(data.errorCode || 'Failed to send OTP');
@@ -93,11 +93,11 @@ class OtpService {
                 body: JSON.stringify({ request }),
             });
 
-            const data = await response.json() as OtpResponse;
-
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to verify OTP');
+                throw new Error(response.statusText || 'Failed to verify OTP');
             }
+
+            const data = await response.json() as OtpResponse;
 
             if (!data.success) {
                 throw new Error(data.errorCode || 'Failed to verify OTP');
@@ -123,11 +123,11 @@ class OtpService {
                     'Authorization': `Bearer ${accessToken}`,
                 },
             });
+            if (!response.ok) {
+                throw new Error(response.statusText || 'Failed to check verification');
+            }
 
             const data = await response.json() as OtpResponse;
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to check verification');
-            }
 
             if (!data.success) {
                 throw new Error(data.errorCode || 'Failed to check verification');
@@ -155,11 +155,11 @@ class OtpService {
                 },
                 body: JSON.stringify({ request }),
             });
+            if (!response.ok) {
+                throw new Error(response.statusText || 'Failed to check verification');
+            }
 
             const data = await response.json() as OtpResponse;
-            if (!response.ok) {
-                throw new Error(data.message || 'Failed to refresh access token');
-            }
 
             if (!data.success) {
                 throw new Error(data.errorCode || 'Failed to refresh access token');

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
+import Swiper from "react-native-deck-swiper";
 import { SwipeCard } from "./SwipeCard";
 import { SwipeControls } from "./SwipeControls";
 import { openUrl } from "../utils/browser";
@@ -52,18 +53,7 @@ export function SwipeDeck({
   onFilterButtonReady,
   initialFilters = [],
 }: SwipeDeckProps) {
-  const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
-    null
-  );
-
-  const baseConfig =
-    Platform.OS === "android"
-      ? androidOptimizedSwipeConfig
-      : defaultSwipeConfig;
-  const swipeConfig = useMemo(
-    () => ({ ...baseConfig, ...config }),
-    [baseConfig, config]
-  );
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   const {
     cards,
@@ -88,58 +78,13 @@ export function SwipeDeck({
   } = useFilteredPlaces({
     ...swipeOptions,
     enableFiltering,
-    maxCards: 2,
   });
 
-  // Provide a filter button to parent if requested
-  useEffect(() => {
-    if (onFilterButtonReady && enableFiltering) {
-      const button = (
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => {
-            // Parent can render this button and handle opening a sheet/panel if desired
-          }}
-        >
-          <Text style={styles.filterButtonText}>Filters</Text>
-        </TouchableOpacity>
-      );
-      onFilterButtonReady(button);
-    }
-  }, [onFilterButtonReady, enableFiltering, allFilters]);
-
-  // Apply initial filters from voice input on mount
-  useEffect(() => {
-    if (initialFilters.length > 0 && enableFiltering) {
-      initialFilters.forEach((filter) => {
-        addFilter(filter.filterId, filter.value);
-      });
-      onNewFiltersApplied();
-    }
+  const handleSwipe = useCallback((cardId: string, action: "menu" | "pass") => {
+    // Don't call swipeCard here - it will remove the wrong card
+    // Instead, handle the swipe action manually
+    onSwipeAction?.(cardId, action);
   }, []);
-
-  const handleSwipe = useCallback(
-    (cardId: string, action: "menu" | "pass") => {
-      swipeCard({ cardId, action, timestamp: Date.now() });
-      onSwipeAction?.(cardId, action);
-    },
-    [onSwipeAction, swipeCard]
-  );
-
-  const handleExpand = useCallback(
-    (cardId: string) => {
-      expandCard?.({ cardId, timestamp: Date.now() });
-    },
-    [expandCard]
-  );
-
-  const handleSponsoredSwipe = useCallback(
-    (cardId: string) => {
-      swipeCard({ cardId, action: "pass", timestamp: Date.now() });
-      onSwipeAction?.(cardId, "pass");
-    },
-    [onSwipeAction, swipeCard]
-  );
 
   const handleCardTapInternal = useCallback(
     (card: RestaurantCard) => {
@@ -154,16 +99,21 @@ export function SwipeDeck({
 
   const handleControlAction = useCallback(
     (action: "pass") => {
-      if (currentCard) {
-        handleSwipe(currentCard.id, action);
+      if (cards.length > 0) {
+        // Call the parent callback
+        onSwipeAction?.(cards[0].id, action);
       }
     },
-    [currentCard, handleSwipe]
+    [cards, onSwipeAction]
   );
+
+  useEffect(() => {
+    setCurrentCardIndex(0);
+  }, [cards]);
 
   const handleMenuOpen = useCallback(() => {
     if (!currentCard) return;
-    handleExpand(currentCard.id);
+    expandCard?.({ cardId: currentCard.id, timestamp: Date.now() });
 
     const queryClient = useQueryClient();
     const poll = () => {
@@ -182,12 +132,7 @@ export function SwipeDeck({
     } else {
       openUrl(currentCard.website);
     }
-  }, [currentCard, handleExpand]);
-
-  const visibleCards = useMemo(
-    () => cards.slice(0, maxVisibleCards),
-    [cards, maxVisibleCards]
-  );
+  }, [currentCard, expandCard]);
 
   const showLoading = isLoading && (isFilterLoading || cards.length === 0);
   const showError = Boolean(error);
@@ -218,13 +163,6 @@ export function SwipeDeck({
         </View>
       )}
 
-      {showLocationNeeded && (
-        <View style={[styles.statusBar, { paddingTop: statusBarHeight }]}>
-          <Ionicons name="location" size={16} color="#F59E0B" />
-          <Text style={styles.statusText}>Location access needed</Text>
-        </View>
-      )}
-
       {/* Main Content */}
       {showLoading && (
         <View style={styles.center}>
@@ -241,29 +179,6 @@ export function SwipeDeck({
               ? "Loading restaurants near you"
               : "Preparing your restaurant deck"}
           </Text>
-        </View>
-      )}
-
-      {showError && (
-        <View style={styles.centerPadding}>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{String(error)}</Text>
-          {!hasLocation && (
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={requestLocation}
-            >
-              <Text style={styles.primaryButtonText}>
-                Enable Location Services
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={refreshCards}
-          >
-            <Text style={styles.secondaryButtonText}>Try Again</Text>
-          </TouchableOpacity>
         </View>
       )}
 
@@ -303,7 +218,7 @@ export function SwipeDeck({
         </View>
       )}
 
-      {visibleCards.length > 0 && (
+      {cards.length > 0 && (
         <View
           style={[styles.stackContainer, { paddingTop: statusBarHeight - 16 }]}
         >
@@ -314,36 +229,129 @@ export function SwipeDeck({
               { marginHorizontal: statusBarHeight - 16 },
             ]}
           >
-            {visibleCards.map((card, index) => {
-              if (card.adData) {
-                return (
-                  <SwipeCard
-                    key={card.id}
-                    card={card}
-                    onSwipe={() => handleSponsoredSwipe(card.id)}
-                    config={swipeConfig}
-                    isTop={index === 0}
-                    index={index}
-                    onCardTap={handleCardTapInternal}
-                    onSwipeDirection={setSwipeDirection}
-                  />
-                );
-              }
-              return (
-                <SwipeCard
-                  key={card.id}
-                  card={card}
-                  onSwipe={handleSwipe}
-                  config={swipeConfig}
-                  isTop={index === 0}
-                  index={index}
-                  onCardTap={handleCardTapInternal}
-                  handleOnExpand={handleExpand}
-                  onSwipeDirection={setSwipeDirection}
-                  statusBarHeight={statusBarHeight}
-                />
-              );
-            })}
+            <Swiper
+              key={`swiper-${cards[0]?.id || "empty"}`}
+              cards={cards}
+              cardIndex={currentCardIndex}
+              renderCard={(card: RestaurantCard) => (
+                <View style={styles.cardContainer}>
+                  <View style={styles.cardWrapper}>
+                    <SwipeCard
+                      key={card.id}
+                      card={card}
+                      onCardTap={handleCardTapInternal}
+                      expandCard={expandCard}
+                    />
+                  </View>
+                </View>
+              )}
+              backgroundColor="transparent"
+              stackSize={cards.length}
+              infinite={false}
+              animateOverlayLabelsOpacity={true}
+              onSwipedLeft={(cardIndex: number) => {
+                // Handle the swipe action after the animation completes
+                const card = cards[0];
+                if (card) {
+                  // Call the parent callback
+                  handleSwipe(card.id, "pass");
+
+                  if (__DEV__) {
+                    console.log("🎴 SWIPED LEFT:", {
+                      cardIndex,
+                      cardId: card.id,
+                    });
+                  }
+                }
+              }}
+              onSwipedRight={(cardIndex: number) => {
+                // Handle the swipe action after the animation completes
+                const card = cards[0];
+                if (card) {
+                  // Call the parent callback
+                  handleSwipe(card.id, "menu");
+
+                  if (__DEV__) {
+                    console.log("🎴 SWIPED RIGHT:", {
+                      cardIndex,
+                      cardId: card.id,
+                    });
+                  }
+                }
+              }}
+              onTapCard={() => {
+                if (__DEV__) {
+                  console.log("🎴 CARD TAPPED");
+                }
+              }}
+              overlayLabels={{
+                left: {
+                  title: "PASS",
+                  style: {
+                    label: {
+                      backgroundColor: "transparent",
+                      color: "red",
+                      fontSize: 24,
+                    },
+                    wrapper: {
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      justifyContent: "flex-start",
+                      marginTop: 30,
+                      marginLeft: -30,
+                    },
+                  },
+                },
+                right: {
+                  title: "MENU",
+                  style: {
+                    label: {
+                      backgroundColor: "transparent",
+                      color: "green",
+                      fontSize: 24,
+                    },
+                    wrapper: {
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      justifyContent: "flex-start",
+                      marginTop: 30,
+                      marginLeft: 30,
+                    },
+                  },
+                },
+              }}
+              swipeAnimationDuration={300}
+              disableTopSwipe={true}
+              disableBottomSwipe={true}
+              disableLeftSwipe={false}
+              disableRightSwipe={false}
+              stackSeparation={0}
+              stackScale={0.95}
+              cardVerticalMargin={0}
+              cardHorizontalMargin={0}
+              goBackToPreviousCardOnSwipeLeft={false}
+              goBackToPreviousCardOnSwipeRight={false}
+              goBackToPreviousCardOnSwipeTop={false}
+              goBackToPreviousCardOnSwipeBottom={false}
+              useViewOverflow={false}
+              outputRotationRange={["-0.3rad", "0rad", "0.3rad"]}
+              cardStyle={{
+                width: "100%",
+                height: "100%",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              onSwipedAll={() => {
+                if (__DEV__) {
+                  console.log("🎴 ALL CARDS SWIPED");
+                }
+              }}
+              onSwipedAborted={() => {
+                if (__DEV__) {
+                  console.log("🎴 SWIPE ABORTED");
+                }
+              }}
+            />
           </View>
 
           <SwipeControls
@@ -357,7 +365,6 @@ export function SwipeDeck({
                   }
                 : undefined
             }
-            swipeDirection={swipeDirection}
           />
         </View>
       )}
@@ -499,5 +506,17 @@ const styles = StyleSheet.create({
   filterButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  cardContainer: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardWrapper: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    overflow: "hidden",
   },
 });

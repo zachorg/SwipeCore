@@ -12,11 +12,11 @@ export const ADMOB_CONFIG = {
   // App IDs
   APP_ID_ANDROID: adMobConfig.android.appId,
   APP_ID_IOS: adMobConfig.ios.appId,
-  
+
   // Native Ad Unit IDs
   NATIVE_AD_UNIT_ID_ANDROID: adMobConfig.android.nativeAdUnitId,
   NATIVE_AD_UNIT_ID_IOS: adMobConfig.ios.nativeAdUnitId,
-  
+
   // Feature flags
   TESTING: adMobConfig.testing,
   DEBUG: adMobConfig.debug,

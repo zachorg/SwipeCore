@@ -15,7 +15,6 @@ import { useAuth } from "../contexts/AuthContext";
 
 const Index = () => {
   const { isAuthenticated, userProfile } = useAuth();
-  const [swipeStats, setSwipeStats] = useState({ likes: 0, passes: 0 });
 
   // Get status bar height dynamically
   const getStatusBarHeight = () => {
@@ -37,18 +36,23 @@ const Index = () => {
 
   // Initialize device optimizations on component mount
   useEffect(() => {
+    console.log(
+      "🎯 INDEX - Component mounted, initializing device optimizations"
+    );
     initializeDeviceOptimizations();
   }, []);
 
-  const handleSwipeAction = (cardId: string, action: "menu" | "pass") => {
-    console.log(`Swiped ${action} on restaurant:`, cardId);
+  // Log when component renders
+  useEffect(() => {
+    console.log("🎯 INDEX - Component rendered with:", {
+      isAuthenticated,
+      userProfile: !!userProfile,
+      statusBarHeight,
+    });
+  });
 
-    // Update stats
-    setSwipeStats((prev) => ({
-      ...prev,
-      [action === "menu" ? "likes" : "passes"]:
-        prev[action === "menu" ? "likes" : "passes"] + 1,
-    }));
+  const handleSwipeAction = (cardId: string, action: "menu" | "pass") => {
+    console.log(`🎯 INDEX - Swiped ${action} on restaurant:`, cardId);
   };
 
   const handleCardTap = (card: RestaurantCard) => {
@@ -108,15 +112,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   header: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
     paddingVertical: 16,
     paddingHorizontal: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
     elevation: 2,
   },
   headerContent: {
@@ -154,19 +154,6 @@ const styles = StyleSheet.create({
   appSubtitle: {
     fontSize: 14,
     color: "#64748B",
-  },
-  debugStats: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  debugText: {
-    color: "white",
-    fontSize: 12,
   },
 });
 

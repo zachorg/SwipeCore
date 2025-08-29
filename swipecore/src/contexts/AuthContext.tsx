@@ -36,6 +36,8 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  console.log("[AuthContext] AuthProvider component rendering...");
+
   const [loadingAuthentication, setLoadingAuthentication] = useState(true);
   const [loadingUserProfile, setLoadingUserProfile] = useState(true);
   const [userProfile, setUserProfile] = useState<Omit<
@@ -43,6 +45,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     "id" | "created_at" | "updated_at"
   > | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  console.log("[AuthContext] State initialized:", {
+    loadingAuthentication,
+    loadingUserProfile,
+    userProfile: userProfile ? "exists" : "null",
+    isAuthenticated,
+  });
 
   const initializeAuth = async () => {
     try {

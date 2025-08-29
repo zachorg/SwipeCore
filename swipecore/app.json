@@ -11,8 +11,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
+    "jsEngine": "hermes",
     "assetBundlePatterns": ["**/*"],
     "ios": {
+      "jsEngine": "jsc",
       "supportsTablet": true,
       "bundleIdentifier": "com.swipecore.app",
       "infoPlist": {
@@ -33,6 +35,19 @@
         "RECORD_AUDIO",
         "INTERNET"
       ]
-    }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      "react-native-admob-native-ads",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ]
+    ]
   }
 }
