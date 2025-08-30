@@ -28,11 +28,21 @@ interface SwipeCardProps {
   //onSwipe: (cardId: string, direction: "menu" | "pass") => void;
   onCardTap?: (card: RestaurantCard) => void;
   expandCard?: (params: { cardId: string; timestamp: number }) => void;
+  unExpandCard?: (params: { cardId: string; timestamp: number }) => void;
+  isExpanded?: boolean;
+  forceNormalView?: boolean; // Force normal card view even when expanded
   //onSwipeDirection?: (direction: "menu" | "pass" | null) => void;
 }
 
-export function SwipeCard({ card, onCardTap, expandCard }: SwipeCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+export function SwipeCard({
+  card,
+  onCardTap,
+  expandCard,
+  unExpandCard,
+  isExpanded: initialIsExpanded = false,
+  forceNormalView = false,
+}: SwipeCardProps) {
+  const [isExpanded, setIsExpanded] = useState(initialIsExpanded);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const [openMapDialog, setOpenMapDialog] = useState(false);
@@ -573,6 +583,7 @@ export function SwipeCard({ card, onCardTap, expandCard }: SwipeCardProps) {
           <TouchableOpacity
             onPress={() => {
               setIsExpanded(false);
+              unExpandCard?.({ cardId: card.id, timestamp: Date.now() });
             }}
             style={{
               width: 44,
@@ -1212,13 +1223,17 @@ export function SwipeCard({ card, onCardTap, expandCard }: SwipeCardProps) {
       </View>
 
       {/* Content Overlays */}
-      {isExpanded ? <DetailedContentContainer /> : <MainContentOverlay />}
+      {!forceNormalView && isExpanded ? (
+        <DetailedContentContainer />
+      ) : (
+        <MainContentOverlay />
+      )}
     </View>
   );
 
   return (
     <>
-      {!card.adData && (
+      {(!card.adData || forceNormalView) && (
         <>
           <View
             style={{

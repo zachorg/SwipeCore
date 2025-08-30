@@ -342,6 +342,8 @@ export function useFilteredPlaces(
       if (ad) {
         cards.unshift(ad);
       }
+
+      console.log("Cards: ", cards);
       setBaseCards(cards);
       setCards(cards);
     }

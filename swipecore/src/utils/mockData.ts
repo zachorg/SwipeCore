@@ -83,49 +83,8 @@ export const mockRestaurantCard: RestaurantCard = {
     adData: null // Set to null for regular restaurant cards
 };
 
-export const mockAdRestaurantCard: RestaurantCard = {
-    id: "mock-ad-restaurant-001",
-    title: "Pizza Palace Express",
-    cuisine: "Italian",
-    priceRange: "$",
-    rating: 4.2,
-    address: "456 Oak Avenue, Midtown, NY 10002",
-    phone: "+1 (555) 987-6543",
-    website: "https://pizzapalace.example.com",
-    distance: "1.2 km away",
-    openingHours: "Open until 11:00 PM",
-    isOpenNow: true,
-    images: [
-        "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=800&h=600&fit=crop",
-    ],
-    placeDetails: {
-        editorialSummary: {
-            text: "Pizza Palace Express brings authentic Italian flavors to your table with our wood-fired pizzas and homemade pasta. Our secret family recipes have been perfected over three generations, ensuring every bite is a taste of Italy."
-        }
-    },
-    reviews: [
-        {
-            id: "review-ad-001",
-            author: "David Wilson",
-            rating: 4,
-            comment: "Great pizza and fast delivery! The crust is perfectly crispy and the toppings are fresh.",
-            relativeTime: "3 days ago",
-            date: "2024-01-14"
-        }
-    ],
-    adData: {
-        advertiser: "Pizza Palace Express",
-        body: "Try our new Margherita Special - 20% off this week only!",
-        cta: "Order Now",
-        iconUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=100&h=100&fit=crop",
-        adChoicesIconUrl: "https://www.google.com/adsense/static/en_US/AdChoices/icon.png",
-        adChoicesLinkUrl: "https://www.google.com/adsense/static/en_US/AdChoices/"
-    }
-};
-
 export const mockRestaurantCards: RestaurantCard[] = [
     mockRestaurantCard,
-    mockAdRestaurantCard,
     {
         id: "mock-restaurant-002",
         title: "Sushi Master",

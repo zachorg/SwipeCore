@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
@@ -54,6 +55,8 @@ export function SwipeDeck({
   initialFilters = [],
 }: SwipeDeckProps) {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
+  const swiperRef = useRef<Swiper<RestaurantCard>>(null);
 
   const {
     cards,
@@ -107,8 +110,133 @@ export function SwipeDeck({
     [cards, onSwipeAction]
   );
 
+  const handleExpandCard = useCallback(
+    (params: { cardId: string; timestamp: number }) => {
+      const card = cards.find((c) => c.id === params.cardId);
+      if (card) {
+        setExpandedCard(card);
+        expandCard?.(params);
+      }
+    },
+    [expandCard, cards]
+  );
+
+  const handleCloseExpandedCard = useCallback(() => {
+    setExpandedCard(null);
+  }, []);
+
+  const swiperProps = {
+    cards: cards,
+    renderCard: (card: RestaurantCard) => (
+      <View style={styles.cardContainer}>
+        <View style={styles.cardWrapper}>
+          <SwipeCard
+            card={card}
+            onCardTap={handleCardTapInternal}
+            expandCard={handleExpandCard}
+          />
+        </View>
+      </View>
+    ),
+    backgroundColor: "transparent",
+    stackSize: cards.length,
+    infinite: false,
+    animateOverlayLabelsOpacity: true,
+    onSwipedLeft: (cardIndex: number) => {
+      // Handle the swipe action after the animation completes
+      const card = cards[0];
+      if (card) {
+        // Call the parent callback
+        handleSwipe(card.id, "pass");
+
+        if (__DEV__) {
+          console.log("🎴 SWIPED LEFT:", {
+            cardIndex,
+            cardId: card.id,
+          });
+        }
+      }
+    },
+    onSwipedRight: (cardIndex: number) => {
+      // Handle the swipe action after the animation completes
+      const card = cards[0];
+      if (card) {
+        // Call the parent callback
+        handleSwipe(card.id, "menu");
+
+        if (__DEV__) {
+          console.log("🎴 SWIPED RIGHT:", {
+            cardIndex,
+            cardId: card.id,
+          });
+        }
+      }
+    },
+    overlayLabels: {
+      left: {
+        title: "PASS",
+        style: {
+          label: {
+            backgroundColor: "transparent",
+            color: "red",
+            fontSize: 24,
+          },
+          wrapper: {
+            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "flex-start",
+            marginTop: 30,
+            marginLeft: -30,
+          },
+        },
+      },
+      right: {
+        title: "MENU",
+        style: {
+          label: {
+            backgroundColor: "transparent",
+            color: "green",
+            fontSize: 24,
+          },
+          wrapper: {
+            flexDirection: "column",
+            alignItems: "flex-start",
+            justifyContent: "flex-start",
+            marginTop: 30,
+            marginLeft: 30,
+          },
+        },
+      },
+    },
+    swipeAnimationDuration: 300,
+    disableTopSwipe: true,
+    disableBottomSwipe: true,
+    disableLeftSwipe: false,
+    disableRightSwipe: false,
+    stackSeparation: 0,
+    stackScale: 0.95,
+    cardVerticalMargin: 0,
+    cardHorizontalMargin: 0,
+    goBackToPreviousCardOnSwipeLeft: false,
+    goBackToPreviousCardOnSwipeRight: false,
+    goBackToPreviousCardOnSwipeTop: false,
+    goBackToPreviousCardOnSwipeBottom: false,
+    useViewOverflow: false,
+    outputRotationRange: ["-0.3rad", "0rad", "0.3rad"] as [
+      string,
+      string,
+      string
+    ],
+    cardStyle: {
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+  };
+
   useEffect(() => {
-    setCurrentCardIndex(0);
+    swiperRef.current?.jumpToCardIndex(0);
   }, [cards]);
 
   const handleMenuOpen = useCallback(() => {
@@ -218,7 +346,7 @@ export function SwipeDeck({
         </View>
       )}
 
-      {cards.length > 0 && (
+      {cards && cards.length > 0 && (
         <View
           style={[styles.stackContainer, { paddingTop: statusBarHeight - 16 }]}
         >
@@ -229,129 +357,14 @@ export function SwipeDeck({
               { marginHorizontal: statusBarHeight - 16 },
             ]}
           >
-            <Swiper
-              key={`swiper-${cards[0]?.id || "empty"}`}
-              cards={cards}
-              cardIndex={currentCardIndex}
-              renderCard={(card: RestaurantCard) => (
-                <View style={styles.cardContainer}>
-                  <View style={styles.cardWrapper}>
-                    <SwipeCard
-                      key={card.id}
-                      card={card}
-                      onCardTap={handleCardTapInternal}
-                      expandCard={expandCard}
-                    />
-                  </View>
-                </View>
-              )}
-              backgroundColor="transparent"
-              stackSize={cards.length}
-              infinite={false}
-              animateOverlayLabelsOpacity={true}
-              onSwipedLeft={(cardIndex: number) => {
-                // Handle the swipe action after the animation completes
-                const card = cards[0];
-                if (card) {
-                  // Call the parent callback
-                  handleSwipe(card.id, "pass");
-
-                  if (__DEV__) {
-                    console.log("🎴 SWIPED LEFT:", {
-                      cardIndex,
-                      cardId: card.id,
-                    });
-                  }
-                }
-              }}
-              onSwipedRight={(cardIndex: number) => {
-                // Handle the swipe action after the animation completes
-                const card = cards[0];
-                if (card) {
-                  // Call the parent callback
-                  handleSwipe(card.id, "menu");
-
-                  if (__DEV__) {
-                    console.log("🎴 SWIPED RIGHT:", {
-                      cardIndex,
-                      cardId: card.id,
-                    });
-                  }
-                }
-              }}
-              onTapCard={() => {
-                if (__DEV__) {
-                  console.log("🎴 CARD TAPPED");
-                }
-              }}
-              overlayLabels={{
-                left: {
-                  title: "PASS",
-                  style: {
-                    label: {
-                      backgroundColor: "transparent",
-                      color: "red",
-                      fontSize: 24,
-                    },
-                    wrapper: {
-                      flexDirection: "column",
-                      alignItems: "flex-end",
-                      justifyContent: "flex-start",
-                      marginTop: 30,
-                      marginLeft: -30,
-                    },
-                  },
-                },
-                right: {
-                  title: "MENU",
-                  style: {
-                    label: {
-                      backgroundColor: "transparent",
-                      color: "green",
-                      fontSize: 24,
-                    },
-                    wrapper: {
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      justifyContent: "flex-start",
-                      marginTop: 30,
-                      marginLeft: 30,
-                    },
-                  },
-                },
-              }}
-              swipeAnimationDuration={300}
-              disableTopSwipe={true}
-              disableBottomSwipe={true}
-              disableLeftSwipe={false}
-              disableRightSwipe={false}
-              stackSeparation={0}
-              stackScale={0.95}
-              cardVerticalMargin={0}
-              cardHorizontalMargin={0}
-              goBackToPreviousCardOnSwipeLeft={false}
-              goBackToPreviousCardOnSwipeRight={false}
-              goBackToPreviousCardOnSwipeTop={false}
-              goBackToPreviousCardOnSwipeBottom={false}
-              useViewOverflow={false}
-              outputRotationRange={["-0.3rad", "0rad", "0.3rad"]}
-              cardStyle={{
-                width: "100%",
-                height: "100%",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              onSwipedAll={() => {
-                if (__DEV__) {
-                  console.log("🎴 ALL CARDS SWIPED");
-                }
-              }}
-              onSwipedAborted={() => {
-                if (__DEV__) {
-                  console.log("🎴 SWIPE ABORTED");
-                }
-              }}
-            />
+            {!expandedCard && <Swiper ref={swiperRef} {...swiperProps} />}
+            {expandedCard && (
+              <SwipeCard
+                card={expandedCard}
+                isExpanded={true}
+                unExpandCard={handleCloseExpandedCard}
+              />
+            )}
           </View>
 
           <SwipeControls
@@ -514,6 +527,46 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardWrapper: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  // Expanded card styles
+  expandedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#111827",
+    borderBottomWidth: 1,
+    borderBottomColor: "#374151",
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  expandedTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
+  },
+  placeholder: {
+    width: 40,
+  },
+  expandedContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  expandedCardWrapper: {
     width: "100%",
     height: "100%",
     borderRadius: 20,
