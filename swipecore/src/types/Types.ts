@@ -115,9 +115,6 @@ export interface RestaurantCard {
   title: string;
   subtitle?: string;
 
-  // Ads
-  adData?: NativeAd;
-
   // Restaurant-specific fields
   cuisine?: string;
   rating?: number;

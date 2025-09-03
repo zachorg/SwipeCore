@@ -18,16 +18,32 @@ export function VoiceButton({
 }: VoiceButtonProps) {
   const [isSupported, setIsSupported] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
+  const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
     // Check if speech recognition is supported
     const checkSupport = async () => {
       try {
+        console.log("🎤 VoiceButton - Checking speech recognition support...");
         const supported = await speechToTextService.isAvailable();
+        console.log("🎤 VoiceButton - Support result:", supported);
         setIsSupported(supported);
+
+        // Run comprehensive test
+        if (supported) {
+          const testResult = await speechToTextService.testSpeechRecognition();
+          console.log("🎤 VoiceButton - Test result:", testResult);
+
+          // If test fails, use fallback
+          if (!testResult) {
+            setUseFallback(true);
+            console.log("🎤 VoiceButton - Using fallback mode");
+          }
+        }
       } catch (error) {
         console.error("Error checking speech recognition support:", error);
         setIsSupported(false);
+        setUseFallback(true);
       }
     };
 
@@ -38,47 +54,102 @@ export function VoiceButton({
     setVoiceState("listening");
 
     try {
-      await speechToTextService.startListening(
-        (result) => {
-          if (result.isFinal) {
-            // Final result - process with NLP
-            setVoiceState("processing");
+      if (useFallback) {
+        // Use fallback simulation
+        await speechToTextService.simulateSpeechRecognition(
+          (result) => {
+            if (result.isFinal) {
+              // Final result - process with NLP
+              setVoiceState("processing");
 
-            // Process the transcript with our NLP system
-            setTimeout(() => {
-              const nlpResult = parseNaturalLanguageQuery(result.transcript);
+              // Process the transcript with our NLP system
+              setTimeout(() => {
+                const nlpResult = parseNaturalLanguageQuery(result.transcript);
 
-              if (nlpResult.filters.length > 0) {
-                // Apply the filters
-                onFiltersApplied(nlpResult.filters);
-                console.log("Applied filters:", nlpResult.filters);
-              } else {
-                console.log("No filters found in:", result.transcript);
-              }
+                if (nlpResult.filters.length > 0) {
+                  // Apply the filters
+                  onFiltersApplied(nlpResult.filters);
+                  console.log("Applied filters:", nlpResult.filters);
+                } else {
+                  console.log("No filters found in:", result.transcript);
+                }
 
-              // Always reset to idle state after processing
-              setVoiceState("idle");
-            }, 800);
-          }
-        },
-        (error: string) => {
-          console.error("Speech recognition error:", error);
-          setVoiceState("idle");
-
-          // This should rarely happen now since we check permissions first
-          alert("Voice recognition failed. Please try again.");
-        },
-        () => {
-          // Speech recognition ended - only reset if we're not already processing
-          if (voiceState !== "processing") {
+                // Always reset to idle state after processing
+                setVoiceState("idle");
+              }, 800);
+            }
+          },
+          (error: string) => {
+            console.error("Speech recognition error:", error);
             setVoiceState("idle");
+          },
+          () => {
+            // Speech recognition ended - only reset if we're not already processing
+            if (voiceState !== "processing") {
+              setVoiceState("idle");
+            }
           }
-        }
-      );
+        );
+      } else {
+        // Use native speech recognition
+        await speechToTextService.startListening(
+          (result) => {
+            if (result.isFinal) {
+              // Final result - process with NLP
+              setVoiceState("processing");
+
+              // Process the transcript with our NLP system
+              setTimeout(() => {
+                const nlpResult = parseNaturalLanguageQuery(result.transcript);
+
+                if (nlpResult.filters.length > 0) {
+                  // Apply the filters
+                  onFiltersApplied(nlpResult.filters);
+                  console.log("Applied filters:", nlpResult.filters);
+                } else {
+                  console.log("No filters found in:", result.transcript);
+                }
+
+                // Always reset to idle state after processing
+                setVoiceState("idle");
+              }, 800);
+            }
+          },
+          (error: string) => {
+            console.error("Speech recognition error:", error);
+            setVoiceState("idle");
+
+            // If native speech recognition fails, try fallback
+            if (!useFallback) {
+              console.log(
+                "🎤 Native speech recognition failed, trying fallback..."
+              );
+              setUseFallback(true);
+              startListening(); // Retry with fallback
+            } else {
+              alert("Voice recognition failed. Please try again.");
+            }
+          },
+          () => {
+            // Speech recognition ended - only reset if we're not already processing
+            if (voiceState !== "processing") {
+              setVoiceState("idle");
+            }
+          }
+        );
+      }
     } catch (error) {
       console.error("Failed to start speech recognition:", error);
       setVoiceState("idle");
-      alert("Could not start voice search. Please try again.");
+
+      // If native speech recognition fails, try fallback
+      if (!useFallback) {
+        console.log("🎤 Native speech recognition failed, trying fallback...");
+        setUseFallback(true);
+        startListening(); // Retry with fallback
+      } else {
+        alert("Could not start voice search. Please try again.");
+      }
     }
   };
 
@@ -124,7 +195,7 @@ export function VoiceButton({
   }, [voiceState]);
 
   // Don't render if not supported
-  if (!isSupported) {
+  if (!isSupported && !useFallback) {
     return null;
   }
 

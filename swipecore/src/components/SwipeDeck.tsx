@@ -24,12 +24,14 @@ import {
   SwipeConfig,
   defaultSwipeConfig,
   androidOptimizedSwipeConfig,
+  SwipeAction,
 } from "../types/Types";
 import {
   useFilteredPlaces,
   UseFilteredPlacesOptions,
 } from "../hooks/useFilteredPlaces";
 import { Platform } from "react-native";
+import AdView from "./ads/AdView";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -54,13 +56,12 @@ export function SwipeDeck({
   onFilterButtonReady,
   initialFilters = [],
 }: SwipeDeckProps) {
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
 
   const {
     cards,
-    currentCard,
+    showAd,
     isLoading,
     isLocationLoading,
     isFilterLoading,
@@ -83,11 +84,16 @@ export function SwipeDeck({
     enableFiltering,
   });
 
-  const handleSwipe = useCallback((cardId: string, action: "menu" | "pass") => {
-    // Don't call swipeCard here - it will remove the wrong card
-    // Instead, handle the swipe action manually
-    onSwipeAction?.(cardId, action);
-  }, []);
+  const handleSwipe = useCallback(
+    (card: RestaurantCard, action: "menu" | "pass") => {
+      swipeCard({
+        cardId: card.id,
+        action: action,
+        timestamp: 0,
+      });
+    },
+    [swipeCard]
+  );
 
   const handleCardTapInternal = useCallback(
     (card: RestaurantCard) => {
@@ -100,15 +106,15 @@ export function SwipeDeck({
     [onCardTap]
   );
 
-  const handleControlAction = useCallback(
-    (action: "pass") => {
-      if (cards.length > 0) {
-        // Call the parent callback
-        onSwipeAction?.(cards[0].id, action);
-      }
-    },
-    [cards, onSwipeAction]
-  );
+  const handleControlAction = (action: "pass") => {
+    console.log("handleControlAction", action);
+    if (showAd) {
+      // When no cards but ad is showing, pass the ad to dismiss it
+      swipeCard({ cardId: "ad", action: "pass", timestamp: 0 });
+    } else if (cards.length > 0) {
+      handleSwipe(cards[0], action);
+    }
+  };
 
   const handleExpandCard = useCallback(
     (params: { cardId: string; timestamp: number }) => {
@@ -144,30 +150,30 @@ export function SwipeDeck({
     animateOverlayLabelsOpacity: true,
     onSwipedLeft: (cardIndex: number) => {
       // Handle the swipe action after the animation completes
-      const card = cards[0];
-      if (card) {
+      const swipedCard = cards[cardIndex];
+      if (swipedCard) {
         // Call the parent callback
-        handleSwipe(card.id, "pass");
+        handleSwipe(swipedCard, "pass");
 
         if (__DEV__) {
           console.log("🎴 SWIPED LEFT:", {
             cardIndex,
-            cardId: card.id,
+            cardId: swipedCard.id,
           });
         }
       }
     },
     onSwipedRight: (cardIndex: number) => {
       // Handle the swipe action after the animation completes
-      const card = cards[0];
-      if (card) {
+      const swipedCard = cards[cardIndex];
+      if (swipedCard) {
         // Call the parent callback
-        handleSwipe(card.id, "menu");
+        handleSwipe(swipedCard, "menu");
 
         if (__DEV__) {
           console.log("🎴 SWIPED RIGHT:", {
             cardIndex,
-            cardId: card.id,
+            cardId: swipedCard.id,
           });
         }
       }
@@ -235,38 +241,54 @@ export function SwipeDeck({
     },
   };
 
-  useEffect(() => {
-    swiperRef.current?.jumpToCardIndex(0);
-  }, [cards]);
-
   const handleMenuOpen = useCallback(() => {
-    if (!currentCard) return;
-    expandCard?.({ cardId: currentCard.id, timestamp: Date.now() });
+    if (cards.length === 0) return;
+    const topCard = cards[0];
+    expandCard?.({ cardId: topCard.id, timestamp: Date.now() });
 
     const queryClient = useQueryClient();
     const poll = () => {
       const detailsData = queryClient.getQueryData([
         "places",
         "details",
-        currentCard.id,
+        topCard.id,
       ]);
       if (!detailsData) {
         setTimeout(poll, 100);
       }
     };
 
-    if (!currentCard.website) {
+    if (!topCard.website) {
       poll();
     } else {
-      openUrl(currentCard.website);
+      openUrl(topCard.website);
     }
-  }, [currentCard, expandCard]);
+  }, [cards, expandCard]);
 
   const showLoading = isLoading && (isFilterLoading || cards.length === 0);
   const showError = Boolean(error);
   const showLocationNeeded =
     !hasLocation && !isLocationLoading && usingLiveData;
-  const showNoCards = cards.length === 0 && !isLoading && !error;
+  const showNoCards = cards.length === 0 && !isLoading && !error && !showAd;
+
+  const UseSwipeControls = () => {
+    return (
+      <SwipeControls
+        onAction={handleControlAction}
+        onMenuOpen={
+          cards.length > 0 && cards[0]?.adData ? undefined : handleMenuOpen
+        }
+        onVoiceFiltersApplied={
+          enableFiltering
+            ? (filters) => {
+                filters.forEach((f) => addFilter(f.filterId, f.value));
+                onNewFiltersApplied();
+              }
+            : undefined
+        }
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -327,59 +349,78 @@ export function SwipeDeck({
         </View>
       )}
 
-      {showNoCards && (
-        <View style={styles.centerPadding}>
-          <Text style={styles.title}>No more restaurants!</Text>
-          <Text style={styles.muted}>
-            {usingLiveData
-              ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
-              : "Check back later for more options."}
-          </Text>
-          {usingLiveData && (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={refreshCards}
-            >
-              <Text style={styles.secondaryButtonText}>Refresh Results</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+      {(() => {
+        console.log("DEBUG - No more restaurants condition:", {
+          cardsLength: cards?.length,
+          showAd,
+          condition: cards && cards.length === 0 && !showAd,
+        });
+        return cards && cards.length === 0 && !showAd ? (
+          <View style={styles.noMoreCardsContainer}>
+            <View style={styles.noMoreCardsContent}>
+              <View style={styles.noMoreCardsIcon}>
+                <Ionicons name="restaurant-outline" size={48} color="#6B7280" />
+              </View>
+              <Text style={styles.noMoreCardsTitle}>No more restaurants!</Text>
+              <Text style={styles.noMoreCardsSubtitle}>
+                {usingLiveData
+                  ? "You've seen all nearby restaurants. Try refreshing or expanding your search area."
+                  : "Check back later for more options."}
+              </Text>
+              {usingLiveData && (
+                <TouchableOpacity
+                  style={styles.noMoreCardsButton}
+                  onPress={refreshCards}
+                >
+                  <Ionicons name="refresh" size={20} color="#FFFFFF" />
+                  <Text style={styles.noMoreCardsButtonText}>
+                    Refresh Results
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ) : null;
+      })()}
 
-      {cards && cards.length > 0 && (
-        <View
-          style={[styles.stackContainer, { paddingTop: statusBarHeight - 16 }]}
-        >
+      {((cards && cards.length > 0) || showAd) && (
+        <>
           <View
             style={[
-              styles.cardsArea,
-              { marginBottom: statusBarHeight - 16 },
-              { marginHorizontal: statusBarHeight - 16 },
+              styles.stackContainer,
+              { paddingTop: statusBarHeight - 16 },
             ]}
           >
-            {!expandedCard && <Swiper ref={swiperRef} {...swiperProps} />}
-            {expandedCard && (
-              <SwipeCard
-                card={expandedCard}
-                isExpanded={true}
-                unExpandCard={handleCloseExpandedCard}
-              />
-            )}
+            <View
+              style={[
+                styles.cardsArea,
+                { marginBottom: statusBarHeight - 16 },
+                { marginHorizontal: statusBarHeight - 16 },
+              ]}
+            >
+              {cards && cards.length > 0 && !showAd && (
+                <>
+                  {!expandedCard && (
+                    <Swiper
+                      key={`swiper-${cards.length}`}
+                      ref={swiperRef}
+                      {...swiperProps}
+                    />
+                  )}
+                  {expandedCard && (
+                    <SwipeCard
+                      card={expandedCard}
+                      isExpanded={true}
+                      unExpandCard={handleCloseExpandedCard}
+                    />
+                  )}
+                </>
+              )}
+              {showAd && <AdView />}
+            </View>
           </View>
-
-          <SwipeControls
-            onAction={handleControlAction}
-            onMenuOpen={currentCard?.adData ? undefined : handleMenuOpen}
-            onVoiceFiltersApplied={
-              enableFiltering
-                ? (filters) => {
-                    filters.forEach((f) => addFilter(f.filterId, f.value));
-                    onNewFiltersApplied();
-                  }
-                : undefined
-            }
-          />
-        </View>
+          <UseSwipeControls />
+        </>
       )}
     </View>
   );
@@ -571,5 +612,61 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 20,
     overflow: "hidden",
+  },
+  // No more cards styles
+  noMoreCardsContainer: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  noMoreCardsContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    maxWidth: 300,
+    gap: 16,
+  },
+  noMoreCardsIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  noMoreCardsTitle: {
+    color: "#111827",
+    fontSize: 24,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  noMoreCardsSubtitle: {
+    color: "#6B7280",
+    fontSize: 16,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  noMoreCardsButton: {
+    backgroundColor: "#3B82F6",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  noMoreCardsButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

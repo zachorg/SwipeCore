@@ -13,6 +13,10 @@
     },
     "jsEngine": "hermes",
     "assetBundlePatterns": ["**/*"],
+    "react-native-google-mobile-ads": {
+      "androidAppId": "ca-app-pub-1638652278312904~7072049423",
+      "iosAppId": "ca-app-pub-1638652278312904~7072049423"
+    },
     "ios": {
       "jsEngine": "jsc",
       "supportsTablet": true,
@@ -28,6 +32,9 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-1638652278312904~7072049423"
+      },
       "package": "com.swipecore.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -39,7 +46,14 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "react-native-admob-native-ads",
+      "expo-speech-recognition",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-1638652278312904~7072049423",
+          "iosAppId": "ca-app-pub-1638652278312904~7072049423"
+        }
+      ],
       [
         "expo-build-properties",
         {

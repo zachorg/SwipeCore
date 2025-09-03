@@ -1,8 +1,8 @@
-// Speech-to-Text utility using React Native Voice with Web Speech API fallback
+// Speech-to-Text utility using expo-speech-recognition
 // Converts audio input to text for NLP processing
 
-import { Platform } from 'react-native';
-import Voice, { SpeechResultsEvent, SpeechErrorEvent, SpeechStartEvent } from '@react-native-community/voice';
+import { Platform, Alert } from 'react-native';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 export interface SpeechRecognitionResult {
   transcript: string;
@@ -20,42 +20,16 @@ export interface SpeechRecognitionOptions {
 
 export class SpeechToTextService {
   private isListening: boolean = false;
-  private partialResultsListener: any = null;
-  private listeningStateListener: any = null;
-  private webRecognizer: any = null;
+  private listeners: any[] = [];
+  private currentCallbacks: {
+    onResult?: (result: SpeechRecognitionResult) => void;
+    onError?: (error: string) => void;
+    onEnd?: () => void;
+  } = {};
+  private timeoutId: NodeJS.Timeout | null = null;
 
   constructor() {
-    this.initializeListeners();
-  }
-
-  /**
-   * Initialize event listeners for speech recognition
-   */
-  private async initializeListeners(): Promise<void> {
-    if (Platform.OS === 'web') {
-      const WebSpeech = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (WebSpeech) {
-        this.webRecognizer = new WebSpeech();
-      }
-      return;
-    }
-
-    try {
-      Voice.onSpeechStart = (_e: SpeechStartEvent) => {
-        this.isListening = true;
-      };
-      Voice.onSpeechError = (_e: SpeechErrorEvent) => {
-        this.isListening = false;
-      };
-      Voice.onSpeechResults = (_e: SpeechResultsEvent) => {
-        // handled dynamically in startListening via local handlers
-      };
-      Voice.onSpeechPartialResults = (_e: SpeechResultsEvent) => {
-        // handled dynamically in startListening via local handlers
-      };
-    } catch (error) {
-      console.warn('Could not initialize Voice listeners:', error);
-    }
+    console.log('🎤 SpeechToTextService initialized');
   }
 
   /**
@@ -69,13 +43,16 @@ export class SpeechToTextService {
    * Check if speech recognition is available on this device
    */
   public async isAvailable(): Promise<boolean> {
-    if (Platform.OS === 'web') {
-      const WebSpeech = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      return !!WebSpeech;
-    }
     try {
-      const available = await Voice.isAvailable();
-      return !!available;
+      if (Platform.OS === 'web') {
+        console.log('🎤 Web platform detected, speech recognition not available');
+        return false;
+      }
+
+      // Check if the module is available
+      const available = ExpoSpeechRecognitionModule !== undefined;
+      console.log('🎤 Speech recognition available:', available);
+      return available;
     } catch (error) {
       console.warn('Speech recognition availability check failed:', error);
       return false;
@@ -86,14 +63,24 @@ export class SpeechToTextService {
    * Check current speech recognition permissions
    */
   public async checkPermissions(): Promise<'granted' | 'denied' | 'prompt'> {
-    if (Platform.OS === 'web') {
-      return 'prompt';
-    }
     try {
-      // Voice exposes check() returning boolean on some versions; fallback to try-start
-      const available = await Voice.isAvailable();
-      return available ? 'prompt' : 'denied';
-    } catch {
+      if (Platform.OS === 'web') {
+        return 'denied';
+      }
+
+      const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      console.log('🎤 Permission status:', result.status);
+
+      switch (result.status) {
+        case 'granted':
+          return 'granted';
+        case 'denied':
+          return 'denied';
+        default:
+          return 'prompt';
+      }
+    } catch (error) {
+      console.warn('Could not check permissions:', error);
       return 'prompt';
     }
   }
@@ -102,15 +89,24 @@ export class SpeechToTextService {
    * Request speech recognition permissions
    */
   public async requestPermissions(): Promise<'granted' | 'denied' | 'prompt'> {
-    if (Platform.OS === 'web') {
-      return 'prompt';
-    }
     try {
-      // Best-effort: Voice lacks explicit permission API across versions; attempt start/stop
-      await Voice.start('en-US');
-      await Voice.stop();
-      return 'granted';
-    } catch {
+      if (Platform.OS === 'web') {
+        return 'denied';
+      }
+
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      console.log('🎤 Requested permission status:', result.status);
+
+      switch (result.status) {
+        case 'granted':
+          return 'granted';
+        case 'denied':
+          return 'denied';
+        default:
+          return 'prompt';
+      }
+    } catch (error) {
+      console.warn('Could not request permissions:', error);
       return 'denied';
     }
   }
@@ -125,6 +121,8 @@ export class SpeechToTextService {
     options: SpeechRecognitionOptions = {}
   ): Promise<void> {
     try {
+      console.log('🎤 Starting speech recognition...');
+
       // Check if speech recognition is available
       const available = await this.isAvailable();
       if (!available) {
@@ -145,69 +143,140 @@ export class SpeechToTextService {
         return;
       }
 
-      const language = options.language || 'en-US';
-      const allowPartials = options.partialResults !== false;
+      // Store callbacks
+      this.currentCallbacks = { onResult, onError, onEnd };
 
-      console.log('🎤 Starting speech recognition with options:', { language, allowPartials });
-
-      if (Platform.OS === 'web') {
-        const WebSpeech = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        if (!WebSpeech) {
-          onError('Web Speech API not available');
-          return;
-        }
-        const recognizer = new WebSpeech();
-        this.webRecognizer = recognizer;
-        recognizer.lang = language;
-        recognizer.interimResults = allowPartials;
-        recognizer.maxAlternatives = options.maxResults || 5;
-        recognizer.onresult = (event: any) => {
-          const last = event.results[event.results.length - 1];
-          const transcript = last[0].transcript;
-          const isFinal = last.isFinal;
-          onResult({ transcript, confidence: last[0].confidence ?? 0.9, isFinal });
-          if (isFinal) onEnd();
-        };
-        recognizer.onerror = (e: any) => {
-          onError(e.error || 'Speech recognition error');
-        };
-        recognizer.onend = () => {
-          this.isListening = false;
-          onEnd();
-        };
-        this.isListening = true;
-        recognizer.start();
-        return;
+      // Clear any existing listeners and timeouts
+      this.cleanupListeners();
+      if (this.timeoutId) {
+        clearTimeout(this.timeoutId);
+        this.timeoutId = null;
       }
 
-      // Native (iOS/Android)
-      Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-        const values = e.value || [];
-        if (values.length > 0) {
-          onResult({ transcript: values[0], confidence: 0.9, isFinal: true });
-        }
-      };
-      Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
-        if (!allowPartials) return;
-        const values = e.value || [];
-        if (values.length > 0) {
-          onResult({ transcript: values[0], confidence: 0.8, isFinal: false });
-        }
+      // Set up event listeners BEFORE starting
+      this.setupEventListeners();
+
+      // Start recognition with proper options
+      const startOptions = {
+        lang: options.language || 'en-US',
+        interimResults: options.partialResults !== false,
+        continuous: false,
+        maxAlternatives: 1
       };
 
+      console.log('🎤 Starting with options:', JSON.stringify(startOptions, null, 2));
       this.isListening = true;
-      await Voice.start(language);
+
+      // Start the recognition using the correct API
+      await ExpoSpeechRecognitionModule.start(startOptions);
+      console.log('🎤 Speech recognition started successfully');
+
+      // Add a timeout to detect if no events are received
+      this.timeoutId = setTimeout(() => {
+        if (this.isListening) {
+          console.log('🎤 No events received after 5 seconds, stopping...');
+          this.stopListening();
+          onError('No speech detected. Please try again.');
+        }
+      }, 5000);
 
     } catch (error: any) {
       console.error('❌ Failed to start speech recognition:', error);
+      this.isListening = false;
       onError(`Failed to start speech recognition: ${error.message}`);
     }
   }
 
   /**
-   * Handle speech recognition results and events
+   * Set up event listeners for speech recognition
    */
-  // Native handler consolidated into startListening for simplicity
+  private setupEventListeners(): void {
+    try {
+      console.log('🎤 Setting up event listeners...');
+
+      // Add event listeners using the correct API
+      const startListener = ExpoSpeechRecognitionModule.addListener('start', () => {
+        console.log('🎤 START event received');
+      });
+
+      const resultListener = ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
+        console.log('🎤 RESULT event received:', JSON.stringify(event, null, 2));
+        this.handleResultEvent(event);
+      });
+
+      const errorListener = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
+        console.log('🎤 ERROR event received:', JSON.stringify(event, null, 2));
+        this.handleErrorEvent(event);
+      });
+
+      const endListener = ExpoSpeechRecognitionModule.addListener('end', () => {
+        console.log('🎤 END event received');
+        this.handleEndEvent();
+      });
+
+      // Store listeners for cleanup
+      this.listeners = [startListener, resultListener, errorListener, endListener];
+
+      console.log('🎤 All event listeners set up successfully');
+
+    } catch (error) {
+      console.error('❌ Failed to set up event listeners:', error);
+    }
+  }
+
+  /**
+   * Handle result events
+   */
+  private handleResultEvent(event: any): void {
+    console.log('🎤 Processing result event:', JSON.stringify(event, null, 2));
+
+    // According to docs: event.results is an array of results
+    if (event.results && event.results.length > 0) {
+      const result = event.results[0];
+      const transcript = result.transcript || '';
+      const confidence = result.confidence || 0.9;
+      const isFinal = event.isFinal || false;
+
+      console.log('🎤 Extracted transcript:', transcript, 'isFinal:', isFinal);
+
+      if (transcript && this.currentCallbacks.onResult) {
+        this.currentCallbacks.onResult({
+          transcript,
+          confidence,
+          isFinal
+        });
+      }
+
+      if (isFinal && this.currentCallbacks.onEnd) {
+        this.currentCallbacks.onEnd();
+      }
+    }
+  }
+
+  /**
+   * Handle error events
+   */
+  private handleErrorEvent(event: any): void {
+    console.error('❌ Error event received:', JSON.stringify(event, null, 2));
+    const errorMessage = event.message || event.error || 'Speech recognition error';
+    if (this.currentCallbacks.onError) {
+      this.currentCallbacks.onError(errorMessage);
+    }
+    if (this.currentCallbacks.onEnd) {
+      this.currentCallbacks.onEnd();
+    }
+  }
+
+  /**
+   * Handle end events
+   */
+  private handleEndEvent(): void {
+    console.log('🎤 End event received');
+    this.isListening = false;
+    if (this.currentCallbacks.onEnd) {
+      this.currentCallbacks.onEnd();
+    }
+  }
 
   /**
    * Stop listening for speech input
@@ -216,16 +285,17 @@ export class SpeechToTextService {
     try {
       if (this.isListening) {
         console.log('🛑 Stopping speech recognition...');
-        if (Platform.OS === 'web') {
-          try {
-            this.webRecognizer?.stop?.();
-            this.webRecognizer = null;
-          } catch { }
-        } else {
-          await Voice.stop();
-          await Voice.destroy();
+
+        // Clear timeout
+        if (this.timeoutId) {
+          clearTimeout(this.timeoutId);
+          this.timeoutId = null;
         }
+
+        await ExpoSpeechRecognitionModule.stop();
         this.isListening = false;
+        this.cleanupListeners();
+        this.currentCallbacks = {};
       }
     } catch (error) {
       console.error('❌ Failed to stop speech recognition:', error);
@@ -233,36 +303,64 @@ export class SpeechToTextService {
   }
 
   /**
+   * Clean up event listeners
+   */
+  private cleanupListeners(): void {
+    this.listeners.forEach(listener => {
+      try {
+        listener?.remove?.();
+      } catch (error) {
+        console.warn('Could not remove listener:', error);
+      }
+    });
+    this.listeners = [];
+  }
+
+  /**
    * Check if speech recognition is currently listening
    */
   public async checkListeningState(): Promise<boolean> {
-    try {
-      return this.isListening;
-    } catch (error) {
-      console.warn('Could not check listening state:', error);
-      return this.isListening;
-    }
+    return this.isListening;
   }
 
   /**
    * Get supported languages for speech recognition
    */
   public async getSupportedLanguages(): Promise<Array<{ code: string; name: string }>> {
-    // Not universally available; return a common set
+    try {
+      if (Platform.OS === 'web') {
+        return [];
+      }
 
-    // Fallback to common languages if plugin doesn't support language listing
-    return [
-      { code: 'en-US', name: 'English (US)' },
-      { code: 'en-GB', name: 'English (UK)' },
-      { code: 'es-ES', name: 'Spanish' },
-      { code: 'fr-FR', name: 'French' },
-      { code: 'de-DE', name: 'German' },
-      { code: 'it-IT', name: 'Italian' },
-      { code: 'pt-BR', name: 'Portuguese' },
-      { code: 'zh-CN', name: 'Chinese (Mandarin)' },
-      { code: 'ja-JP', name: 'Japanese' },
-      { code: 'ko-KR', name: 'Korean' }
-    ];
+      // Note: expo-speech-recognition doesn't have getSupportedLocales
+      // Return common languages as fallback
+      return [
+        { code: 'en-US', name: 'English (US)' },
+        { code: 'en-GB', name: 'English (UK)' },
+        { code: 'es-ES', name: 'Spanish' },
+        { code: 'fr-FR', name: 'French' },
+        { code: 'de-DE', name: 'German' },
+        { code: 'it-IT', name: 'Italian' },
+        { code: 'pt-BR', name: 'Portuguese' },
+        { code: 'zh-CN', name: 'Chinese (Mandarin)' },
+        { code: 'ja-JP', name: 'Japanese' },
+        { code: 'ko-KR', name: 'Korean' }
+      ];
+    } catch (error) {
+      console.warn('Could not get supported languages:', error);
+      return [
+        { code: 'en-US', name: 'English (US)' },
+        { code: 'en-GB', name: 'English (UK)' },
+        { code: 'es-ES', name: 'Spanish' },
+        { code: 'fr-FR', name: 'French' },
+        { code: 'de-DE', name: 'German' },
+        { code: 'it-IT', name: 'Italian' },
+        { code: 'pt-BR', name: 'Portuguese' },
+        { code: 'zh-CN', name: 'Chinese (Mandarin)' },
+        { code: 'ja-JP', name: 'Japanese' },
+        { code: 'ko-KR', name: 'Korean' }
+      ];
+    }
   }
 
   /**
@@ -270,19 +368,11 @@ export class SpeechToTextService {
    */
   public async cleanup(): Promise<void> {
     try {
-      if (Platform.OS !== 'web') {
-        try {
-          await Voice.destroy();
-        } catch { }
-      } else {
-        this.webRecognizer = null;
-      }
-
-      // Stop if listening
       if (this.isListening) {
         await this.stopListening();
       }
-
+      this.cleanupListeners();
+      this.currentCallbacks = {};
       console.log('🧹 Speech recognition service cleaned up');
     } catch (error) {
       console.warn('Could not clean up speech recognition service:', error);
@@ -293,13 +383,7 @@ export class SpeechToTextService {
    * Get current permission status
    */
   public async getPermissionStatus(): Promise<'granted' | 'denied' | 'prompt'> {
-    try {
-      const status = await this.checkPermissions();
-      return status;
-    } catch (error) {
-      console.warn('Could not get permission status:', error);
-      return 'prompt';
-    }
+    return this.checkPermissions();
   }
 
   /**
@@ -324,6 +408,83 @@ export class SpeechToTextService {
       return false;
     }
   }
+
+  /**
+   * Test speech recognition functionality
+   */
+  public async testSpeechRecognition(): Promise<boolean> {
+    try {
+      console.log('🧪 Testing speech recognition...');
+
+      // Test 1: Check availability
+      const available = await this.isAvailable();
+      console.log('🧪 Availability test:', available);
+
+      if (!available) {
+        console.log('🧪 Speech recognition not available');
+        return false;
+      }
+
+      // Test 2: Check permissions
+      const permission = await this.checkPermissions();
+      console.log('🧪 Permission test:', permission);
+
+      if (permission === 'denied') {
+        console.log('🧪 Permissions denied');
+        return false;
+      }
+
+      console.log('🧪 All tests completed');
+      return true;
+    } catch (error) {
+      console.error('🧪 Test failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Simulate speech recognition for testing (fallback)
+   */
+  public async simulateSpeechRecognition(
+    onResult: (result: SpeechRecognitionResult) => void,
+    onError: (error: string) => void,
+    onEnd: () => void
+  ): Promise<void> {
+    console.log('🎤 Simulating speech recognition...');
+
+    // Show a prompt to the user
+    Alert.prompt(
+      'Voice Input',
+      'Please enter your voice command:',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => {
+            onError('Voice input cancelled');
+            onEnd();
+          },
+          style: 'cancel',
+        },
+        {
+          text: 'Submit',
+          onPress: (text) => {
+            if (text && text.trim()) {
+              onResult({
+                transcript: text.trim(),
+                confidence: 0.9,
+                isFinal: true
+              });
+              onEnd();
+            } else {
+              onError('No text entered');
+              onEnd();
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
+  }
 }
 
 // Create singleton instance
@@ -335,14 +496,12 @@ export async function quickSpeechToText(
   options: SpeechRecognitionOptions = {}
 ): Promise<{ transcript: string; confidence: number }> {
   return new Promise(async (resolve, reject) => {
-    // Check if speech recognition is available
     const available = await speechToTextService.isAvailable();
     if (!available) {
       reject(new Error('Speech recognition not supported on this device'));
       return;
     }
 
-    // Ensure permissions
     const hasPermissions = await speechToTextService.ensurePermissions();
     if (!hasPermissions) {
       reject(new Error('Speech recognition permissions not granted'));
@@ -357,7 +516,6 @@ export async function quickSpeechToText(
       speechToTextService.stopListening();
     };
 
-    // Set timeout
     timeoutId = setTimeout(() => {
       cleanup();
       if (finalResult) {
@@ -397,6 +555,3 @@ export async function quickSpeechToText(
     }
   });
 }
-
-// Export the plugin for direct access if needed
-// No direct plugin export in RN implementation

@@ -116,7 +116,6 @@ android {
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
         }
     }
-
     packagingOptions {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
@@ -125,37 +124,6 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
-    
-    // Override Compose Compiler version for Kotlin compatibility
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
-    }
-}
-
-// Force AndroidX versions to resolve namespace conflicts
-configurations.all {
-    resolutionStrategy {
-        force 'androidx.core:core:1.13.1'
-        force 'androidx.versionedparcelable:versionedparcelable:1.1.1'
-        force 'androidx.appcompat:appcompat:1.6.1'
-        force 'androidx.vectordrawable:vectordrawable:1.1.0'
-        force 'androidx.vectordrawable:vectordrawable-animated:1.1.0'
-        
-        // Force Kotlin version consistency across all modules
-        force "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
-        force "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22"
-        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22"
-        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22"
-        force "org.jetbrains.kotlin:kotlin-reflect:1.9.22"
-    }
-    
-    // Completely exclude old Android Support libraries
-    exclude group: 'com.android.support', module: 'animated-vector-drawable'
-    exclude group: 'com.android.support', module: 'support-vector-drawable'
-    exclude group: 'com.android.support', module: 'support-compat'
-    exclude group: 'com.android.support', module: 'versionedparcelable'
-    exclude group: 'com.android.support', module: 'appcompat-v7'
-    exclude group: 'com.android.support', module: 'support-v4'
 }
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
@@ -181,9 +149,6 @@ configurations.all {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
-
-    // Google Mobile Ads SDK for react-native-admob-native-ads
-    implementation 'com.google.android.gms:play-services-ads:22.6.0'
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";

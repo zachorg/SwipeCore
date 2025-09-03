@@ -58,19 +58,30 @@ const GetStartedScreenWrapper = () => {
   };
 
   useEffect(() => {
-    GoToScreenBasedOnAuth(
-      navigation,
-      loadingAuthentication,
-      isAuthenticated,
-      loadingUserProfile,
-      userProfile
-    );
-  }, [isAuthenticated]);
+    // Only navigate away if authentication is complete AND user is authenticated
+    if (!loadingAuthentication && isAuthenticated) {
+      GoToScreenBasedOnAuth(
+        navigation,
+        loadingAuthentication,
+        isAuthenticated,
+        loadingUserProfile,
+        userProfile
+      );
+    }
+  }, [loadingAuthentication, isAuthenticated, loadingUserProfile, userProfile]);
 
+  // Show loading while checking authentication
   if (loadingAuthentication) {
     return <LoadingState />;
   }
-  return <GetStartedScreen onComplete={handleComplete} />;
+
+  // Show Get Started screen if user is not authenticated
+  if (!isAuthenticated) {
+    return <GetStartedScreen onComplete={handleComplete} />;
+  }
+
+  // Show loading while navigating to next screen
+  return <LoadingState />;
 };
 
 const PhoneVerificationScreenWrapper = () => {
@@ -86,22 +97,31 @@ const PhoneVerificationScreenWrapper = () => {
     navigation.navigate("UserProfile" as never);
   };
 
-  // Use useEffect to handle navigation when authenticated
+  // Only navigate away if user becomes authenticated
   useEffect(() => {
-    GoToScreenBasedOnAuth(
-      navigation,
-      loadingAuthentication,
-      isAuthenticated,
-      loadingUserProfile,
-      userProfile
-    );
-  }, [isAuthenticated, loadingAuthentication]);
+    if (!loadingAuthentication && isAuthenticated) {
+      GoToScreenBasedOnAuth(
+        navigation,
+        loadingAuthentication,
+        isAuthenticated,
+        loadingUserProfile,
+        userProfile
+      );
+    }
+  }, [loadingAuthentication, isAuthenticated, loadingUserProfile, userProfile]);
 
-  if (loadingAuthentication || isAuthenticated) {
+  // Show loading while checking authentication
+  if (loadingAuthentication) {
     return <LoadingState />;
   }
 
-  return <PhoneVerificationScreen onComplete={handleComplete} />;
+  // Show phone verification if user is not authenticated
+  if (!isAuthenticated) {
+    return <PhoneVerificationScreen onComplete={handleComplete} />;
+  }
+
+  // Show loading while navigating to next screen
+  return <LoadingState />;
 };
 
 const UserProfileScreenWrapper = () => {

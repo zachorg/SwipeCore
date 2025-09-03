@@ -1,6 +1,5 @@
 // OTP Service for phone verification
 // This service handles OTP sending and verification through your backend
-import { verificationService } from "./verificationService";
 import { API_CONFIG, buildApiUrl } from "../config/api";
 
 // Types for OTP API
@@ -140,7 +139,7 @@ class OtpService {
         }
     }
 
-    async authRefresh(refreshToken: string): Promise<boolean> {
+    async authRefresh(refreshToken: string): Promise<{ success: boolean; accessToken?: string; refreshToken?: string }> {
         try {
             const request: OtpRefreshRequest = {
                 refreshToken,
@@ -167,17 +166,14 @@ class OtpService {
 
             console.log('[OTP Service] Access token refreshed successfully');
 
-            if (data.accessToken && data.refreshToken) {
-                await verificationService.storeVerification({
-                    accessToken: data.accessToken,
-                    refreshToken: data.refreshToken
-                });
-            }
-
-            return true;
+            return {
+                success: true,
+                accessToken: data.accessToken,
+                refreshToken: data.refreshToken
+            };
         } catch (error: any) {
             console.error('[OTP Service] Error refreshing access token:', error);
-            return false;
+            return { success: false };
         }
     }
 }

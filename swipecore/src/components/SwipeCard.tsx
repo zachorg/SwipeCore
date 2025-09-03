@@ -51,53 +51,6 @@ export function SwipeCard({
   // Memoize dialog state setters to prevent unnecessary re-renders
   const closeMapDialog = useCallback(() => setOpenMapDialog(false), []);
 
-  // Swiper event handlers
-  // const onSwipedLeft = useCallback(
-  //   (cardIndex: number) => {
-  //     if (__DEV__) {
-  //       console.log("👈 SWIPED LEFT:", { cardId: card.id, cardIndex });
-  //     }
-  //     onSwipe(card.id, "pass");
-  //     onSwipeDirection?.("pass");
-  //   },
-  //   [card.id, onSwipe, onSwipeDirection]
-  // );
-
-  // const onSwipedRight = useCallback(
-  //   (cardIndex: number) => {
-  //     if (__DEV__) {
-  //       console.log("👉 SWIPED RIGHT:", { cardId: card.id, cardIndex });
-  //     }
-  //     onSwipe(card.id, "menu");
-  //     onSwipeDirection?.("menu");
-  //   },
-  //   [card.id, onSwipe, onSwipeDirection]
-  // );
-
-  // const onSwipedTop = useCallback(
-  //   (cardIndex: number) => {
-  //     if (__DEV__) {
-  //       console.log("⬆️ SWIPED TOP:", { cardId: card.id, cardIndex });
-  //     }
-  //     // You can customize this action if needed
-  //     onSwipe(card.id, "pass");
-  //     onSwipeDirection?.("pass");
-  //   },
-  //   [card.id, onSwipe, onSwipeDirection]
-  // );
-
-  // const onSwipedBottom = useCallback(
-  //   (cardIndex: number) => {
-  //     if (__DEV__) {
-  //       console.log("⬇️ SWIPED BOTTOM:", { cardId: card.id, cardIndex });
-  //     }
-  //     // You can customize this action if needed
-  //     onSwipe(card.id, "pass");
-  //     onSwipeDirection?.("pass");
-  //   },
-  //   [card.id, onSwipe, onSwipeDirection]
-  // );
-
   // Memoize expensive callbacks for better performance
   const handleMapsClick = useCallback((resturantAddress: string) => {
     if (typeof __DEV__ !== "undefined" && __DEV__) {

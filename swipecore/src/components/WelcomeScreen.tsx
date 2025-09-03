@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   SafeAreaView,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { VoicePrompt } from "./VoicePrompt";
@@ -23,54 +24,67 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const [showVoicePrompt, setShowVoicePrompt] = useState(false);
 
+  console.log("🎯 WelcomeScreen rendering, showVoicePrompt:", showVoicePrompt);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>What are you looking for today?</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>What are you looking for today?</Text>
 
-          <Text style={styles.subtitle}>
-            Tell us what you're in the mood for and we'll find the perfect
-            places for you.
-          </Text>
+            <Text style={styles.subtitle}>
+              Tell us what you're in the mood for and we'll find the perfect
+              places for you.
+            </Text>
 
-          {showVoicePrompt ? (
-            <VoicePrompt
-              onFiltersApplied={onVoiceFiltersApplied}
-              onCancel={() => setShowVoicePrompt(false)}
-            />
-          ) : (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => setShowVoicePrompt(true)}
-              >
-                <Ionicons
-                  name="mic"
-                  size={24}
-                  color="white"
-                  style={styles.buttonIcon}
+            {showVoicePrompt ? (
+              <View style={styles.voicePromptContainer}>
+                <VoicePrompt
+                  onFiltersApplied={onVoiceFiltersApplied}
+                  onCancel={() => setShowVoicePrompt(false)}
                 />
-                <Text style={styles.primaryButtonText}>
-                  Speak Your Preferences
-                </Text>
-              </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => setShowVoicePrompt(true)}
+                >
+                  <Ionicons
+                    name="mic"
+                    size={24}
+                    color="white"
+                    style={styles.buttonIcon}
+                  />
+                  <Text style={styles.primaryButtonText}>
+                    Speak Your Preferences
+                  </Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.secondaryButton} onPress={onSkip}>
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color="#6B7280"
-                  style={styles.buttonIcon}
-                />
-                <Text style={styles.secondaryButtonText}>
-                  Browse All Nearby Places
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={onSkip}
+                >
+                  <Ionicons
+                    name="search"
+                    size={20}
+                    color="#6B7280"
+                    style={styles.buttonIcon}
+                  />
+                  <Text style={styles.secondaryButtonText}>
+                    Browse All Nearby Places
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -82,15 +96,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
+    paddingTop: 50,
+    paddingBottom: 50,
   },
   textContainer: {
     alignItems: "center",
     maxWidth: 400,
+    width: "100%",
   },
   title: {
     fontSize: 28,
@@ -106,6 +130,10 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 20,
     lineHeight: 24,
+  },
+  voicePromptContainer: {
+    width: "100%",
+    marginTop: 20,
   },
   buttonContainer: {
     width: "100%",

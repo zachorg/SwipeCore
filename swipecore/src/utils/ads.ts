@@ -47,7 +47,7 @@ export const getNativeAdUnitId = (): string => {
 
 // Check if ads are enabled
 export const areAdsEnabled = (): boolean => {
-  return ADMOB_CONFIG.ENABLED && !__DEV__; // Disable ads in development
+  return ADMOB_CONFIG.ENABLED; // Disable ads in development
 };
 
 // Check if native ads in deck are enabled

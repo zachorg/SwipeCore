@@ -33,7 +33,17 @@ class VerificationService {
             }
 
             console.log('[VerificationService] Refreshing access token...');
-            return await otpService.authRefresh(refreshToken);
+            const result = await otpService.authRefresh(refreshToken);
+
+            if (result.success && result.accessToken && result.refreshToken) {
+                await this.storeVerification({
+                    accessToken: result.accessToken,
+                    refreshToken: result.refreshToken
+                });
+                return true;
+            }
+
+            return false;
         } catch (error) {
             console.error('[VerificationService] Error refreshing access token:', error);
             return false;

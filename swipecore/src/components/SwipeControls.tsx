@@ -64,6 +64,14 @@ function SwipeControls({
       {/* Pass Button */}
       <PassButton onAction={onAction} />
 
+      {/* Voice Button */}
+      {onVoiceFiltersApplied && (
+        <VoiceButton
+          onFiltersApplied={onVoiceFiltersApplied}
+          swipeDirection={swipeDirection}
+        />
+      )}
+
       {/* Open Menu Button */}
       <MenuButton onMenuOpen={onMenuOpen} />
     </View>

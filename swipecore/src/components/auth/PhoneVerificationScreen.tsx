@@ -26,6 +26,7 @@ export function PhoneVerificationScreen({
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [consentChecked, setConsentChecked] = useState(false);
   const { setIsAuthenticated } = useAuth();
 
   // Format phone number as user types
@@ -161,32 +162,56 @@ export function PhoneVerificationScreen({
               editable={!isLoading}
             />
 
-            <TouchableOpacity
-              style={[
-                styles.button,
-                (!phoneNumber ||
-                  phoneNumber.replace(/\D/g, "").length !== 10) &&
-                  styles.buttonDisabled,
-              ]}
-              onPress={handleSendOtp}
-              disabled={
-                isLoading ||
-                !phoneNumber ||
-                phoneNumber.replace(/\D/g, "").length !== 10
-              }
-            >
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color="white" />
-                  <Text style={styles.buttonText}>Sending...</Text>
-                </View>
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Ionicons name="shield-checkmark" size={20} color="white" />
-                  <Text style={styles.buttonText}>Send Verification Code</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            {/* Consent Checkbox */}
+            <View style={styles.consentContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  {
+                    backgroundColor: consentChecked ? "#8B5CF6" : "transparent",
+                  },
+                ]}
+                onPress={() => setConsentChecked(!consentChecked)}
+              >
+                {consentChecked && (
+                  <Ionicons name="checkmark" size={16} color="white" />
+                )}
+              </TouchableOpacity>
+              <Text style={styles.consentText}>
+                I consent to receive SMS messages for verification purposes
+              </Text>
+            </View>
+
+            {consentChecked && (
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  (!phoneNumber ||
+                    phoneNumber.replace(/\D/g, "").length !== 10) &&
+                    styles.buttonDisabled,
+                ]}
+                onPress={handleSendOtp}
+                disabled={
+                  isLoading ||
+                  !phoneNumber ||
+                  phoneNumber.replace(/\D/g, "").length !== 10
+                }
+              >
+                {isLoading ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color="white" />
+                    <Text style={styles.buttonText}>Sending...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Ionicons name="shield-checkmark" size={20} color="white" />
+                    <Text style={styles.buttonText}>
+                      Send Verification Code
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -301,6 +326,27 @@ const styles = StyleSheet.create({
     textAlign: "center",
     backgroundColor: "white",
     marginBottom: 16,
+  },
+  consentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#8B5CF6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  consentText: {
+    fontSize: 14,
+    color: "#374151",
+    flex: 1,
+    lineHeight: 20,
   },
   otpInput: {
     borderWidth: 1,

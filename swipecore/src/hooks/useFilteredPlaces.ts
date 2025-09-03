@@ -1,6 +1,6 @@
 // Enhanced Restaurant Hook with Filtering System Integration and Heuristic Prefetching
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Ref } from "react";
 import { useGeolocation } from "./useGeolocation";
 import { useNearbyPlaces } from "./usePlaces";
 import {
@@ -23,11 +23,7 @@ import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
 import { PrefetchAnalytics, PrefetchEvent } from "@/types/prefetching";
 import { openUrl } from "@/utils/browser";
-import { areAdsEnabled } from "@/utils/ads";
-import {
-  getAvailableAd,
-  startNativeAdsPreload,
-} from "@/services/nativeAdsProvider";
+import { hasPreloadedAds, initializeNativeAds } from "@/services/nativeAdsProvider";
 import { getRandomRestaurantCards } from "@/utils/mockData";
 
 export interface UseFilteredPlacesOptions {
@@ -41,8 +37,9 @@ export interface UseFilteredPlacesOptions {
 export interface UseFilteredPlacesReturn {
   // Core data
   cards: RestaurantCard[];
-  currentCard: RestaurantCard | null;
   totalCards: number;
+
+  showAd: boolean;
 
   // Loading states
   isLoading: boolean;
@@ -104,6 +101,8 @@ export function useFilteredPlaces(
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
   const [shouldRefilter, setShouldRefilter] = useState(false);
 
+  const [showAd, setShowAd] = useState<boolean>(false);
+
   const numSwipesRef = useRef<number>(0);
 
   const queryClient = useQueryClient();
@@ -164,7 +163,7 @@ export function useFilteredPlaces(
   useEffect(() => {
     if (adsInitStartedRef.current) return;
     adsInitStartedRef.current = true;
-    startNativeAdsPreload();
+    initializeNativeAds();
   }, [cards.length]);
 
   // Behavior tracking integration
@@ -338,12 +337,8 @@ export function useFilteredPlaces(
   useEffect(() => {
     if (!FEATURE_FLAGS.GOOGLE_PLACES_ENABLED && autoStart) {
       const cards = getRandomRestaurantCards(3)
-      const ad = getAvailableAd();
-      if (ad) {
-        cards.unshift(ad);
-      }
 
-      console.log("Cards: ", cards);
+      console.log("Cards: ", cards.length);
       setBaseCards(cards);
       setCards(cards);
     }
@@ -474,26 +469,35 @@ export function useFilteredPlaces(
 
   // Swipe card action with behavior tracking and prefetching
   const swipeCard = useCallback(
-    (action: SwipeAction) => {
+    async (action: SwipeAction) => {
       console.log("Swiping card: ", action);
+
+      if (showAd) {
+        console.log("DEBUG - Dismissing ad, setting showAd to false");
+        setShowAd(false);
+        return;
+      }
+
       const card = cards.find((c) => c.id === action.cardId);
 
-      let remainingCards = cards.slice(1, cards.length);
+      // If no card found (like when passing an ad), don't proceed
+      if (!card) {
+        return;
+      }
 
+      console.log("cards: ", JSON.stringify(cards));
+      // Remove the specific swiped card instead of always removing the first card
+      let remainingCards = cards.filter((c) => c.id !== action.cardId);
+
+      setCards(remainingCards);
 
       numSwipesRef.current++;
-
-      const ad = getAvailableAd();
-      console.log("ad: ", ad);
-      if (numSwipesRef.current > 0 && (numSwipesRef.current + 1) % 3 === 0 && ad) {
-        console.log("Inserting ad");
-        remainingCards.unshift(ad);
-        setCards(remainingCards);
+      if (numSwipesRef.current > 0 && await hasPreloadedAds()) {
+        console.log("Showing Ad");
+        setShowAd(true);
       }
-      else {
-        setCards(remainingCards);
 
-      }
+      console.log("remainingCards: ", JSON.stringify(remainingCards));
       setSwipeHistory((prev) => [...prev, action]);
 
       // Track the swipe action for behavior analysis
@@ -541,7 +545,7 @@ export function useFilteredPlaces(
         openMenu(card);
       }
     },
-    []
+    [cards, isPrefetchingEnabled, trackSwipeAction, prefetchCards, queryClient, showAd]
   );
 
   const handleExpandCard = (card: RestaurantCard) => {
@@ -616,8 +620,9 @@ export function useFilteredPlaces(
   return {
     // Core data
     cards,
-    currentCard,
     totalCards: filterResult?.totalCount || cards.length,
+
+    showAd,
 
     // Loading states
     isLoading,
@@ -656,3 +661,4 @@ export function useFilteredPlaces(
     isPrefetchingEnabled,
   };
 }
+
