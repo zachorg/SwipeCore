@@ -456,42 +456,47 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   const filtersRef = useRef<Filter[]>([]);
 
   // Load persisted filters on mount
-
-  useCallback(async () => {
-    if (enablePersistence) {
-      try {
-        const saved = await CrossPlatformStorage.getItem(storageKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Ensure parsed data is an array
-          if (Array.isArray(parsed)) {
-            setFilters(parsed);
-          } else {
-            console.warn('Invalid filter data in localStorage, resetting to empty array');
-            setFilters([]);
+  useEffect(() => {
+    const loadFilters = async () => {
+      if (enablePersistence) {
+        try {
+          const saved = await CrossPlatformStorage.getItem(storageKey);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            // Ensure parsed data is an array
+            if (Array.isArray(parsed)) {
+              setFilters(parsed);
+            } else {
+              console.warn('Invalid filter data in localStorage, resetting to empty array');
+              setFilters([]);
+            }
           }
+        } catch (err) {
+          console.warn('Failed to load filters:', err);
+          setFilters([]);
         }
-      } catch (err) {
-        console.warn('Failed to load filters:', err);
-        setFilters([]);
       }
-    }
+    };
+    loadFilters();
   }, [enablePersistence, storageKey]);
 
   // Persist filters when they change (including empty clears)
-  useCallback(async () => {
-    if (!enablePersistence) return;
-    try {
-      if (Array.isArray(filters)) {
-        // Persist current snapshot, even when empty, so clears stick across reloads
-        await CrossPlatformStorage.setItem(storageKey, JSON.stringify(filters));
-      } else {
-        // Fallback: remove invalid state
-        await CrossPlatformStorage.removeItem(storageKey);
+  useEffect(() => {
+    const persistFilters = async () => {
+      if (!enablePersistence) return;
+      try {
+        if (Array.isArray(filters)) {
+          // Persist current snapshot, even when empty, so clears stick across reloads
+          await CrossPlatformStorage.setItem(storageKey, JSON.stringify(filters));
+        } else {
+          // Fallback: remove invalid state
+          await CrossPlatformStorage.removeItem(storageKey);
+        }
+      } catch (err) {
+        console.warn('Failed to persist filters:', err);
       }
-    } catch (err) {
-      console.warn('Failed to persist filters:', err);
-    }
+    };
+    persistFilters();
   }, [filters, enablePersistence, storageKey]);
 
   // Update ref when filters change
@@ -504,6 +509,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
 
   // Actions
   const addFilter = useCallback((filterId: string, value: FilterValue) => {
+    console.log(`🔍 Adding filter: ${filterId} = ${JSON.stringify(value)}`);
     setFilters(prev => {
       // Ensure prev is always an array
       const currentFilters = Array.isArray(prev) ? prev : [];
@@ -511,10 +517,13 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
       if (existing) {
         // Only update if the value actually changed
         if (existing.value === value && existing.enabled === true) {
+          console.log(`🔍 Filter ${filterId} already exists with same value, no change needed`);
           return currentFilters; // No change needed
         }
+        console.log(`🔍 Updating existing filter ${filterId}`);
         return currentFilters.map(f => f.id === filterId ? { ...f, value, enabled: true } : f);
       }
+      console.log(`🔍 Adding new filter ${filterId}`);
       return [...currentFilters, { id: filterId, value, enabled: true }];
     });
     setError(null);
@@ -542,26 +551,30 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   }, []);
 
   const clearFilters = useCallback(async () => {
+    console.log(`🔍 Clearing all filters`);
     setFilters(prev => {
       // Only clear if there are actually filters to clear
       if (!Array.isArray(prev) || prev.length === 0) {
+        console.log(`🔍 No filters to clear`);
         return prev; // No change needed
       }
+      console.log(`🔍 Cleared ${prev.length} filters`);
       return [];
     });
     setError(null);
     // Ensure persistence clears immediately
     try {
       await CrossPlatformStorage.setItem(storageKey, JSON.stringify([]));
-    } catch {}
+    } catch { }
     // Proactively notify the consumer to re-filter immediately
     try {
       setTimeout(() => {
         if (onNewFiltersAppliedCallback) {
+          console.log(`🔍 Calling onNewFiltersAppliedCallback after clear`);
           onNewFiltersAppliedCallback();
         }
       }, 0);
-    } catch {}
+    } catch { }
   }, []);
 
   const applyFilters = useCallback(async (cards: RestaurantCard[]): Promise<FilterResult> => {
@@ -583,12 +596,15 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   }, []);
 
   const onNewFiltersApplied = useCallback(() => {
-    console.log('New filters applied, triggering re-filter...');
+    console.log('🔍 onNewFiltersApplied called, triggering re-filter...');
     if (onNewFiltersAppliedCallback) {
       // Use setTimeout to avoid potential synchronous state update issues
       setTimeout(() => {
+        console.log('🔍 Calling onNewFiltersAppliedCallback');
         onNewFiltersAppliedCallback();
       }, 0);
+    } else {
+      console.log('🔍 No onNewFiltersAppliedCallback provided');
     }
   }, [onNewFiltersAppliedCallback]);
 

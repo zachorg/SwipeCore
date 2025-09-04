@@ -67,7 +67,14 @@ function SwipeControls({
       {/* Voice Button */}
       {onVoiceFiltersApplied && (
         <VoiceButton
-          onFiltersApplied={onVoiceFiltersApplied}
+          onFiltersApplied={(filters) => {
+            console.log(
+              "🎛️ SwipeControls - Received filters from VoiceButton:",
+              filters
+            );
+            onVoiceFiltersApplied(filters);
+            console.log("🎛️ SwipeControls - Passed filters to SwipeDeck");
+          }}
           swipeDirection={swipeDirection}
         />
       )}

@@ -1,6 +1,6 @@
 import { SwipeDeck } from "@/components/SwipeDeck";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { RestaurantCard } from "@/types/Types";
 import { initializeDeviceOptimizations } from "@/utils/deviceOptimization";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,13 @@ const Index = () => {
     Array<{ filterId: string; value: any }>
   >([]);
   const [appState, setAppState] = useState<AppState>(AppState.LOADING);
+
+  // Ref to store SwipeDeck filter functions
+  const swipeDeckRef = useRef<{
+    addFilter: (filterId: string, value: any) => void;
+    onNewFiltersApplied: () => void;
+    clearFilters: () => void;
+  } | null>(null);
 
   const handleExitWelcome = () => {
     setShowWelcome(false);
@@ -85,8 +92,58 @@ const Index = () => {
   const handleVoiceFiltersApplied = (
     filters: Array<{ filterId: string; value: any }>
   ) => {
+    console.log(
+      "🎤 Index - Voice filters applied from WelcomeScreen:",
+      filters
+    );
     setInitialFilters(filters);
     handleExitWelcome();
+
+    // Apply the filters to the SwipeDeck when it's ready
+    if (swipeDeckRef.current) {
+      console.log("🎤 Index - Applying voice filters to SwipeDeck");
+      // Clear existing filters first
+      swipeDeckRef.current.clearFilters();
+
+      // Add the new filters
+      setTimeout(() => {
+        console.log("🎤 Index - About to apply voice filters:", filters);
+        filters.forEach((filter) => {
+          console.log(
+            `🎤 Index - Adding filter: ${filter.filterId} = ${JSON.stringify(
+              filter.value
+            )}`
+          );
+          swipeDeckRef.current!.addFilter(filter.filterId, filter.value);
+        });
+
+        // Trigger filter application
+        console.log("🎤 Index - Triggering filter application");
+        swipeDeckRef.current!.onNewFiltersApplied();
+
+        // Force FilterPanel to update by triggering a re-render
+        setTimeout(() => {
+          console.log("🎤 Index - Forcing FilterPanel update");
+          // Dispatch a custom event to notify FilterPanel
+          document.dispatchEvent(
+            new CustomEvent("filtersUpdated", {
+              detail: { filters },
+            })
+          );
+        }, 200);
+
+        // Check filter state after a delay
+        setTimeout(() => {
+          console.log(
+            "🎤 Index - Checking filter state after voice application"
+          );
+        }, 500);
+      }, 100);
+    } else {
+      console.log(
+        "🎤 Index - SwipeDeck not ready yet, filters will be applied via initialFilters"
+      );
+    }
   };
 
   const LoadingState = () => {
@@ -194,6 +251,10 @@ const Index = () => {
                 onFilterButtonReady={handleFilterButtonReady}
                 enableFiltering={true}
                 initialFilters={initialFilters}
+                onFilterFunctionsReady={(filterFunctions) => {
+                  console.log("🎤 Index - SwipeDeck filter functions ready");
+                  swipeDeckRef.current = filterFunctions;
+                }}
                 swipeOptions={{
                   searchConfig: {
                     radius: 5000, // 5km radius

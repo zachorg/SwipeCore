@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { SwipeDeck } from "../components/SwipeDeck";
 import { RestaurantCard } from "../types/Types";
 import { initializeDeviceOptimizations } from "../utils/deviceOptimization";
 import { useAuth } from "../contexts/AuthContext";
+import { FilterTest } from "../components/FilterTest";
 
 const Index = () => {
   const { isAuthenticated, userProfile } = useAuth();
@@ -29,6 +30,13 @@ const Index = () => {
     openNow: false,
     maxDistance: 10000, // 10km max
   });
+
+  // Ref to store SwipeDeck filter functions
+  const swipeDeckRef = useRef<{
+    addFilter: (filterId: string, value: any) => void;
+    onNewFiltersApplied: () => void;
+    clearFilters: () => void;
+  } | null>(null);
 
   // Get status bar height dynamically
   const getStatusBarHeight = () => {
@@ -83,8 +91,62 @@ const Index = () => {
   const handleFiltersApplied = () => {
     console.log("Filters applied:", filters);
     setShowFilters(false);
-    // Here you would typically pass these filters to the SwipeDeck
-    // For now, we'll just close the modal
+
+    // Convert modal filters to the format expected by the filtering system
+    const modalFilters = [];
+
+    // Add radius filter
+    if (filters.radius !== 5000) {
+      modalFilters.push({
+        filterId: "distance",
+        value: filters.radius / 1000, // Convert to km
+      });
+    }
+
+    // Add rating filter
+    if (filters.minRating !== 3.0) {
+      modalFilters.push({
+        filterId: "minRating",
+        value: filters.minRating,
+      });
+    }
+
+    // Add price level filter
+    if (filters.priceLevel !== "any") {
+      modalFilters.push({
+        filterId: "priceLevel",
+        value: parseInt(filters.priceLevel),
+      });
+    }
+
+    // Add open now filter
+    if (filters.openNow) {
+      modalFilters.push({
+        filterId: "openNow",
+        value: true,
+      });
+    }
+
+    // Add cuisine types filter
+    if (filters.cuisineTypes.length > 0) {
+      modalFilters.push({
+        filterId: "cuisine",
+        value: filters.cuisineTypes,
+      });
+    }
+
+    // Apply the filters to the SwipeDeck
+    if (modalFilters.length > 0 && swipeDeckRef.current) {
+      console.log("🎯 Applying modal filters:", modalFilters);
+      modalFilters.forEach((filter) => {
+        console.log(`🎯 Adding filter: ${filter.filterId} = ${filter.value}`);
+        swipeDeckRef.current!.addFilter(filter.filterId, filter.value);
+      });
+      console.log("🎯 Triggering filter application");
+      swipeDeckRef.current!.onNewFiltersApplied();
+    } else {
+      console.log("🎯 No modal filters to apply or SwipeDeck not ready");
+    }
   };
 
   const handleFiltersCancel = () => {
@@ -100,6 +162,11 @@ const Index = () => {
       openNow: false,
       maxDistance: 10000,
     });
+
+    // Also clear the filters in the SwipeDeck
+    if (swipeDeckRef.current) {
+      swipeDeckRef.current.clearFilters();
+    }
   };
 
   const toggleCuisineType = (cuisine: string) => {
@@ -333,6 +400,23 @@ const Index = () => {
         </View>
       )}
 
+      {/* Filter Test Component - Temporary for debugging */}
+      {/* {swipeDeckRef.current && (
+        <FilterTest
+          onTestFilter={(filterId, value) => {
+            console.log(
+              `🧪 Test filter: ${filterId} = ${JSON.stringify(value)}`
+            );
+            if (filterId === "clear") {
+              swipeDeckRef.current!.clearFilters();
+            } else {
+              swipeDeckRef.current!.addFilter(filterId, value);
+              swipeDeckRef.current!.onNewFiltersApplied();
+            }
+          }}
+        />
+      )} */}
+
       {/* Swipe Deck */}
       <SwipeDeck
         onSwipeAction={handleSwipeAction}
@@ -341,6 +425,9 @@ const Index = () => {
         enableFiltering={true}
         statusBarHeight={statusBarHeight}
         initialFilters={[]}
+        onFilterFunctionsReady={(filterFunctions) => {
+          swipeDeckRef.current = filterFunctions;
+        }}
         swipeOptions={{
           searchConfig: {
             radius: filters.radius,

@@ -194,7 +194,7 @@ export function useFilteredPlaces(
   } = useFilters({
     enablePersistence: true,
     onNewFiltersApplied: () => {
-      console.log("Setting refilter flag...");
+      console.log("🔄 Setting refilter flag...");
       setShouldRefilter(true);
     },
   });
@@ -340,9 +340,9 @@ export function useFilteredPlaces(
 
       console.log("Cards: ", cards.length);
       setBaseCards(cards);
-      setCards(cards);
+      setCards(cards); // Always set cards first
     }
-  }, [filters]);
+  }, [autoStart]); // Remove filters dependency to prevent reloading on filter changes
 
   // Transform and filter places when data changes
   useEffect(() => {
@@ -419,11 +419,25 @@ export function useFilteredPlaces(
       if (!enableFiltering) return;
 
       try {
+        console.log("🔍 applyFilters called with:", {
+          enableFiltering,
+          baseCardsLength: baseCards.length,
+          cardsLength: cards.length,
+          hasActiveFilters
+        });
+
         // Always filter from the base, unfiltered list to avoid compounding filters
         const currentCards = baseCards.length > 0 ? baseCards : cards;
-        const result = await applyFiltersToCards(currentCards);
-        setFilterResult(result);
+        console.log("🔍 Filtering from base cards:", currentCards.length);
 
+        const result = await applyFiltersToCards(currentCards);
+        console.log("🔍 Filter result:", {
+          totalCount: result.totalCount,
+          filteredCount: result.filteredCards.length,
+          appliedFilters: result.appliedFilters
+        });
+
+        setFilterResult(result);
         setCards(result.filteredCards as RestaurantCard[]);
       } catch (err) {
         console.error("Error applying filters:", err);
@@ -437,6 +451,7 @@ export function useFilteredPlaces(
       applyFiltersToCards,
       baseCards,
       maxCards,
+      hasActiveFilters
     ]
   );
 
@@ -447,10 +462,20 @@ export function useFilteredPlaces(
   // Watch for refilter flag and trigger re-filtering from base list
   useEffect(() => {
     if (!shouldRefilter) return;
-    console.log("Re-filtering due to filters change...");
+    console.log("🔄 Re-filtering due to filters change...");
+    console.log("🔄 Current state:", {
+      enableFiltering,
+      hasActiveFilters,
+      baseCardsLength: baseCards.length,
+      cardsLength: cards.length,
+      shouldRefilter
+    });
+
     if (enableFiltering && hasActiveFilters) {
+      console.log("🔄 Applying filters to base cards");
       applyFilters(baseCards);
     } else {
+      console.log("🔄 No active filters, restoring unfiltered list");
       // No active filters: restore unfiltered base list
       const source = baseCards.length > 0 ? baseCards : cards;
       setCards(source);

@@ -96,7 +96,37 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
       { value: 'japanese', label: 'Japanese' },
       { value: 'american', label: 'American' },
       { value: 'thai', label: 'Thai' },
-      { value: 'french', label: 'French' }
+      { value: 'french', label: 'French' },
+      { value: 'greek', label: 'Greek' },
+      { value: 'mediterranean', label: 'Mediterranean' },
+      { value: 'middle-eastern', label: 'Middle Eastern' },
+      { value: 'korean', label: 'Korean' },
+      { value: 'vietnamese', label: 'Vietnamese' },
+      { value: 'spanish', label: 'Spanish' },
+      { value: 'seafood', label: 'Seafood' },
+      { value: 'steakhouse', label: 'Steakhouse' },
+      { value: 'bbq', label: 'BBQ' },
+      { value: 'breakfast', label: 'Breakfast' },
+      { value: 'cafe', label: 'Cafe' },
+      { value: 'dessert', label: 'Dessert' },
+      { value: 'bakery', label: 'Bakery' },
+      { value: 'pizza', label: 'Pizza' },
+      { value: 'burger', label: 'Burgers' },
+      { value: 'sushi', label: 'Sushi' },
+      { value: 'ramen', label: 'Ramen' },
+      { value: 'tacos', label: 'Tacos' },
+      { value: 'curry', label: 'Curry' },
+      { value: 'pasta', label: 'Pasta' },
+      { value: 'salad', label: 'Salad' },
+      { value: 'sandwich', label: 'Sandwiches' },
+      { value: 'ice-cream', label: 'Ice Cream' },
+      { value: 'coffee', label: 'Coffee' },
+      { value: 'tea', label: 'Tea' },
+      { value: 'juice', label: 'Juice' },
+      { value: 'smoothie', label: 'Smoothies' },
+      { value: 'wine', label: 'Wine Bar' },
+      { value: 'beer', label: 'Beer' },
+      { value: 'cocktails', label: 'Cocktails' }
     ],
     icon: '🍽️'
   },
@@ -496,6 +526,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
 
   // Update ref when filters change
   useEffect(() => {
+    console.log(`🎯 useFilters - Filters state changed:`, filters);
     filtersRef.current = Array.isArray(filters) ? filters : [];
   }, [filters]);
 
@@ -504,6 +535,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
 
   // Actions
   const addFilter = useCallback((filterId: string, value: FilterValue) => {
+    console.log(`🎯 useFilters - Adding filter: ${filterId} = ${JSON.stringify(value)}`);
     setFilters(prev => {
       // Ensure prev is always an array
       const currentFilters = Array.isArray(prev) ? prev : [];
@@ -511,10 +543,13 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
       if (existing) {
         // Only update if the value actually changed
         if (existing.value === value && existing.enabled === true) {
+          console.log(`🎯 useFilters - Filter ${filterId} already exists with same value, no change needed`);
           return currentFilters; // No change needed
         }
+        console.log(`🎯 useFilters - Updating existing filter ${filterId}`);
         return currentFilters.map(f => f.id === filterId ? { ...f, value, enabled: true } : f);
       }
+      console.log(`🎯 useFilters - Adding new filter ${filterId}`);
       return [...currentFilters, { id: filterId, value, enabled: true }];
     });
     setError(null);

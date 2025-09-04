@@ -1,6 +1,6 @@
 // Restaurant Filtering System - Filter Panel Component
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,11 +58,40 @@ export function FilterPanel({
   isOpen: controlledOpen,
   onOpenChange,
 }: FilterPanelProps) {
+  console.log("🔍 FilterPanel - Component rendered with filters:", allFilters);
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
   const setIsOpen = onOpenChange ?? setInternalOpen;
 
   const currentFilters = Array.isArray(allFilters) ? allFilters : [];
+  console.log("🔍 FilterPanel - Current filters:", currentFilters);
+
+  // Force re-render when filters change
+  useEffect(() => {
+    console.log("🔍 FilterPanel - Filters changed, forcing re-render");
+  }, [currentFilters]);
+
+  // Listen for filter updates from voice input
+  useEffect(() => {
+    const handleFiltersUpdated = (event: CustomEvent) => {
+      console.log(
+        "🔍 FilterPanel - Received filtersUpdated event:",
+        event.detail
+      );
+    };
+
+    document.addEventListener(
+      "filtersUpdated",
+      handleFiltersUpdated as EventListener
+    );
+
+    return () => {
+      document.removeEventListener(
+        "filtersUpdated",
+        handleFiltersUpdated as EventListener
+      );
+    };
+  }, []);
   const activeFilters =
     currentFilters.length > 0 ? currentFilters.filter((f) => f.enabled) : [];
   const hasActiveFilters = activeFilters.length > 0;
@@ -84,13 +113,23 @@ export function FilterPanel({
   // Get current filter value
   const getFilterValue = (filterId: string) => {
     const filter = currentFilters.find((f) => f.id === filterId);
+    console.log(
+      `🔍 FilterPanel - Getting value for ${filterId}:`,
+      filter?.value
+    );
     return filter?.value;
   };
 
   // Check if filter is active
   const isFilterActive = (filterId: string) => {
     const filter = currentFilters.find((f) => f.id === filterId);
-    return filter ? filter.enabled : false;
+    const isActive = filter ? filter.enabled : false;
+    console.log(
+      `🔍 FilterPanel - Checking if ${filterId} is active:`,
+      isActive,
+      filter
+    );
+    return isActive;
   };
 
   // Default trigger button
@@ -120,19 +159,19 @@ export function FilterPanel({
 
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl flex flex-col"
+        className="w-full sm:max-w-lg bg-white/95 backdrop-blur-xl border-gray-200/50 shadow-2xl flex flex-col"
         style={{
           height: `calc(100vh - var(--safe-area-inset-top))`,
         }}
       >
-        <SheetHeader className="pb-6 flex-shrink-0">
-          <div className="flex items-center justify-between">
+        <SheetHeader className="pb-4 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
             <div>
               <SheetTitle className="text-gray-900 text-xl font-bold">
-                Restaurant Filters
+                Filters
               </SheetTitle>
-              <SheetDescription className="text-gray-600 mt-1">
-                Customize your restaurant search preferences
+              <SheetDescription className="text-gray-600 mt-1 text-sm">
+                Customize your search preferences
               </SheetDescription>
             </div>
 
@@ -141,7 +180,7 @@ export function FilterPanel({
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               >
                 <X className="w-4 h-4 mr-1" />
                 Clear All
@@ -150,7 +189,7 @@ export function FilterPanel({
           </div>
 
           {hasActiveFilters && (
-            <div className="flex flex-wrap gap-2 pt-4">
+            <div className="flex flex-wrap gap-1.5">
               {activeFilters.map((filter) => {
                 const definition = FILTER_DEFINITIONS.find(
                   (d) => d.id === filter.id
@@ -161,7 +200,7 @@ export function FilterPanel({
                   <Badge
                     key={filter.id}
                     variant="secondary"
-                    className="bg-gray-100 text-gray-800 border-gray-300 cursor-pointer hover:bg-gray-200 transition-all duration-200 shadow-sm"
+                    className="bg-blue-50 text-blue-700 border-blue-200 cursor-pointer hover:bg-blue-100 transition-all duration-200 text-xs px-2 py-1"
                     onClick={() => removeFilter(filter.id)}
                   >
                     {definition.icon} {definition.name}
@@ -173,7 +212,7 @@ export function FilterPanel({
           )}
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
           {/* AI-Powered Search */}
           {/* Text-based Natural Language Search */}
           {/* <div className="space-y-4 pb-4 border-b border-gray-200">
@@ -225,7 +264,7 @@ export function FilterPanel({
                   </div>
                 </AccordionTrigger>
 
-                <AccordionContent className="space-y-4 pt-2">
+                <AccordionContent className="space-y-3 pt-2">
                   {filters.map((filter) => {
                     return (
                       <FilterItem
@@ -259,7 +298,7 @@ export function FilterPanel({
         </div>
 
         {/* Fixed Apply/Reset Actions Footer */}
-        <div className="flex-shrink-0 flex gap-2 pt-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+        <div className="flex-shrink-0 flex gap-3 pt-3 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
           <Button
             variant="default"
             size="sm"

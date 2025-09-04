@@ -68,10 +68,19 @@ export function VoiceButton({
 
                 if (nlpResult.filters.length > 0) {
                   // Apply the filters
+                  console.log(
+                    "🎤 VoiceButton (fallback) - Applying filters from voice:",
+                    nlpResult.filters
+                  );
                   onFiltersApplied(nlpResult.filters);
-                  console.log("Applied filters:", nlpResult.filters);
+                  console.log(
+                    "🎤 VoiceButton (fallback) - Filters applied successfully"
+                  );
                 } else {
-                  console.log("No filters found in:", result.transcript);
+                  console.log(
+                    "🎤 VoiceButton (fallback) - No filters found in:",
+                    result.transcript
+                  );
                 }
 
                 // Always reset to idle state after processing
@@ -104,10 +113,19 @@ export function VoiceButton({
 
                 if (nlpResult.filters.length > 0) {
                   // Apply the filters
+                  console.log(
+                    "🎤 VoiceButton (native) - Applying filters from voice:",
+                    nlpResult.filters
+                  );
                   onFiltersApplied(nlpResult.filters);
-                  console.log("Applied filters:", nlpResult.filters);
+                  console.log(
+                    "🎤 VoiceButton (native) - Filters applied successfully"
+                  );
                 } else {
-                  console.log("No filters found in:", result.transcript);
+                  console.log(
+                    "🎤 VoiceButton (native) - No filters found in:",
+                    result.transcript
+                  );
                 }
 
                 // Always reset to idle state after processing

@@ -42,6 +42,11 @@ interface SwipeDeckProps {
   swipeOptions?: UseFilteredPlacesOptions;
   enableFiltering?: boolean;
   onFilterButtonReady?: (filterButton: React.ReactNode) => void;
+  onFilterFunctionsReady?: (filterFunctions: {
+    addFilter: (filterId: string, value: any) => void;
+    onNewFiltersApplied: () => void;
+    clearFilters: () => void;
+  }) => void;
   initialFilters?: Array<{ filterId: string; value: any }>;
 }
 
@@ -54,6 +59,7 @@ export function SwipeDeck({
   swipeOptions = {},
   enableFiltering = true,
   onFilterButtonReady,
+  onFilterFunctionsReady,
   initialFilters = [],
 }: SwipeDeckProps) {
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
@@ -281,14 +287,49 @@ export function SwipeDeck({
         onVoiceFiltersApplied={
           enableFiltering
             ? (filters) => {
-                filters.forEach((f) => addFilter(f.filterId, f.value));
-                onNewFiltersApplied();
+                console.log("🎴 SwipeDeck - Applying voice filters:", filters);
+                console.log("🎴 Current filters before adding:", allFilters);
+
+                // Clear existing filters first to avoid conflicts
+                clearFilters();
+
+                // Add a small delay to ensure clear is processed
+                setTimeout(() => {
+                  console.log("🎴 Adding voice filters after clear");
+                  filters.forEach((f) => {
+                    console.log(
+                      `🎴 Adding voice filter: ${f.filterId} = ${f.value}`
+                    );
+                    addFilter(f.filterId, f.value);
+                  });
+
+                  console.log("🎴 Triggering voice filter application");
+                  onNewFiltersApplied();
+
+                  // Add another delay to ensure filters are processed
+                  setTimeout(() => {
+                    console.log("🎴 Voice filters should now be applied");
+                    console.log("🎴 Current filters after adding:", allFilters);
+                  }, 200);
+                }, 50);
               }
             : undefined
         }
       />
     );
   };
+
+  // Pass filter functions to parent component
+  useEffect(() => {
+    if (onFilterFunctionsReady) {
+      console.log("🎴 SwipeDeck - Passing filter functions to parent");
+      onFilterFunctionsReady({
+        addFilter,
+        onNewFiltersApplied,
+        clearFilters,
+      });
+    }
+  }, [onFilterFunctionsReady, addFilter, onNewFiltersApplied, clearFilters]);
 
   return (
     <View style={styles.container}>

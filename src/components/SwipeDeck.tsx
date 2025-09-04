@@ -30,6 +30,11 @@ interface SwipeDeckProps {
   swipeOptions?: UseFilteredPlacesOptions;
   enableFiltering?: boolean;
   onFilterButtonReady?: (filterButton: React.ReactNode) => void;
+  onFilterFunctionsReady?: (filterFunctions: {
+    addFilter: (filterId: string, value: any) => void;
+    onNewFiltersApplied: () => void;
+    clearFilters: () => void;
+  }) => void;
   initialFilters?: Array<{ filterId: string; value: any }>;
 }
 
@@ -41,6 +46,7 @@ export function SwipeDeck({
   swipeOptions = {},
   enableFiltering = true,
   onFilterButtonReady,
+  onFilterFunctionsReady,
   initialFilters = [],
 }: SwipeDeckProps) {
   const [swipeDirection, setSwipeDirection] = useState<"menu" | "pass" | null>(
@@ -104,8 +110,15 @@ export function SwipeDeck({
   // Create and pass filter button to parent
   useEffect(() => {
     if (onFilterButtonReady && enableFiltering) {
+      console.log(
+        "🎴 SwipeDeck - Creating FilterPanel with filters:",
+        allFilters
+      );
       const filterButton = (
         <FilterPanel
+          key={`filter-panel-${allFilters.length}-${JSON.stringify(
+            allFilters
+          )}`}
           allFilters={allFilters}
           addFilter={addFilter}
           updateFilter={updateFilter}
@@ -128,7 +141,16 @@ export function SwipeDeck({
       );
       onFilterButtonReady(filterButton);
     }
-  }, [enableFiltering, allFilters, isFilterPanelOpen]);
+  }, [
+    enableFiltering,
+    allFilters,
+    isFilterPanelOpen,
+    addFilter,
+    updateFilter,
+    removeFilter,
+    clearFilters,
+    onNewFiltersApplied,
+  ]);
 
   // Listen for global request to open filters panel (from toast action)
   useEffect(() => {
@@ -166,6 +188,43 @@ export function SwipeDeck({
       filtersAppliedRef.current = true;
     }
   }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Pass filter functions to parent component
+  useEffect(() => {
+    if (onFilterFunctionsReady) {
+      console.log("🎴 SwipeDeck - Passing filter functions to parent");
+      onFilterFunctionsReady({
+        addFilter,
+        onNewFiltersApplied,
+        clearFilters,
+      });
+    }
+  }, [onFilterFunctionsReady, addFilter, onNewFiltersApplied, clearFilters]);
+
+  // Debug: Add a test button to manually apply a filter
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      const testButton = document.createElement("button");
+      testButton.textContent = "Test Japanese Filter";
+      testButton.style.position = "fixed";
+      testButton.style.top = "100px";
+      testButton.style.right = "10px";
+      testButton.style.zIndex = "9999";
+      testButton.style.padding = "10px";
+      testButton.style.backgroundColor = "red";
+      testButton.style.color = "white";
+      testButton.onclick = () => {
+        console.log("🧪 Test button clicked - applying Japanese filter");
+        addFilter("cuisine", ["japanese"]);
+        onNewFiltersApplied();
+      };
+      document.body.appendChild(testButton);
+
+      return () => {
+        document.body.removeChild(testButton);
+      };
+    }
+  }, [addFilter, onNewFiltersApplied]);
 
   // Track whether we have ever had real cards in this session
   useEffect(() => {
