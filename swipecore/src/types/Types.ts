@@ -1,7 +1,6 @@
 // Domain models for the NomNom app - integrating Google Places API data
 
 import { getFeatureFlags } from '../config/env';
-import { NativeAd } from 'react-native-admob-native-ads';
 
 // Get feature flags from environment variables
 const featureFlags = getFeatureFlags();

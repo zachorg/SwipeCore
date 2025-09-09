@@ -515,11 +515,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
       const currentFilters = Array.isArray(prev) ? prev : [];
       const existing = currentFilters.find(f => f.id === filterId);
       if (existing) {
-        // Only update if the value actually changed
-        if (existing.value === value && existing.enabled === true) {
-          console.log(`🔍 Filter ${filterId} already exists with same value, no change needed`);
-          return currentFilters; // No change needed
-        }
+        // Always update the filter to ensure it's applied, even if value is the same
         console.log(`🔍 Updating existing filter ${filterId}`);
         return currentFilters.map(f => f.id === filterId ? { ...f, value, enabled: true } : f);
       }

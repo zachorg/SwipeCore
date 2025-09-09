@@ -83,6 +83,20 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
     icon: '💰'
   },
   {
+    id: 'maxPriceLevel',
+    name: 'Max Price Level',
+    description: 'Show places at or below this price level',
+    type: 'select',
+    category: 'basic',
+    options: [
+      { value: 1, label: '$ - Inexpensive or less' },
+      { value: 2, label: '$$ - Moderate or less' },
+      { value: 3, label: '$$$ - Expensive or less' },
+      { value: 4, label: '$$$$ - Any price' }
+    ],
+    icon: '💵'
+  },
+  {
     id: 'cuisine',
     name: 'Cuisine Type',
     description: 'Filter by type of cuisine',
@@ -211,6 +225,24 @@ export const FILTER_DEFINITIONS: FilterDefinition[] = [
       { value: 'rooftop', label: 'Rooftop/Scenic' }
     ],
     icon: '🎭'
+  },
+  {
+    id: 'mealType',
+    name: 'Meal Type',
+    description: 'Filter by meal type (e.g., breakfast, dinner)',
+    type: 'multiselect',
+    category: 'advanced',
+    options: [
+      { value: 'breakfast', label: 'Breakfast' },
+      { value: 'brunch', label: 'Brunch' },
+      { value: 'lunch', label: 'Lunch' },
+      { value: 'dinner', label: 'Dinner' },
+      { value: 'late-night', label: 'Late Night' },
+      { value: 'dessert', label: 'Dessert' },
+      { value: 'coffee', label: 'Coffee' },
+      { value: 'drinks', label: 'Drinks' }
+    ],
+    icon: '🍽️'
   }
 ];
 
@@ -269,6 +301,22 @@ class FilterEngine {
           4: '$$$$',
         };
         return cards.filter(card => card.priceRange === levelToSymbol[Number(filter.value)]);
+
+      case 'maxPriceLevel': {
+        const levelToSymbol: Record<number, '$' | '$$' | '$$$' | '$$$$'> = {
+          1: '$',
+          2: '$$',
+          3: '$$$',
+          4: '$$$$',
+        };
+        const priceOrder = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 } as const;
+        const maxSymbol = levelToSymbol[Number(filter.value)];
+        const maxOrder = priceOrder[maxSymbol];
+        return cards.filter(card => {
+          const cardOrder = card.priceRange ? priceOrder[card.priceRange] : Infinity;
+          return cardOrder <= maxOrder;
+        });
+      }
 
       case 'cuisine':
         const cuisines = Array.isArray(filter.value) ? filter.value : [filter.value];
@@ -430,6 +478,28 @@ class FilterEngine {
           });
         });
 
+      case 'mealType': {
+        const mealTypes = Array.isArray(filter.value) ? filter.value : [filter.value];
+        return cards.filter(card => {
+          const cardText = `${card.title} ${card.description || ''} ${card.types?.join(' ') || ''}`.toLowerCase();
+          const mealKeywords: Record<string, string[]> = {
+            'breakfast': ['breakfast', 'morning', 'eggs', 'pancakes', 'brunch'],
+            'brunch': ['brunch', 'late breakfast', 'mimosas'],
+            'lunch': ['lunch', 'midday', 'noon'],
+            'dinner': ['dinner', 'evening', 'supper'],
+            'late-night': ['late night', 'open late', 'night'],
+            'dessert': ['dessert', 'sweets', 'ice cream', 'gelato', 'cake'],
+            'coffee': ['coffee', 'cafe', 'espresso', 'latte'],
+            'drinks': ['drinks', 'cocktails', 'bar', 'happy hour'],
+          };
+          return mealTypes.some(meal => {
+            const m = String(meal).toLowerCase();
+            const keywords = mealKeywords[m] || [m];
+            return keywords.some(k => cardText.includes(k));
+          });
+        });
+      }
+
       default:
         return cards;
     }
@@ -486,42 +556,46 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   const filtersRef = useRef<Filter[]>([]);
 
   // Load persisted filters on mount
-
-  useCallback(async () => {
-    if (enablePersistence) {
+  useEffect(() => {
+    let isActive = true;
+    const load = async () => {
+      if (!enablePersistence) return;
       try {
         const saved = await CrossPlatformStorage.getItem(storageKey);
+        if (!isActive) return;
         if (saved) {
           const parsed = JSON.parse(saved);
-          // Ensure parsed data is an array
           if (Array.isArray(parsed)) {
             setFilters(parsed);
           } else {
-            console.warn('Invalid filter data in localStorage, resetting to empty array');
             setFilters([]);
           }
         }
-      } catch (err) {
-        console.warn('Failed to load filters:', err);
+      } catch {
         setFilters([]);
       }
-    }
+    };
+    load();
+    return () => {
+      isActive = false;
+    };
   }, [enablePersistence, storageKey]);
 
   // Persist filters when they change (including empty clears)
-  useCallback(async () => {
-    if (!enablePersistence) return;
-    try {
-      if (Array.isArray(filters)) {
-        // Persist current snapshot, even when empty, so clears stick across reloads
-        await CrossPlatformStorage.setItem(storageKey, JSON.stringify(filters));
-      } else {
-        // Fallback: remove invalid state
-        await CrossPlatformStorage.removeItem(storageKey);
+  useEffect(() => {
+    const persist = async () => {
+      if (!enablePersistence) return;
+      try {
+        if (Array.isArray(filters)) {
+          await CrossPlatformStorage.setItem(storageKey, JSON.stringify(filters));
+        } else {
+          await CrossPlatformStorage.removeItem(storageKey);
+        }
+      } catch {
+        // swallow persistence errors
       }
-    } catch (err) {
-      console.warn('Failed to persist filters:', err);
-    }
+    };
+    persist();
   }, [filters, enablePersistence, storageKey]);
 
   // Update ref when filters change
@@ -557,14 +631,12 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
 
   const updateFilter = useCallback((filterId: string, value: FilterValue) => {
     setFilters(prev => {
-      // Ensure prev is always an array
       const currentFilters = Array.isArray(prev) ? prev : [];
       const existing = currentFilters.find(f => f.id === filterId);
-      // Only update if the value actually changed
-      if (existing && existing.value === value) {
-        return currentFilters; // No change needed
+      if (existing && existing.value === value && existing.enabled === true) {
+        return currentFilters;
       }
-      return currentFilters.map(f => f.id === filterId ? { ...f, value } : f);
+      return currentFilters.map(f => f.id === filterId ? { ...f, value, enabled: true } : f);
     });
   }, []);
 
@@ -588,7 +660,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
     // Ensure persistence clears immediately
     try {
       await CrossPlatformStorage.setItem(storageKey, JSON.stringify([]));
-    } catch {}
+    } catch { }
     // Proactively notify the consumer to re-filter immediately
     try {
       setTimeout(() => {
@@ -596,7 +668,7 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
           onNewFiltersAppliedCallback();
         }
       }, 0);
-    } catch {}
+    } catch { }
   }, []);
 
   const applyFilters = useCallback(async (cards: RestaurantCard[]): Promise<FilterResult> => {

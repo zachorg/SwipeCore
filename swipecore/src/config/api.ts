@@ -28,9 +28,9 @@ export const API_CONFIG = {
 
         // Places endpoints
         PLACES: {
-            NEARBY: "",
-            DETAILS: "", // Will be appended with /{placeId}
-            PHOTO: "",
+            NEARBY: "api/places/nearby",
+            DETAILS: "api/places", // Will be appended with /{placeId}
+            PHOTO: "api/places/photo/givememyphoto",
         },
 
         // Health check

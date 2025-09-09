@@ -24,24 +24,19 @@ export function VoiceButton({
     // Check if speech recognition is supported
     const checkSupport = async () => {
       try {
-        console.log("🎤 VoiceButton - Checking speech recognition support...");
         const supported = await speechToTextService.isAvailable();
-        console.log("🎤 VoiceButton - Support result:", supported);
         setIsSupported(supported);
 
         // Run comprehensive test
         if (supported) {
           const testResult = await speechToTextService.testSpeechRecognition();
-          console.log("🎤 VoiceButton - Test result:", testResult);
 
           // If test fails, use fallback
           if (!testResult) {
             setUseFallback(true);
-            console.log("🎤 VoiceButton - Using fallback mode");
           }
         }
       } catch (error) {
-        console.error("Error checking speech recognition support:", error);
         setIsSupported(false);
         setUseFallback(true);
       }
@@ -68,19 +63,8 @@ export function VoiceButton({
 
                 if (nlpResult.filters.length > 0) {
                   // Apply the filters
-                  console.log(
-                    "🎤 VoiceButton (fallback) - Applying filters from voice:",
-                    nlpResult.filters
-                  );
                   onFiltersApplied(nlpResult.filters);
-                  console.log(
-                    "🎤 VoiceButton (fallback) - Filters applied successfully"
-                  );
                 } else {
-                  console.log(
-                    "🎤 VoiceButton (fallback) - No filters found in:",
-                    result.transcript
-                  );
                 }
 
                 // Always reset to idle state after processing
@@ -89,7 +73,6 @@ export function VoiceButton({
             }
           },
           (error: string) => {
-            console.error("Speech recognition error:", error);
             setVoiceState("idle");
           },
           () => {
@@ -113,19 +96,8 @@ export function VoiceButton({
 
                 if (nlpResult.filters.length > 0) {
                   // Apply the filters
-                  console.log(
-                    "🎤 VoiceButton (native) - Applying filters from voice:",
-                    nlpResult.filters
-                  );
                   onFiltersApplied(nlpResult.filters);
-                  console.log(
-                    "🎤 VoiceButton (native) - Filters applied successfully"
-                  );
                 } else {
-                  console.log(
-                    "🎤 VoiceButton (native) - No filters found in:",
-                    result.transcript
-                  );
                 }
 
                 // Always reset to idle state after processing
@@ -134,14 +106,10 @@ export function VoiceButton({
             }
           },
           (error: string) => {
-            console.error("Speech recognition error:", error);
             setVoiceState("idle");
 
             // If native speech recognition fails, try fallback
             if (!useFallback) {
-              console.log(
-                "🎤 Native speech recognition failed, trying fallback..."
-              );
               setUseFallback(true);
               startListening(); // Retry with fallback
             } else {
@@ -157,12 +125,10 @@ export function VoiceButton({
         );
       }
     } catch (error) {
-      console.error("Failed to start speech recognition:", error);
       setVoiceState("idle");
 
       // If native speech recognition fails, try fallback
       if (!useFallback) {
-        console.log("🎤 Native speech recognition failed, trying fallback...");
         setUseFallback(true);
         startListening(); // Retry with fallback
       } else {
@@ -207,7 +173,6 @@ export function VoiceButton({
       return <Ionicons name="mic" size={20} color="#2563EB" />;
     } else {
       // Default to microphone icon for any other state
-      console.log("Voice state:", voiceState);
       return <Ionicons name="mic" size={20} color="#7C3AED" />;
     }
   }, [voiceState]);

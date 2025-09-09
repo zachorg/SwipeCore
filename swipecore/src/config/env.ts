@@ -11,7 +11,7 @@ export const ENABLE_DEBUG: boolean = process.env.EXPO_PUBLIC_ENABLE_DEBUG === 't
 export const USE_LIVE_DATA: boolean = process.env.EXPO_PUBLIC_USE_LIVE_DATA === 'true' || true;
 
 // Google Places Configuration
-export const GOOGLE_PLACES_ENABLED: boolean = false && process.env.EXPO_PUBLIC_GOOGLE_PLACES_ENABLED === 'true' || true && false;
+export const GOOGLE_PLACES_ENABLED: boolean = process.env.EXPO_PUBLIC_GOOGLE_PLACES_ENABLED === 'true' || false;
 
 // Google Ads Configuration
 export const ADMOB_APP_ID_ANDROID: string = process.env.EXPO_PUBLIC_ADMOB_APP_ID_ANDROID || 'ca-app-pub-3940256099942544~3347511713';

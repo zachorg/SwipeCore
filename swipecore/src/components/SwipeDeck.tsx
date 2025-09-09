@@ -71,6 +71,7 @@ export function SwipeDeck({
     isLoading,
     isLocationLoading,
     isFilterLoading,
+    isRadiusLoading,
     error,
     hasLocation,
     swipeCard,
@@ -87,7 +88,6 @@ export function SwipeDeck({
     allFilters,
   } = useFilteredPlaces({
     ...swipeOptions,
-    enableFiltering,
   });
 
   const handleSwipe = useCallback(
@@ -271,7 +271,8 @@ export function SwipeDeck({
     }
   }, [cards, expandCard]);
 
-  const showLoading = isLoading && (isFilterLoading || cards.length === 0);
+  const showLoading =
+    isLoading && (isFilterLoading || isRadiusLoading || cards.length === 0);
   const showError = Boolean(error);
   const showLocationNeeded =
     !hasLocation && !isLocationLoading && usingLiveData;
@@ -322,7 +323,6 @@ export function SwipeDeck({
   // Pass filter functions to parent component
   useEffect(() => {
     if (onFilterFunctionsReady) {
-      console.log("🎴 SwipeDeck - Passing filter functions to parent");
       onFilterFunctionsReady({
         addFilter,
         onNewFiltersApplied,
@@ -340,6 +340,8 @@ export function SwipeDeck({
           <Text style={styles.statusText}>
             {isLocationLoading
               ? "Getting your location..."
+              : isRadiusLoading
+              ? "Expanding search area..."
               : isFilterLoading
               ? "Applying filters..."
               : "Finding restaurants..."}
@@ -361,6 +363,8 @@ export function SwipeDeck({
           <Text style={styles.loadingText}>
             {isLocationLoading
               ? "Getting your location..."
+              : isRadiusLoading
+              ? "Expanding search area..."
               : isFilterLoading
               ? "Applying filters..."
               : "Finding restaurants..."}
@@ -391,11 +395,6 @@ export function SwipeDeck({
       )}
 
       {(() => {
-        console.log("DEBUG - No more restaurants condition:", {
-          cardsLength: cards?.length,
-          showAd,
-          condition: cards && cards.length === 0 && !showAd,
-        });
         return cards && cards.length === 0 && !showAd ? (
           <View style={styles.noMoreCardsContainer}>
             <View style={styles.noMoreCardsContent}>

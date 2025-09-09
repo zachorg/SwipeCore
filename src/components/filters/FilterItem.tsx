@@ -46,6 +46,27 @@ export function FilterItem({
   // Get current value or default
   const currentValue = value !== undefined ? value : defaultValue;
 
+  // Local state used by multiselect UI (safe even when not rendered)
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Filter options based on search term for multiselect
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm.trim()) return options;
+    return (
+      options?.filter((option) =>
+        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+      ) || []
+    );
+  }, [options, searchTerm]);
+
+  // Helper: coerce Select values to number when the definition options are numeric
+  const coerceSelectValue = (raw: string) => {
+    const firstVal =
+      options && options.length > 0 ? options[0].value : undefined;
+    const shouldBeNumber = typeof firstVal === "number";
+    return shouldBeNumber ? Number(raw) : raw;
+  };
+
   // Render different input types based on filter type
   const renderInput = () => {
     switch (type) {
@@ -105,7 +126,7 @@ export function FilterItem({
             <Label className="text-gray-800 font-medium">{name}</Label>
             <Select
               value={String(currentValue || "")}
-              onValueChange={(value) => onChange(value)}
+              onValueChange={(val) => onChange(coerceSelectValue(val))}
             >
               <SelectTrigger className="bg-white border-gray-300 text-gray-800 shadow-sm hover:border-gray-400">
                 <SelectValue placeholder={`Select ${name.toLowerCase()}`} />
@@ -127,17 +148,6 @@ export function FilterItem({
 
       case "multiselect":
         const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-        const [searchTerm, setSearchTerm] = useState("");
-
-        // Filter options based on search term
-        const filteredOptions = useMemo(() => {
-          if (!searchTerm.trim()) return options;
-          return (
-            options?.filter((option) =>
-              option.label.toLowerCase().includes(searchTerm.toLowerCase())
-            ) || []
-          );
-        }, [options, searchTerm]);
 
         return (
           <div className="space-y-3">

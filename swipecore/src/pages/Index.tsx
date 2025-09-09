@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -53,47 +53,34 @@ const Index = () => {
 
   const statusBarHeight = getStatusBarHeight();
 
-  // Log status bar height for debugging
-  console.log("Status bar height:", statusBarHeight, "Platform:", Platform.OS);
-
   // Initialize device optimizations on component mount
   useEffect(() => {
-    console.log(
-      "🎯 INDEX - Component mounted, initializing device optimizations"
-    );
     initializeDeviceOptimizations();
   }, []);
 
-  // Log when component renders
-  useEffect(() => {
-    console.log("🎯 INDEX - Component rendered with:", {
-      isAuthenticated,
-      userProfile: !!userProfile,
-      statusBarHeight,
-      showFilters,
-    });
-  });
-
   const handleSwipeAction = (cardId: string, action: "menu" | "pass") => {
-    console.log(`🎯 INDEX - Swiped ${action} on restaurant:`, cardId);
+    // Swipe action handled
   };
 
   const handleCardTap = (card: RestaurantCard) => {
-    console.log("Tapped on restaurant:", card.title);
     // In a real app, this would navigate to restaurant detail page
   };
 
   const handleFilterButtonReady = (button: React.ReactNode) => {
     // Filter button is ready - could be used for additional UI
-    console.log("Filter button ready");
   };
 
   const handleFiltersApplied = () => {
-    console.log("Filters applied:", filters);
+    console.log("Filters applied");
     setShowFilters(false);
 
+    // Always clear existing filters first to ensure fresh application
+    if (swipeDeckRef.current) {
+      swipeDeckRef.current.clearFilters();
+    }
+
     // Convert modal filters to the format expected by the filtering system
-    const modalFilters = [];
+    const modalFilters: Array<{ filterId: string; value: any }> = [];
 
     // Add radius filter
     if (filters.radius !== 5000) {
@@ -136,16 +123,14 @@ const Index = () => {
     }
 
     // Apply the filters to the SwipeDeck
-    if (modalFilters.length > 0 && swipeDeckRef.current) {
-      console.log("🎯 Applying modal filters:", modalFilters);
-      modalFilters.forEach((filter) => {
-        console.log(`🎯 Adding filter: ${filter.filterId} = ${filter.value}`);
-        swipeDeckRef.current!.addFilter(filter.filterId, filter.value);
-      });
-      console.log("🎯 Triggering filter application");
-      swipeDeckRef.current!.onNewFiltersApplied();
-    } else {
-      console.log("🎯 No modal filters to apply or SwipeDeck not ready");
+    if (swipeDeckRef.current) {
+      // Add a small delay to ensure clear is processed before adding new filters
+      setTimeout(() => {
+        modalFilters.forEach((filter) => {
+          swipeDeckRef.current!.addFilter(filter.filterId, filter.value);
+        });
+        swipeDeckRef.current!.onNewFiltersApplied();
+      }, 50);
     }
   };
 
@@ -162,11 +147,6 @@ const Index = () => {
       openNow: false,
       maxDistance: 10000,
     });
-
-    // Also clear the filters in the SwipeDeck
-    if (swipeDeckRef.current) {
-      swipeDeckRef.current.clearFilters();
-    }
   };
 
   const toggleCuisineType = (cuisine: string) => {
@@ -219,12 +199,7 @@ const Index = () => {
           <TouchableOpacity
             style={styles.filtersButton}
             onPress={() => {
-              console.log(
-                "🎯 Filters button pressed, current showFilters:",
-                showFilters
-              );
               setShowFilters(true);
-              console.log("🎯 Set showFilters to true");
             }}
           >
             <Ionicons name="funnel" size={20} color="#64748B" />
@@ -287,7 +262,7 @@ const Index = () => {
                 </Text>
                 <Slider
                   style={styles.slider}
-                  minimumValue={1}
+                  minimumValue={0.5}
                   maximumValue={5}
                   value={filters.minRating}
                   onValueChange={(value: number) =>
@@ -296,7 +271,7 @@ const Index = () => {
                   minimumTrackTintColor="#3B82F6"
                   maximumTrackTintColor="#E2E8F0"
                   thumbTintColor="#3B82F6"
-                  step={0.1}
+                  step={0.5}
                 />
                 <View style={styles.sliderLabels}>
                   <Text style={styles.sliderLabel}>1★</Text>
@@ -400,23 +375,6 @@ const Index = () => {
         </View>
       )}
 
-      {/* Filter Test Component - Temporary for debugging */}
-      {/* {swipeDeckRef.current && (
-        <FilterTest
-          onTestFilter={(filterId, value) => {
-            console.log(
-              `🧪 Test filter: ${filterId} = ${JSON.stringify(value)}`
-            );
-            if (filterId === "clear") {
-              swipeDeckRef.current!.clearFilters();
-            } else {
-              swipeDeckRef.current!.addFilter(filterId, value);
-              swipeDeckRef.current!.onNewFiltersApplied();
-            }
-          }}
-        />
-      )} */}
-
       {/* Swipe Deck */}
       <SwipeDeck
         onSwipeAction={handleSwipeAction}
@@ -437,7 +395,6 @@ const Index = () => {
           autoStart: true,
           maxCards: 2,
           prefetchDetails: true,
-          enableFiltering: true,
         }}
       />
     </SafeAreaView>

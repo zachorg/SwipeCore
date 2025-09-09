@@ -18,14 +18,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Filter, Settings, X } from "lucide-react";
-import {
-  FilterDefinition,
-  FILTER_DEFINITIONS,
-  Filter as FilterType,
-  FilterValue,
-} from "@/hooks/useFilters";
+import { FilterDefinition, FILTER_DEFINITIONS } from "@/hooks/useFilters";
 import { FilterItem } from "./FilterItem";
-import { NaturalLanguageSearch } from "./NaturalLanguageSearch";
 
 interface FilterPanelProps {
   // Filter state
@@ -281,6 +275,14 @@ export function FilterPanel({
                           ) {
                             removeFilter(filter.id);
                           } else {
+                            // Resolve conflicting filters (priceLevel vs maxPriceLevel)
+                            if (filter.id === "priceLevel") {
+                              removeFilter("maxPriceLevel");
+                            }
+                            if (filter.id === "maxPriceLevel") {
+                              removeFilter("priceLevel");
+                            }
+
                             if (isFilterActive(filter.id)) {
                               updateFilter(filter.id, value);
                             } else {
@@ -303,6 +305,7 @@ export function FilterPanel({
             variant="default"
             size="sm"
             onClick={() => {
+              console.log("Filters button clicked");
               onNewFiltersApplied();
               setIsOpen(false);
             }}

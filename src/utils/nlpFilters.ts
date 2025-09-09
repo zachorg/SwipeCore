@@ -59,7 +59,7 @@ const KEYWORD_MAPPINGS = {
     'pizza place': 'italian',
     pizzeria: 'italian',
     'italian food': 'italian',
-    
+
     // Chinese
     chinese: 'chinese',
     'chinese food': 'chinese',
@@ -67,12 +67,12 @@ const KEYWORD_MAPPINGS = {
     'szechuan': 'chinese',
     'sichuan': 'chinese',
     'cantonese': 'chinese',
-    
+
     // Asian variations
     asian: 'asian',
     'asian fusion': 'asian',
     'pan asian': 'asian',
-    
+
     // Mexican
     mexican: 'mexican',
     taco: 'mexican',
@@ -82,7 +82,7 @@ const KEYWORD_MAPPINGS = {
     'tex-mex': 'mexican',
     quesadilla: 'mexican',
     enchilada: 'mexican',
-    
+
     // Indian
     indian: 'indian',
     curry: 'indian',
@@ -90,7 +90,7 @@ const KEYWORD_MAPPINGS = {
     'south asian': 'indian',
     tandoori: 'indian',
     'naan': 'indian',
-    
+
     // Japanese
     japanese: 'japanese',
     sushi: 'japanese',
@@ -99,7 +99,7 @@ const KEYWORD_MAPPINGS = {
     tempura: 'japanese',
     'sushi bar': 'japanese',
     'sushi place': 'japanese',
-    
+
     // American
     american: 'american',
     burger: 'american',
@@ -108,18 +108,18 @@ const KEYWORD_MAPPINGS = {
     'burgers': 'american',
     'hot dog': 'american',
     'diner': 'american',
-    
+
     // Thai
     thai: 'thai',
     'pad thai': 'thai',
     'thai food': 'thai',
-    
+
     // French
     french: 'french',
     'french food': 'french',
     'french cuisine': 'french',
     'bistro': 'french',
-    
+
     // Additional cuisines
     greek: 'greek',
     mediterranean: 'mediterranean',
@@ -302,7 +302,7 @@ const KEYWORD_MAPPINGS = {
     'four star': 4.0,
     '4 star': 4.0
   },
-  
+
   // Conversational patterns
   conversational: {
     'i want': true,
@@ -321,7 +321,7 @@ const KEYWORD_MAPPINGS = {
     'want to find': true,
     'help me find': true
   },
-  
+
   // Location context
   location: {
     'near me': 'nearby',
@@ -336,7 +336,7 @@ const KEYWORD_MAPPINGS = {
     'in the city': 'city',
     'city center': 'downtown'
   },
-  
+
   // Meal type context
   mealType: {
     'breakfast': 'breakfast',
@@ -472,7 +472,7 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
     confidence += 0.15;
     interpretedParts.push(`rating: ${ratingFilter.value}+ stars`);
   }
-  
+
   // Extract location context
   const locationContext = extractLocationContext(normalizedQuery);
   if (locationContext) {
@@ -481,12 +481,15 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
     confidence += 0.1;
     interpretedParts.push(`location: ${locationContext}`);
   }
-  
+
   // Extract meal type context
   const mealTypeContext = extractMealTypeContext(normalizedQuery);
   if (mealTypeContext) {
-    // This could be used to filter by restaurants that serve this meal type
-    // or to adjust time-based searches
+    // Emit mealType filter for matching cards
+    filters.push({
+      filterId: 'mealType',
+      value: [mealTypeContext]
+    });
     confidence += 0.1;
     interpretedParts.push(`meal: ${mealTypeContext}`);
   }
@@ -496,7 +499,7 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
   if (negationResult.hasNegation) {
     // Adjust confidence if negation is detected
     confidence -= 0.1;
-    
+
     // Add note about negation to interpretation
     if (negationResult.negatedTerms.length > 0) {
       interpretedParts.push(`excluding: ${negationResult.negatedTerms.join(', ')}`);
@@ -656,10 +659,10 @@ function checkForNegation(query: string): { hasNegation: boolean; negatedTerms: 
     /without (.*?)(?=\s|$)/g,
     /except (.*?)(?=\s|$)/g
   ];
-  
+
   const negatedTerms: string[] = [];
   let hasNegation = false;
-  
+
   for (const pattern of negationPatterns) {
     const matches = Array.from(query.matchAll(pattern));
     for (const match of matches) {
@@ -669,7 +672,7 @@ function checkForNegation(query: string): { hasNegation: boolean; negatedTerms: 
       }
     }
   }
-  
+
   return { hasNegation, negatedTerms };
 }
 

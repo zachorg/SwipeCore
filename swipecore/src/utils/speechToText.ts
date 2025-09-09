@@ -29,7 +29,6 @@ export class SpeechToTextService {
   private timeoutId: NodeJS.Timeout | null = null;
 
   constructor() {
-    console.log('🎤 SpeechToTextService initialized');
   }
 
   /**
@@ -45,16 +44,13 @@ export class SpeechToTextService {
   public async isAvailable(): Promise<boolean> {
     try {
       if (Platform.OS === 'web') {
-        console.log('🎤 Web platform detected, speech recognition not available');
         return false;
       }
 
       // Check if the module is available
       const available = ExpoSpeechRecognitionModule !== undefined;
-      console.log('🎤 Speech recognition available:', available);
       return available;
     } catch (error) {
-      console.warn('Speech recognition availability check failed:', error);
       return false;
     }
   }
@@ -69,7 +65,6 @@ export class SpeechToTextService {
       }
 
       const result = await ExpoSpeechRecognitionModule.getPermissionsAsync();
-      console.log('🎤 Permission status:', result.status);
 
       switch (result.status) {
         case 'granted':
@@ -95,7 +90,6 @@ export class SpeechToTextService {
       }
 
       const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      console.log('🎤 Requested permission status:', result.status);
 
       switch (result.status) {
         case 'granted':
@@ -106,7 +100,6 @@ export class SpeechToTextService {
           return 'prompt';
       }
     } catch (error) {
-      console.warn('Could not request permissions:', error);
       return 'denied';
     }
   }
@@ -121,7 +114,6 @@ export class SpeechToTextService {
     options: SpeechRecognitionOptions = {}
   ): Promise<void> {
     try {
-      console.log('🎤 Starting speech recognition...');
 
       // Check if speech recognition is available
       const available = await this.isAvailable();
@@ -163,25 +155,20 @@ export class SpeechToTextService {
         continuous: false,
         maxAlternatives: 1
       };
-
-      console.log('🎤 Starting with options:', JSON.stringify(startOptions, null, 2));
       this.isListening = true;
 
       // Start the recognition using the correct API
       await ExpoSpeechRecognitionModule.start(startOptions);
-      console.log('🎤 Speech recognition started successfully');
 
       // Add a timeout to detect if no events are received
       this.timeoutId = setTimeout(() => {
         if (this.isListening) {
-          console.log('🎤 No events received after 5 seconds, stopping...');
           this.stopListening();
           onError('No speech detected. Please try again.');
         }
       }, 5000);
 
     } catch (error: any) {
-      console.error('❌ Failed to start speech recognition:', error);
       this.isListening = false;
       onError(`Failed to start speech recognition: ${error.message}`);
     }
@@ -192,35 +179,27 @@ export class SpeechToTextService {
    */
   private setupEventListeners(): void {
     try {
-      console.log('🎤 Setting up event listeners...');
 
       // Add event listeners using the correct API
       const startListener = ExpoSpeechRecognitionModule.addListener('start', () => {
-        console.log('🎤 START event received');
       });
 
       const resultListener = ExpoSpeechRecognitionModule.addListener('result', (event: any) => {
-        console.log('🎤 RESULT event received:', JSON.stringify(event, null, 2));
         this.handleResultEvent(event);
       });
 
       const errorListener = ExpoSpeechRecognitionModule.addListener('error', (event: any) => {
-        console.log('🎤 ERROR event received:', JSON.stringify(event, null, 2));
         this.handleErrorEvent(event);
       });
 
       const endListener = ExpoSpeechRecognitionModule.addListener('end', () => {
-        console.log('🎤 END event received');
         this.handleEndEvent();
       });
 
       // Store listeners for cleanup
       this.listeners = [startListener, resultListener, errorListener, endListener];
 
-      console.log('🎤 All event listeners set up successfully');
-
     } catch (error) {
-      console.error('❌ Failed to set up event listeners:', error);
     }
   }
 
@@ -228,16 +207,12 @@ export class SpeechToTextService {
    * Handle result events
    */
   private handleResultEvent(event: any): void {
-    console.log('🎤 Processing result event:', JSON.stringify(event, null, 2));
-
     // According to docs: event.results is an array of results
     if (event.results && event.results.length > 0) {
       const result = event.results[0];
       const transcript = result.transcript || '';
       const confidence = result.confidence || 0.9;
       const isFinal = event.isFinal || false;
-
-      console.log('🎤 Extracted transcript:', transcript, 'isFinal:', isFinal);
 
       if (transcript && this.currentCallbacks.onResult) {
         this.currentCallbacks.onResult({
@@ -257,7 +232,6 @@ export class SpeechToTextService {
    * Handle error events
    */
   private handleErrorEvent(event: any): void {
-    console.error('❌ Error event received:', JSON.stringify(event, null, 2));
     const errorMessage = event.message || event.error || 'Speech recognition error';
     if (this.currentCallbacks.onError) {
       this.currentCallbacks.onError(errorMessage);
@@ -271,7 +245,6 @@ export class SpeechToTextService {
    * Handle end events
    */
   private handleEndEvent(): void {
-    console.log('🎤 End event received');
     this.isListening = false;
     if (this.currentCallbacks.onEnd) {
       this.currentCallbacks.onEnd();
@@ -284,7 +257,6 @@ export class SpeechToTextService {
   public async stopListening(): Promise<void> {
     try {
       if (this.isListening) {
-        console.log('🛑 Stopping speech recognition...');
 
         // Clear timeout
         if (this.timeoutId) {
@@ -298,7 +270,6 @@ export class SpeechToTextService {
         this.currentCallbacks = {};
       }
     } catch (error) {
-      console.error('❌ Failed to stop speech recognition:', error);
     }
   }
 
@@ -310,7 +281,6 @@ export class SpeechToTextService {
       try {
         listener?.remove?.();
       } catch (error) {
-        console.warn('Could not remove listener:', error);
       }
     });
     this.listeners = [];
@@ -347,7 +317,6 @@ export class SpeechToTextService {
         { code: 'ko-KR', name: 'Korean' }
       ];
     } catch (error) {
-      console.warn('Could not get supported languages:', error);
       return [
         { code: 'en-US', name: 'English (US)' },
         { code: 'en-GB', name: 'English (UK)' },
@@ -373,9 +342,7 @@ export class SpeechToTextService {
       }
       this.cleanupListeners();
       this.currentCallbacks = {};
-      console.log('🧹 Speech recognition service cleaned up');
     } catch (error) {
-      console.warn('Could not clean up speech recognition service:', error);
     }
   }
 
@@ -414,30 +381,21 @@ export class SpeechToTextService {
    */
   public async testSpeechRecognition(): Promise<boolean> {
     try {
-      console.log('🧪 Testing speech recognition...');
-
       // Test 1: Check availability
       const available = await this.isAvailable();
-      console.log('🧪 Availability test:', available);
 
       if (!available) {
-        console.log('🧪 Speech recognition not available');
         return false;
       }
 
       // Test 2: Check permissions
       const permission = await this.checkPermissions();
-      console.log('🧪 Permission test:', permission);
 
       if (permission === 'denied') {
-        console.log('🧪 Permissions denied');
         return false;
       }
-
-      console.log('🧪 All tests completed');
       return true;
     } catch (error) {
-      console.error('🧪 Test failed:', error);
       return false;
     }
   }
@@ -450,8 +408,6 @@ export class SpeechToTextService {
     onError: (error: string) => void,
     onEnd: () => void
   ): Promise<void> {
-    console.log('🎤 Simulating speech recognition...');
-
     // Show a prompt to the user
     Alert.prompt(
       'Voice Input',
