@@ -1,6 +1,6 @@
 // Restaurant Filtering System - Filter Panel Component
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,47 +26,54 @@ import {
 } from "@/hooks/useFilters";
 import { FilterItem } from "./FilterItem";
 import { NaturalLanguageSearch } from "./NaturalLanguageSearch";
+import { useFilterContext } from "@/contexts/FilterContext";
 
 interface FilterPanelProps {
-  // Filter state
-  allFilters: any[];
-
-  // Filter actions
-  addFilter: (filterId: string, value: any) => void;
-  updateFilter: (filterId: string, value: any) => void;
-  removeFilter: (filterId: string) => void;
-  clearFilters: () => void;
-
-  onNewFiltersApplied: () => void;
-
   // UI props
   trigger?: React.ReactNode;
   className?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+
+  // Optional callbacks for when filters are applied or cleared
+  onFiltersApplied?: () => void;
+  onFiltersCleared?: () => void;
 }
 
 export function FilterPanel({
-  allFilters,
-  addFilter,
-  updateFilter,
-  removeFilter,
-  clearFilters,
-  onNewFiltersApplied,
   trigger,
   className = "",
   isOpen: controlledOpen,
   onOpenChange,
+  onFiltersApplied,
+  onFiltersCleared,
 }: FilterPanelProps) {
+  // Use filter context for centralized state management
+  const {
+    filters: allFilters,
+    addFilter,
+    updateFilter,
+    removeFilter,
+    clearFilters,
+    onNewFiltersApplied,
+    getFilterValue,
+  } = useFilterContext();
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledOpen ?? internalOpen;
   const setIsOpen = onOpenChange ?? setInternalOpen;
 
+  // Derive active filters directly instead of using state
   const currentFilters = Array.isArray(allFilters) ? allFilters : [];
-  const activeFilters =
-    currentFilters.length > 0 ? currentFilters.filter((f) => f.enabled) : [];
+  const activeFilters = currentFilters.filter((f) => f.enabled);
   const hasActiveFilters = activeFilters.length > 0;
   const filterCount = activeFilters.length;
+
+  // Debug effect to see when allFilters changes
+  useEffect(() => {
+    console.log("🎛️ FilterPanel - allFilters changed:", allFilters);
+    console.log("🎛️ FilterPanel - activeFilters:", activeFilters);
+    console.log("🎛️ FilterPanel - filterCount:", filterCount);
+  }, [allFilters, activeFilters, filterCount]);
 
   // Get all available filters grouped by category
   const filtersByCategory = React.useMemo(() => {
@@ -81,17 +88,15 @@ export function FilterPanel({
     return grouped;
   }, []);
 
-  // Get current filter value
-  const getFilterValue = (filterId: string) => {
-    const filter = currentFilters.find((f) => f.id === filterId);
-    return filter?.value;
-  };
-
   // Check if filter is active
-  const isFilterActive = (filterId: string) => {
-    const filter = currentFilters.find((f) => f.id === filterId);
-    return filter ? filter.enabled : false;
-  };
+  const isFilterActive = useCallback(
+    (filterId: string) => {
+      console.log("allFilters: ", allFilters);
+      const filter = allFilters.find((f) => f.id === filterId);
+      return filter ? filter.enabled : false;
+    },
+    [allFilters]
+  );
 
   // Default trigger button
   const defaultTrigger = (
@@ -140,7 +145,10 @@ export function FilterPanel({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={clearFilters}
+                onClick={() => {
+                  clearFilters();
+                  onFiltersCleared?.();
+                }}
                 className="text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-gray-200"
               >
                 <X className="w-4 h-4 mr-1" />
@@ -265,6 +273,7 @@ export function FilterPanel({
             size="sm"
             onClick={() => {
               onNewFiltersApplied();
+              onFiltersApplied?.();
               setIsOpen(false);
             }}
             className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-sm"
@@ -276,7 +285,10 @@ export function FilterPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={clearFilters}
+              onClick={() => {
+                clearFilters();
+                onFiltersCleared?.();
+              }}
               className="bg-white hover:bg-gray-50 border-gray-300 text-gray-700 shadow-sm"
             >
               Reset

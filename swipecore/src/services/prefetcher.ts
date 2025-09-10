@@ -498,7 +498,7 @@ export class PrefetchingService {
       this.budgetStatus.remainingDaily <= 0 ||
       this.budgetStatus.remainingMonthly <= 0;
 
-    console.log("updateBudgetStatus: ", JSON.stringify(this.budgetStatus, null, 2));
+    // console.log("updateBudgetStatus: ", JSON.stringify(this.budgetStatus, null, 2));
   }
 
   async updateBudgetSpend(cost: number): Promise<void> {
@@ -533,7 +533,7 @@ export class PrefetchingService {
       this.budgetStatus.monthlyBudget - currentMonthlySpend
     );
 
-    console.log("updateBudgetSpend: ", JSON.stringify(this.budgetStatus, null, 2));
+    // console.log("updateBudgetSpend: ", JSON.stringify(this.budgetStatus, null, 2));
   }
 
   // New method to update details budget specifically

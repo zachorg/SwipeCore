@@ -9,6 +9,7 @@ import { useNavigation } from "@react-navigation/native";
 import { View, Text } from "react-native";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { FilterProvider } from "./contexts/FilterContext";
 import { LoadingState } from "./components/LoadingState";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -188,34 +189,36 @@ export default function App() {
             <SafeAreaProvider>
               <StatusBar style="dark" backgroundColor="#FFFFFF" />
               <AuthProvider>
-                <NavigationContainer>
-                  <Stack.Navigator
-                    initialRouteName="GetStarted"
-                    screenOptions={{
-                      headerShown: false,
-                      cardStyle: { backgroundColor: "#FFFFFF" },
-                    }}
-                  >
-                    <Stack.Screen
-                      name="GetStarted"
-                      component={GetStartedScreenWrapper}
-                    />
-                    <Stack.Screen
-                      name="PhoneVerification"
-                      component={PhoneVerificationScreenWrapper}
-                    />
-                    <Stack.Screen
-                      name="UserProfile"
-                      component={UserProfileScreenWrapper}
-                    />
-                    <Stack.Screen
-                      name="Welcome"
-                      component={WelcomeScreenWrapper}
-                    />
-                    <Stack.Screen name="Index" component={Index} />
-                    <Stack.Screen name="NotFound" component={NotFound} />
-                  </Stack.Navigator>
-                </NavigationContainer>
+                <FilterProvider>
+                  <NavigationContainer>
+                    <Stack.Navigator
+                      initialRouteName="GetStarted"
+                      screenOptions={{
+                        headerShown: false,
+                        cardStyle: { backgroundColor: "#FFFFFF" },
+                      }}
+                    >
+                      <Stack.Screen
+                        name="GetStarted"
+                        component={GetStartedScreenWrapper}
+                      />
+                      <Stack.Screen
+                        name="PhoneVerification"
+                        component={PhoneVerificationScreenWrapper}
+                      />
+                      <Stack.Screen
+                        name="UserProfile"
+                        component={UserProfileScreenWrapper}
+                      />
+                      <Stack.Screen
+                        name="Welcome"
+                        component={WelcomeScreenWrapper}
+                      />
+                      <Stack.Screen name="Index" component={Index} />
+                      <Stack.Screen name="NotFound" component={NotFound} />
+                    </Stack.Navigator>
+                  </NavigationContainer>
+                </FilterProvider>
               </AuthProvider>
             </SafeAreaProvider>
           </QueryClientProvider>

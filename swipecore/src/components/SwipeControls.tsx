@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { VoiceButton } from "./VoiceButton";
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -52,13 +52,25 @@ const MenuButton = memo(
   }
 );
 
-function SwipeControls({
+const SwipeControls = memo(function SwipeControls({
   onAction,
   onMenuOpen,
   onUndo,
   onVoiceFiltersApplied,
   swipeDirection,
 }: SwipeControlsProps) {
+  const handleFiltersApplied = useCallback(
+    (filters: Array<{ filterId: string; value: any }>) => {
+      console.log(
+        "🎛️ SwipeControls - Received filters from VoiceButton:",
+        filters
+      );
+      onVoiceFiltersApplied?.(filters);
+      console.log("🎛️ SwipeControls - Passed filters to SwipeDeck");
+    },
+    [onVoiceFiltersApplied]
+  );
+
   return (
     <View style={styles.buttonContainer}>
       {/* Pass Button */}
@@ -67,14 +79,7 @@ function SwipeControls({
       {/* Voice Button */}
       {onVoiceFiltersApplied && (
         <VoiceButton
-          onFiltersApplied={(filters) => {
-            console.log(
-              "🎛️ SwipeControls - Received filters from VoiceButton:",
-              filters
-            );
-            onVoiceFiltersApplied(filters);
-            console.log("🎛️ SwipeControls - Passed filters to SwipeDeck");
-          }}
+          onFiltersApplied={handleFiltersApplied}
           swipeDirection={swipeDirection}
         />
       )}
@@ -83,7 +88,7 @@ function SwipeControls({
       <MenuButton onMenuOpen={onMenuOpen} />
     </View>
   );
-}
+});
 
 export { SwipeControls };
 

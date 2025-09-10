@@ -32,6 +32,7 @@ import {
 } from "../hooks/useFilteredPlaces";
 import { Platform } from "react-native";
 import AdView from "./ads/AdView";
+import { useFilterContext } from "../contexts/FilterContext";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -112,15 +113,18 @@ export function SwipeDeck({
     [onCardTap]
   );
 
-  const handleControlAction = (action: "pass") => {
-    console.log("handleControlAction", action);
-    if (showAd) {
-      // When no cards but ad is showing, pass the ad to dismiss it
-      swipeCard({ cardId: "ad", action: "pass", timestamp: 0 });
-    } else if (cards.length > 0) {
-      handleSwipe(cards[0], action);
-    }
-  };
+  const handleControlAction = useCallback(
+    (action: "pass") => {
+      console.log("handleControlAction", action);
+      if (showAd) {
+        // When no cards but ad is showing, pass the ad to dismiss it
+        swipeCard({ cardId: "ad", action: "pass", timestamp: 0 });
+      } else if (cards.length > 0) {
+        handleSwipe(cards[0], action);
+      }
+    },
+    [showAd, swipeCard, cards, handleSwipe]
+  );
 
   const handleExpandCard = useCallback(
     (params: { cardId: string; timestamp: number }) => {
@@ -271,6 +275,26 @@ export function SwipeDeck({
     }
   }, [cards, expandCard]);
 
+  // Use FilterProvider as the single source of truth
+  const filterContext = useFilterContext();
+
+  const handleVoiceFiltersApplied = useCallback(
+    (filters: Array<{ filterId: string; value: any }>) => {
+      console.log(
+        "🎴 SwipeDeck - Applying voice filters via FilterProvider:",
+        filters
+      );
+
+      // Apply voice filters through FilterProvider (single source of truth)
+      filterContext.applyVoiceFilters(filters);
+    },
+    [filterContext]
+  );
+
+  const memoizedOnMenuOpen = useMemo(() => {
+    return cards.length > 0 && cards[0]?.adData ? undefined : handleMenuOpen;
+  }, [cards, handleMenuOpen]);
+
   const showLoading =
     isLoading && (isFilterLoading || isRadiusLoading || cards.length === 0);
   const showError = Boolean(error);
@@ -278,47 +302,22 @@ export function SwipeDeck({
     !hasLocation && !isLocationLoading && usingLiveData;
   const showNoCards = cards.length === 0 && !isLoading && !error && !showAd;
 
-  const UseSwipeControls = () => {
+  const UseSwipeControls = useMemo(() => {
     return (
       <SwipeControls
         onAction={handleControlAction}
-        onMenuOpen={
-          cards.length > 0 && cards[0]?.adData ? undefined : handleMenuOpen
-        }
+        onMenuOpen={memoizedOnMenuOpen}
         onVoiceFiltersApplied={
-          enableFiltering
-            ? (filters) => {
-                console.log("🎴 SwipeDeck - Applying voice filters:", filters);
-                console.log("🎴 Current filters before adding:", allFilters);
-
-                // Clear existing filters first to avoid conflicts
-                clearFilters();
-
-                // Add a small delay to ensure clear is processed
-                setTimeout(() => {
-                  console.log("🎴 Adding voice filters after clear");
-                  filters.forEach((f) => {
-                    console.log(
-                      `🎴 Adding voice filter: ${f.filterId} = ${f.value}`
-                    );
-                    addFilter(f.filterId, f.value);
-                  });
-
-                  console.log("🎴 Triggering voice filter application");
-                  onNewFiltersApplied();
-
-                  // Add another delay to ensure filters are processed
-                  setTimeout(() => {
-                    console.log("🎴 Voice filters should now be applied");
-                    console.log("🎴 Current filters after adding:", allFilters);
-                  }, 200);
-                }, 50);
-              }
-            : undefined
+          enableFiltering ? handleVoiceFiltersApplied : undefined
         }
       />
     );
-  };
+  }, [
+    handleControlAction,
+    memoizedOnMenuOpen,
+    enableFiltering,
+    handleVoiceFiltersApplied,
+  ]);
 
   // Pass filter functions to parent component
   useEffect(() => {
@@ -459,7 +458,7 @@ export function SwipeDeck({
               {showAd && <AdView />}
             </View>
           </View>
-          <UseSwipeControls />
+          {UseSwipeControls}
         </>
       )}
     </View>

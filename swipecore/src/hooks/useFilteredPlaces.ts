@@ -18,6 +18,7 @@ import {
   mergeCardWithDetails,
 } from "../utils/placeTransformers";
 import { FilterResult, useFilters } from "./useFilters";
+import { useFilterContext } from "../contexts/FilterContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ImmediateFetchRequest, usePrefetcher } from "./usePrefetcher";
 import { useBehaviorTracking } from "./useBehaviorTracking";
@@ -91,6 +92,9 @@ export function useFilteredPlaces(
     prefetchDetails = true,
   } = options;
 
+  // Stabilize searchConfig to prevent unnecessary re-renders
+  const stableSearchConfig = useMemo(() => searchConfig, [JSON.stringify(searchConfig)]);
+
   // State
   const [cards, setCards] = useState<RestaurantCard[]>([]);
   // Base, unfiltered cards derived from the latest nearbyPlaces
@@ -98,7 +102,10 @@ export function useFilteredPlaces(
   const [swipeHistory, setSwipeHistory] = useState<SwipeAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [filterResult, setFilterResult] = useState<FilterResult | null>(null);
-  const [shouldRefilter, setShouldRefilter] = useState(false);
+
+  // Refs for latest values in callbacks
+  const baseCardsRef = useRef<RestaurantCard[]>([]);
+  const applyFiltersRef = useRef<((cards: RestaurantCard[]) => Promise<void>) | null>(null);
 
   const [showAd, setShowAd] = useState<boolean>(false);
 
@@ -183,32 +190,29 @@ export function useFilteredPlaces(
     error: locationError,
     loading: isLocationLoading,
     requestPermissions,
-  } = useGeolocation({ enableHighAccuracy: true });
+  } = useGeolocation({
+    enableHighAccuracy: false,
+    maximumAge: 300000, // 5 minutes
+    timeout: 10000
+  });
 
+  // Use FilterProvider as the single source of truth for filters
+  const filterContext = useFilterContext();
   const {
     filters,
     isLoading: isFilterLoading,
-    addFilter,
-    updateFilter,
-    removeFilter,
-    clearFilters,
     applyFilters: applyFiltersToCards,
-    onNewFiltersApplied,
-  } = useFilters({
-    enablePersistence: true,
-    onNewFiltersApplied: () => {
-      console.log("🔄 Setting refilter flag...");
-      setShouldRefilter(true);
-    },
-  });
+  } = filterContext;
 
-  // Current location
-  const location = position?.coords
-    ? {
+
+  // Current location - memoized to prevent unnecessary re-renders
+  const location = useMemo(() => {
+    if (!position?.coords) return null;
+    return {
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
-    }
-    : null;
+    };
+  }, [position?.coords?.latitude, position?.coords?.longitude]);
 
   // Check if there are active filters with meaningful values
   const hasActiveFilters = useMemo(() => {
@@ -219,17 +223,33 @@ export function useFilteredPlaces(
       if (typeof value === "number") return !Number.isNaN(value);
       return false;
     };
-    return (
-      Array.isArray(filters) &&
-      filters.some((f) => f.enabled && hasMeaningfulValue(f.value))
-    );
+
+    const result = Array.isArray(filters) && filters.some((f) => f.enabled && hasMeaningfulValue(f.value));
+    console.log("🔍 hasActiveFilters check:", {
+      filters,
+      result,
+      enabledFilters: filters?.filter(f => f.enabled),
+      meaningfulFilters: filters?.filter(f => f.enabled && hasMeaningfulValue(f.value))
+    });
+
+    return result;
+  }, [filters]);
+
+  // Create a stable filter signature to prevent unnecessary re-renders
+  const filterSignature = useMemo(() => {
+    if (!Array.isArray(filters)) return "";
+    return filters
+      .filter(f => f.enabled)
+      .map(f => `${f.id}:${JSON.stringify(f.value)}`)
+      .sort()
+      .join('|');
   }, [filters]);
 
   // Enhanced search configuration with filters
   const finalSearchConfig = useMemo(() => {
     const baseConfig = {
       ...defaultSearchConfig,
-      ...searchConfig,
+      ...stableSearchConfig,
     };
 
     // Incorporate filters into the API query parameters
@@ -286,13 +306,34 @@ export function useFilteredPlaces(
         baseConfig.isOpenNow = true;
       }
 
+      // Find distance filter and convert to radius
+      const distanceFilter = filters.find(
+        (f) => f.id === "distance" && f.enabled
+      );
+      if (distanceFilter && typeof distanceFilter.value === "number") {
+        // Convert distance from km to meters for radius
+        const distanceKm = distanceFilter.value;
+        const radiusMeters = distanceKm * 1000;
+        baseConfig.radius = radiusMeters;
+        console.log(`🔍 Distance filter applied: ${distanceKm}km -> ${radiusMeters}m radius`);
+      }
+
       // Add any other relevant filters that can be passed to the Google Places API
       console.log("Enhanced search config with filters:", baseConfig);
     }
 
     return baseConfig;
-  }, [searchConfig, filters, hasActiveFilters]);
+  }, [stableSearchConfig, filterSignature, hasActiveFilters]);
 
+
+  // Memoize query parameters to prevent unnecessary re-renders
+  const queryParams = useMemo(() => ({
+    lat: location?.latitude || 0,
+    lng: location?.longitude || 0,
+    radius: finalSearchConfig.radius,
+    keyword: finalSearchConfig.keyword,
+    type: finalSearchConfig.type,
+  }), [location?.latitude, location?.longitude, finalSearchConfig.radius, finalSearchConfig.keyword, finalSearchConfig.type]);
 
   // Places API integration
   const {
@@ -301,13 +342,7 @@ export function useFilteredPlaces(
     error: placesError,
     refetch: refetchPlaces,
   } = useNearbyPlaces(
-    {
-      lat: location?.latitude || 0,
-      lng: location?.longitude || 0,
-      radius: finalSearchConfig.radius,
-      keyword: finalSearchConfig.keyword,
-      type: finalSearchConfig.type,
-    },
+    queryParams,
     {
       enabled: Boolean(location) && FEATURE_FLAGS.GOOGLE_PLACES_ENABLED,
     }
@@ -349,10 +384,6 @@ export function useFilteredPlaces(
           setError("Failed to load more restaurants. Please try again.");
           setIsRadiusLoading(false);
         });
-      } else {
-        // Radius decreased - just apply filters to existing data
-        console.log("🔍 Radius decreased, applying filters to existing data...");
-        setShouldRefilter(true);
       }
 
       setPreviousRadius(currentRadius);
@@ -385,6 +416,43 @@ export function useFilteredPlaces(
       list.filter((c) => !swipedCardIds.has(c.id)),
     [swipedCardIds]
   );
+
+  // Trigger re-filtering when filters change from FilterProvider
+  useEffect(() => {
+    console.log("🔄 useFilteredPlaces - Filters changed from FilterProvider:", filters);
+    console.log("🔄 useFilteredPlaces - hasActiveFilters:", hasActiveFilters);
+    console.log("🔄 useFilteredPlaces - baseCardsRef.current.length:", baseCardsRef.current.length);
+
+    if (baseCardsRef.current.length > 0) {
+      console.log("🔄 useFilteredPlaces - Triggering re-filtering with baseCards:", baseCardsRef.current.length);
+
+      // Re-process the base cards with current filters
+      const availableCards = excludeSwiped(baseCardsRef.current);
+      console.log("🔄 useFilteredPlaces - availableCards after excluding swiped:", availableCards.length);
+
+      if (hasActiveFilters) {
+        console.log("🔄 useFilteredPlaces - Applying filters to available cards");
+        // Apply filters to available cards
+        applyFiltersToCards(availableCards).then((result) => {
+          console.log("🔍 Filter result:", {
+            totalCount: result.totalCount,
+            filteredCount: result.filteredCards.length,
+            appliedFilters: result.appliedFilters
+          });
+          setFilterResult(result);
+          setCards(result.filteredCards as RestaurantCard[]);
+        }).catch((err) => {
+          console.error("Error applying filters:", err);
+          setError(err instanceof Error ? err.message : "Failed to apply filters");
+        });
+      } else {
+        // No active filters - show all available cards
+        console.log("🔍 No active filters - showing all available cards:", availableCards.length);
+        setFilterResult(null);
+        setCards(availableCards);
+      }
+    }
+  }, [filters, hasActiveFilters, applyFiltersToCards, excludeSwiped]);
 
   // Update the ref whenever cards change
   useEffect(() => {
@@ -442,27 +510,18 @@ export function useFilteredPlaces(
         userLongitude: location?.longitude,
       });
 
-      // Check if this is a radius increase (new places being added)
-      const isRadiusIncrease = isRadiusLoading && baseCards.length > 0;
-
       let currentBaseCards: RestaurantCard[];
 
-      if (isRadiusIncrease) {
-        // Merge new cards with existing baseCards, avoiding duplicates
-        console.log(`🔄 Merging ${transformedCards.length} new cards with ${baseCards.length} existing cards`);
+      // Merge new cards with existing baseCards, avoiding duplicates
+      console.log(`🔄 Merging ${transformedCards.length} new cards with ${baseCards.length} existing cards`);
 
-        const existingCardIds = new Set(baseCards.map(card => card.id));
-        const newUniqueCards = transformedCards.filter(card => !existingCardIds.has(card.id));
+      const existingCardIds = new Set(baseCards.map(card => card.id));
+      const newUniqueCards = transformedCards.filter(card => !existingCardIds.has(card.id));
 
-        currentBaseCards = [...baseCards, ...newUniqueCards];
-        console.log(`🔄 Merged result: ${currentBaseCards.length} total cards (${newUniqueCards.length} new)`);
+      currentBaseCards = [...baseCards, ...newUniqueCards];
+      console.log(`🔄 Merged result: ${currentBaseCards.length} total cards (${newUniqueCards.length} new)`);
 
-        setBaseCards(currentBaseCards);
-      } else {
-        // Regular processing - replace baseCards
-        currentBaseCards = transformedCards;
-        setBaseCards(transformedCards);
-      }
+      setBaseCards(currentBaseCards);
 
       // First, exclude any swiped cards from availability
       const availableCards = excludeSwiped(currentBaseCards);
@@ -479,16 +538,13 @@ export function useFilteredPlaces(
       }
 
       setCards(newCards);
-
-      // Clear radius loading state after processing
-      if (isRadiusIncrease) {
-        setIsRadiusLoading(false);
-      }
     } catch (err) {
       console.error("Error processing places:", err);
       setError(
         err instanceof Error ? err.message : "Failed to process restaurants"
       );
+      setIsRadiusLoading(false);
+    } finally {
       setIsRadiusLoading(false);
     }
   };
@@ -515,16 +571,30 @@ export function useFilteredPlaces(
       try {
         // Always filter from the base, unfiltered list to avoid compounding filters
         console.log("🔍 Filtering from cards:", cards.length);
+        console.log("🔍 hasActiveFilters:", hasActiveFilters);
+        console.log("🔍 current filters:", filters);
 
-        const result = await applyFiltersToCards(cards);
-        console.log("🔍 Filter result:", {
-          totalCount: result.totalCount,
-          filteredCount: result.filteredCards.length,
-          appliedFilters: result.appliedFilters
-        });
+        // Check if there are active filters before applying them
+        if (hasActiveFilters) {
+          const result = await applyFiltersToCards(cards);
+          console.log("🔍 Filter result:", {
+            totalCount: result.totalCount,
+            filteredCount: result.filteredCards.length,
+            appliedFilters: result.appliedFilters
+          });
 
-        setFilterResult(result);
-        setCards(excludeSwiped(result.filteredCards as RestaurantCard[]));
+          setFilterResult(result);
+          const filteredAndExcluded = excludeSwiped(result.filteredCards as RestaurantCard[]);
+          console.log("🔍 Setting filtered cards:", filteredAndExcluded.length);
+          setCards(filteredAndExcluded);
+        } else {
+          // No active filters - show all available cards
+          console.log("🔍 No active filters - showing all cards");
+          setFilterResult(null);
+          const allAvailableCards = excludeSwiped(cards);
+          console.log("🔍 Setting all available cards:", allAvailableCards.length);
+          setCards(allAvailableCards);
+        }
       } catch (err) {
         console.error("Error applying filters:", err);
         setError(
@@ -534,32 +604,24 @@ export function useFilteredPlaces(
     },
     [
       applyFiltersToCards,
-      baseCards,
-      maxCards,
+      excludeSwiped,
       hasActiveFilters
     ]
   );
 
+  // Update refs when values change
   useEffect(() => {
-    console.log("Filtered cards: ", filterResult);
-  }, [filterResult]);
+    baseCardsRef.current = baseCards;
+    console.log("🔧 baseCards changed, length:", baseCards.length);
+  }, [baseCards]);
 
-  // Watch for refilter flag and trigger re-filtering from base list
   useEffect(() => {
-    if (!shouldRefilter) return;
-    console.log("🔄 Re-filtering due to filters change...");
+    applyFiltersRef.current = applyFilters;
+  }, [applyFilters]);
 
-    applyFilters(baseCards);
-    setShouldRefilter(false);
-  }, [
-    shouldRefilter,
-    baseCards,
-    cards,
-    applyFilters,
-    hasActiveFilters,
-    maxCards,
-    excludeSwiped,
-  ]);
+  // useEffect(() => {
+  //   console.log("Filtered cards: ", filterResult);
+  // }, [filterResult]);
 
   // Swipe card action with behavior tracking and prefetching
   const swipeCard = useCallback(
@@ -579,7 +641,7 @@ export function useFilteredPlaces(
         return;
       }
 
-      console.log("cards: ", JSON.stringify(cards));
+      // console.log("cards: ", JSON.stringify(cards));
       // Remove the specific swiped card instead of always removing the first card
       let remainingCards = cards.filter((c) => c.id !== action.cardId);
 
@@ -591,7 +653,7 @@ export function useFilteredPlaces(
         setShowAd(true);
       }
 
-      console.log("remainingCards: ", JSON.stringify(remainingCards));
+      // console.log("remainingCards: ", JSON.stringify(remainingCards));
       setSwipeHistory((prev) => [...prev, action]);
 
       // Track the swipe action for behavior analysis
@@ -740,13 +802,13 @@ export function useFilteredPlaces(
     filterResult,
     applyFilters,
 
-    // Filter management
-    addFilter,
-    updateFilter,
-    removeFilter,
-    clearFilters,
+    // Filter management (from FilterProvider)
+    addFilter: filterContext.addFilter,
+    updateFilter: filterContext.updateFilter,
+    removeFilter: filterContext.removeFilter,
+    clearFilters: filterContext.clearFilters,
     allFilters: filters,
-    onNewFiltersApplied,
+    onNewFiltersApplied: filterContext.onNewFiltersApplied,
 
     // Utilities
     canSwipe,

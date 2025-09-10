@@ -251,8 +251,17 @@ class FilterEngine {
           const cardDescription = card.description || '';
           const cardCuisine = card.cuisine || '';
 
+          console.log(`🔍 Checking card "${card.title}" against cuisines:`, cuisines);
+          console.log(`🔍 Card data:`, {
+            types: cardTypes,
+            title: cardTitle,
+            description: cardDescription,
+            cuisine: cardCuisine
+          });
+
           const matchResult = cuisines.some(cuisine => {
             const cuisineLower = String(cuisine).toLowerCase();
+            console.log(`🔍 Checking cuisine: "${cuisineLower}"`);
 
             // Check if any of the card's types match the cuisine
             const typeMatch = cardTypes.some((type: string) =>
@@ -284,15 +293,24 @@ class FilterEngine {
               cardTypes.some((type: string) => type.toLowerCase().includes(keyword))
             );
 
-            return typeMatch || titleMatch || descriptionMatch || cuisineMatch || keywordMatch;
+            const matches = typeMatch || titleMatch || descriptionMatch || cuisineMatch || keywordMatch;
+            console.log(`🔍 Cuisine "${cuisineLower}" matches:`, {
+              typeMatch,
+              titleMatch,
+              descriptionMatch,
+              cuisineMatch,
+              keywordMatch,
+              keywords,
+              overall: matches
+            });
+
+            return matches;
           });
 
           if (matchResult) {
-            console.log(`Card "${card.title}" matched cuisine filter:`, {
-              types: cardTypes,
-              title: cardTitle,
-              description: cardDescription
-            });
+            console.log(`✅ Card "${card.title}" matched cuisine filter`);
+          } else {
+            console.log(`❌ Card "${card.title}" did not match any cuisine filter`);
           }
 
           return matchResult;
@@ -307,14 +325,10 @@ class FilterEngine {
         );
 
       case 'distance':
-        // Convert filter value from kilometers to meters for comparison
-        const maxDistanceKm = Number(filter.value);
-        const maxDistanceMeters = maxDistanceKm * 1000;
-        return cards.filter(card => {
-          // Use distanceInMeters for accurate comparison
-          const cardDistanceMeters = card.distanceInMeters || 0;
-          return cardDistanceMeters <= maxDistanceMeters;
-        });
+        // Distance filter is now handled by radius in API calls, not client-side filtering
+        // This ensures we get the right data from the API instead of filtering after fetching
+        console.log('Distance filter is handled by API radius, not client-side filtering');
+        return cards;
 
       case 'dietaryRestrictions':
         const dietaryRestrictions = Array.isArray(filter.value) ? filter.value : [filter.value];
@@ -407,6 +421,48 @@ class FilterEngine {
 }
 
 // ============================================================================
+// FILTER VALUE NORMALIZATION UTILITIES
+// ============================================================================
+
+/**
+ * Normalizes filter values to prevent case sensitivity and duplicate issues
+ */
+export function normalizeFilterValue(filterId: string, value: FilterValue): FilterValue {
+  if (filterId === 'cuisine' && Array.isArray(value)) {
+    // For cuisine filters, normalize to lowercase and remove duplicates
+    const normalized = value
+      .map(v => String(v).toLowerCase().trim())
+      .filter((v, index, arr) => arr.indexOf(v) === index && v.length > 0);
+    return normalized;
+  } else if (filterId === 'cuisine' && typeof value === 'string') {
+    // Single cuisine value
+    return value.toLowerCase().trim();
+  } else if (typeof value === 'string') {
+    // Other string values - just trim
+    return value.trim();
+  }
+  return value;
+}
+
+/**
+ * Merges new filter values with existing ones, handling duplicates and case sensitivity
+ */
+export function mergeFilterValues(filterId: string, existingValue: FilterValue, newValue: FilterValue): FilterValue {
+  if (filterId === 'cuisine') {
+    // Convert both to arrays
+    const existingArray = Array.isArray(existingValue) ? existingValue : [existingValue];
+    const newArray = Array.isArray(newValue) ? newValue : [newValue];
+
+    // Normalize and combine
+    const combined = [...existingArray, ...newArray];
+    return normalizeFilterValue(filterId, combined as FilterValue);
+  }
+
+  // For non-array filters, just return the new value
+  return normalizeFilterValue(filterId, newValue);
+}
+
+// ============================================================================
 // SIMPLIFIED HOOK INTERFACE
 // ============================================================================
 
@@ -465,16 +521,25 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
             const parsed = JSON.parse(saved);
             // Ensure parsed data is an array
             if (Array.isArray(parsed)) {
-              setFilters(parsed);
+              // For now, always start with empty filters to prevent persistence issues
+              // TODO: Re-enable filter persistence once we have proper version management
+              console.log('🔍 Filter persistence temporarily disabled - starting with empty filters');
+              setFilters([]);
+              // Clear the stored filters to prevent confusion
+              await CrossPlatformStorage.removeItem(storageKey);
             } else {
               console.warn('Invalid filter data in localStorage, resetting to empty array');
               setFilters([]);
             }
+          } else {
+            setFilters([]);
           }
         } catch (err) {
           console.warn('Failed to load filters:', err);
           setFilters([]);
         }
+      } else {
+        setFilters([]);
       }
     };
     loadFilters();
@@ -483,7 +548,12 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
   // Persist filters when they change (including empty clears)
   useEffect(() => {
     const persistFilters = async () => {
+      // Temporarily disable filter persistence to prevent issues
+      // TODO: Re-enable with proper version management
       if (!enablePersistence) return;
+      console.log('🔍 Filter persistence temporarily disabled');
+      return;
+
       try {
         if (Array.isArray(filters)) {
           // Persist current snapshot, even when empty, so clears stick across reloads
@@ -513,14 +583,28 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
     setFilters(prev => {
       // Ensure prev is always an array
       const currentFilters = Array.isArray(prev) ? prev : [];
+      console.log(`🔍 Current filters before adding ${filterId}:`, currentFilters);
       const existing = currentFilters.find(f => f.id === filterId);
+
       if (existing) {
-        // Always update the filter to ensure it's applied, even if value is the same
-        console.log(`🔍 Updating existing filter ${filterId}`);
-        return currentFilters.map(f => f.id === filterId ? { ...f, value, enabled: true } : f);
+        // Merge with existing filter values to handle duplicates and case sensitivity
+        const mergedValue = mergeFilterValues(filterId, existing.value, value);
+        console.log(`🔍 Merging with existing filter ${filterId}:`, {
+          existing: existing.value,
+          new: value,
+          merged: mergedValue
+        });
+        const updatedFilters = currentFilters.map(f => f.id === filterId ? { ...f, value: mergedValue, enabled: true } : f);
+        console.log(`🔍 Updated filters after merge:`, updatedFilters);
+        return updatedFilters;
       }
-      console.log(`🔍 Adding new filter ${filterId}`);
-      return [...currentFilters, { id: filterId, value, enabled: true }];
+
+      // Normalize new filter value
+      const normalizedValue = normalizeFilterValue(filterId, value);
+      console.log(`🔍 Adding new filter ${filterId} with normalized value:`, normalizedValue);
+      const newFilters = [...currentFilters, { id: filterId, value: normalizedValue, enabled: true }];
+      console.log(`🔍 New filters after adding:`, newFilters);
+      return newFilters;
     });
     setError(null);
   }, []);
@@ -530,11 +614,15 @@ export function useFilters(options: UseFiltersOptions = {}): UseFiltersReturn {
       // Ensure prev is always an array
       const currentFilters = Array.isArray(prev) ? prev : [];
       const existing = currentFilters.find(f => f.id === filterId);
-      // Only update if the value actually changed
-      if (existing && existing.value === value) {
+
+      // Normalize the new value
+      const normalizedValue = normalizeFilterValue(filterId, value);
+
+      // Only update if the value actually changed (compare normalized values)
+      if (existing && JSON.stringify(existing.value) === JSON.stringify(normalizedValue)) {
         return currentFilters; // No change needed
       }
-      return currentFilters.map(f => f.id === filterId ? { ...f, value } : f);
+      return currentFilters.map(f => f.id === filterId ? { ...f, value: normalizedValue } : f);
     });
   }, []);
 

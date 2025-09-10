@@ -12,17 +12,36 @@ import {
   SpeechRecognitionResult,
 } from "../utils/speechToText";
 import { parseNaturalLanguageQuery } from "../utils/nlpFilters";
+import { useFilterContext } from "../contexts/FilterContext";
 
 interface VoicePromptProps {
   onFiltersApplied: (filters: Array<{ filterId: string; value: any }>) => void;
   onCancel: () => void;
+  // Add a callback to trigger re-filtering when cards are available
+  onTriggerRefilter?: () => void;
 }
 
-export function VoicePrompt({ onFiltersApplied, onCancel }: VoicePromptProps) {
+export function VoicePrompt({
+  onFiltersApplied,
+  onCancel,
+  onTriggerRefilter,
+}: VoicePromptProps) {
+  console.log(
+    "🎤 VoicePrompt - Component initialized with onFiltersApplied:",
+    typeof onFiltersApplied
+  );
+
+  // Use FilterProvider as the single source of truth
+  const { applyVoiceFilters } = useFilterContext();
+
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastAppliedFilters, setLastAppliedFilters] = useState<Array<{
+    filterId: string;
+    value: any;
+  }> | null>(null);
 
   useEffect(() => {
     // Cleanup on unmount
@@ -84,7 +103,10 @@ export function VoicePrompt({ onFiltersApplied, onCancel }: VoicePromptProps) {
   };
 
   const processTranscript = async (text: string) => {
+    console.log("🎤 VoicePrompt - processTranscript called with:", text);
+
     if (!text.trim()) {
+      console.log("🎤 VoicePrompt - No speech detected");
       setError("No speech detected. Please try again.");
       return;
     }
@@ -93,13 +115,22 @@ export function VoicePrompt({ onFiltersApplied, onCancel }: VoicePromptProps) {
     setError(null);
 
     try {
-      console.log("🔍 Processing transcript:", text);
+      console.log("🔍 VoicePrompt - Processing transcript:", text);
 
       // Parse filters from the speech
+      console.log(
+        "🔍 VoicePrompt - Calling parseNaturalLanguageQuery with:",
+        text
+      );
       const nlpResult = await parseNaturalLanguageQuery(text);
+      console.log(
+        "🔍 VoicePrompt - NLP result:",
+        JSON.stringify(nlpResult, null, 2)
+      );
       const filters = nlpResult.filters;
 
       if (filters.length === 0) {
+        console.log("🎤 VoicePrompt - No filters found in speech");
         setError(
           "No filters found in your speech. Try saying something like 'show me Italian restaurants' or 'find places near me'"
         );
@@ -107,10 +138,57 @@ export function VoicePrompt({ onFiltersApplied, onCancel }: VoicePromptProps) {
         return;
       }
 
-      console.log("✅ Parsed filters:", filters);
+      console.log("✅ VoicePrompt - Parsed filters:", filters);
+      console.log(
+        "✅ VoicePrompt - Applying filters via FilterProvider:",
+        JSON.stringify(filters, null, 2)
+      );
 
-      // Apply the filters
-      onFiltersApplied(filters);
+      // Store the filters for potential re-application
+      setLastAppliedFilters(filters);
+      console.log(
+        "💾 VoicePrompt - Stored filters for re-application:",
+        filters
+      );
+
+      // Apply the filters directly through FilterProvider (add to existing filters)
+      try {
+        applyVoiceFilters(filters);
+        console.log(
+          "✅ VoicePrompt - Filters added via FilterProvider successfully"
+        );
+
+        // Call the callback for any additional handling (like closing the modal)
+        if (typeof onFiltersApplied === "function") {
+          onFiltersApplied(filters);
+        }
+
+        // Trigger re-filtering to ensure filters are applied to current cards
+        if (typeof onTriggerRefilter === "function") {
+          console.log(
+            "🔄 VoicePrompt - Triggering re-filtering for current cards"
+          );
+          // Use setTimeout to ensure the filters are applied first
+          setTimeout(() => {
+            onTriggerRefilter();
+          }, 100);
+        } else {
+          console.log(
+            "⚠️ VoicePrompt - onTriggerRefilter not provided, filters may not be applied to current cards"
+          );
+        }
+      } catch (error) {
+        console.error(
+          "❌ VoicePrompt - Error applying filters via FilterProvider:",
+          error
+        );
+        setError("Failed to apply filters. Please try again.");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Set processing to false after applying filters
+      setIsProcessing(false);
     } catch (error) {
       console.error("❌ Error processing transcript:", error);
       setError("Failed to process your request. Please try again.");
@@ -132,6 +210,50 @@ export function VoicePrompt({ onFiltersApplied, onCancel }: VoicePromptProps) {
     }
     onCancel();
   };
+
+  // Method to re-apply the last applied filters
+  const reapplyLastFilters = () => {
+    if (lastAppliedFilters && lastAppliedFilters.length > 0) {
+      console.log(
+        "🔄 VoicePrompt - Re-applying last filters via FilterProvider:",
+        lastAppliedFilters
+      );
+      try {
+        applyVoiceFilters(lastAppliedFilters);
+        console.log(
+          "✅ VoicePrompt - Last filters re-added via FilterProvider successfully"
+        );
+
+        // Call the callback for any additional handling
+        if (typeof onFiltersApplied === "function") {
+          onFiltersApplied(lastAppliedFilters);
+        }
+
+        // Trigger re-filtering
+        if (typeof onTriggerRefilter === "function") {
+          setTimeout(() => {
+            onTriggerRefilter();
+          }, 100);
+        }
+      } catch (error) {
+        console.error(
+          "❌ VoicePrompt - Error re-applying last filters via FilterProvider:",
+          error
+        );
+      }
+    } else {
+      console.log("⚠️ VoicePrompt - No last filters to re-apply");
+    }
+  };
+
+  // Expose the reapply method through a ref or callback
+  useEffect(() => {
+    // This could be used by parent components to trigger re-filtering
+    if (typeof onTriggerRefilter === "function") {
+      // Store the reapply function globally or pass it to parent
+      (window as any).voicePromptReapply = reapplyLastFilters;
+    }
+  }, [lastAppliedFilters, onTriggerRefilter]);
 
   return (
     <View style={styles.container}>

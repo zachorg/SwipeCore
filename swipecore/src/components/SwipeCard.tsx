@@ -258,10 +258,7 @@ export function SwipeCard({
 
   const getCurrentImageUrl = useCallback(() => {
     if (!card.photos || card.photos.length === 0) return null;
-    return (
-      card.photos[currentImageIndex]?.url ||
-      card.photos[currentImageIndex]?.googleUrl
-    );
+    return card.photos[currentImageIndex]?.url;
   }, [card.photos, currentImageIndex]);
 
   const renderStars = useCallback((rating: number) => {

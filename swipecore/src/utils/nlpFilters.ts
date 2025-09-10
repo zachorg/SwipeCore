@@ -59,7 +59,7 @@ const KEYWORD_MAPPINGS = {
     'pizza place': 'italian',
     pizzeria: 'italian',
     'italian food': 'italian',
-    
+
     // Chinese
     chinese: 'chinese',
     'chinese food': 'chinese',
@@ -67,12 +67,12 @@ const KEYWORD_MAPPINGS = {
     'szechuan': 'chinese',
     'sichuan': 'chinese',
     'cantonese': 'chinese',
-    
+
     // Asian variations
     asian: 'asian',
     'asian fusion': 'asian',
     'pan asian': 'asian',
-    
+
     // Mexican
     mexican: 'mexican',
     taco: 'mexican',
@@ -82,7 +82,7 @@ const KEYWORD_MAPPINGS = {
     'tex-mex': 'mexican',
     quesadilla: 'mexican',
     enchilada: 'mexican',
-    
+
     // Indian
     indian: 'indian',
     curry: 'indian',
@@ -90,7 +90,7 @@ const KEYWORD_MAPPINGS = {
     'south asian': 'indian',
     tandoori: 'indian',
     'naan': 'indian',
-    
+
     // Japanese
     japanese: 'japanese',
     sushi: 'japanese',
@@ -99,7 +99,7 @@ const KEYWORD_MAPPINGS = {
     tempura: 'japanese',
     'sushi bar': 'japanese',
     'sushi place': 'japanese',
-    
+
     // American
     american: 'american',
     burger: 'american',
@@ -108,18 +108,18 @@ const KEYWORD_MAPPINGS = {
     'burgers': 'american',
     'hot dog': 'american',
     'diner': 'american',
-    
+
     // Thai
     thai: 'thai',
     'pad thai': 'thai',
     'thai food': 'thai',
-    
+
     // French
     french: 'french',
     'french food': 'french',
     'french cuisine': 'french',
     'bistro': 'french',
-    
+
     // Additional cuisines
     greek: 'greek',
     mediterranean: 'mediterranean',
@@ -302,7 +302,7 @@ const KEYWORD_MAPPINGS = {
     'four star': 4.0,
     '4 star': 4.0
   },
-  
+
   // Conversational patterns
   conversational: {
     'i want': true,
@@ -321,7 +321,7 @@ const KEYWORD_MAPPINGS = {
     'want to find': true,
     'help me find': true
   },
-  
+
   // Location context
   location: {
     'near me': 'nearby',
@@ -336,7 +336,7 @@ const KEYWORD_MAPPINGS = {
     'in the city': 'city',
     'city center': 'downtown'
   },
-  
+
   // Meal type context
   mealType: {
     'breakfast': 'breakfast',
@@ -472,7 +472,7 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
     confidence += 0.15;
     interpretedParts.push(`rating: ${ratingFilter.value}+ stars`);
   }
-  
+
   // Extract location context
   const locationContext = extractLocationContext(normalizedQuery);
   if (locationContext) {
@@ -481,7 +481,7 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
     confidence += 0.1;
     interpretedParts.push(`location: ${locationContext}`);
   }
-  
+
   // Extract meal type context
   const mealTypeContext = extractMealTypeContext(normalizedQuery);
   if (mealTypeContext) {
@@ -496,7 +496,7 @@ export function parseNaturalLanguageQuery(query: string): NLPResult {
   if (negationResult.hasNegation) {
     // Adjust confidence if negation is detected
     confidence -= 0.1;
-    
+
     // Add note about negation to interpretation
     if (negationResult.negatedTerms.length > 0) {
       interpretedParts.push(`excluding: ${negationResult.negatedTerms.join(', ')}`);
@@ -546,11 +546,40 @@ function extractPriceFilter(query: string): ParsedFilter | null {
  */
 function extractCuisineFilters(query: string): string[] {
   const cuisines: string[] = [];
+
+  // First, remove exclusion words that might interfere with parsing
+  let cleanQuery = query
+    .replace(/\b(only|just|exclusively)\b/g, '') // Remove restrictive words
+    .replace(/\b(and|or|plus|with)\b/g, ' ') // Replace conjunctions with spaces
+    .replace(/\s+/g, ' ') // Normalize spaces
+    .trim();
+
+  // Fix common speech recognition errors
+  cleanQuery = cleanQuery
+    .replace(/\bj\s+apanese\b/g, 'japanese') // Fix "j apanese" -> "japanese"
+    .replace(/\bch\s+inese\b/g, 'chinese') // Fix "ch inese" -> "chinese"
+    .replace(/\bm\s+exican\b/g, 'mexican') // Fix "m exican" -> "mexican"
+    .replace(/\bi\s+talian\b/g, 'italian') // Fix "i talian" -> "italian"
+    .replace(/\ba\s+merican\b/g, 'american') // Fix "a merican" -> "american"
+    .replace(/\bt\s+hai\b/g, 'thai') // Fix "t hai" -> "thai"
+    .replace(/\bf\s+rench\b/g, 'french') // Fix "f rench" -> "french"
+    .replace(/\bi\s+ndian\b/g, 'indian'); // Fix "i ndian" -> "indian"
+
+  console.log('🔍 Cuisine extraction - Original query:', query);
+  console.log('🔍 Cuisine extraction - Clean query:', cleanQuery);
+
   for (const [keyword, value] of Object.entries(KEYWORD_MAPPINGS.cuisine)) {
-    if (query.includes(keyword) && !cuisines.includes(value)) {
+    // Create a more flexible matching pattern that handles speech recognition errors
+    const keywordPattern = keyword.replace(/\s+/g, '\\s*'); // Allow optional spaces between characters
+    const regex = new RegExp(keywordPattern, 'i');
+
+    if (regex.test(cleanQuery) && !cuisines.includes(value)) {
       cuisines.push(value);
+      console.log(`🔍 Found cuisine: ${keyword} -> ${value} (matched with pattern: ${keywordPattern})`);
     }
   }
+
+  console.log('🔍 Final cuisines found:', cuisines);
   return cuisines;
 }
 
@@ -656,10 +685,10 @@ function checkForNegation(query: string): { hasNegation: boolean; negatedTerms: 
     /without (.*?)(?=\s|$)/g,
     /except (.*?)(?=\s|$)/g
   ];
-  
+
   const negatedTerms: string[] = [];
   let hasNegation = false;
-  
+
   for (const pattern of negationPatterns) {
     const matches = Array.from(query.matchAll(pattern));
     for (const match of matches) {
@@ -669,7 +698,7 @@ function checkForNegation(query: string): { hasNegation: boolean; negatedTerms: 
       }
     }
   }
-  
+
   return { hasNegation, negatedTerms };
 }
 
