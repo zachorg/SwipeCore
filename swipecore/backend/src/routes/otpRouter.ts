@@ -5,8 +5,9 @@ import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 import { OtpRefreshRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
 import jwt from 'jsonwebtoken';
-import { REFRESH_SECRET, REFRESH_TTL_SECONDS, requireAuth, sessions, signAccessToken, signRefreshToken } from '../auth/auth';
+import { REFRESH_SECRET, requireAuth, sessions, signAccessToken, signRefreshToken } from '../auth/auth';
 import bcrypt from 'bcryptjs';
+import { config as envConfig } from "../config";
 
 interface OtpStore {
     otp: string;
@@ -143,7 +144,7 @@ router.post(
             const sessionId = crypto.randomUUID();
             const refreshToken = signRefreshToken(uid, sessionId);
             const refreshHash = await bcrypt.hash(refreshToken, 12);
-            const expiresAt = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000);
+            const expiresAt = new Date(Date.now() + envConfig.authRefreshTtlSeconds * 1000);
 
             sessions.set(sessionId, { sid: sessionId, uid, refreshHash, expiresAt });
 
@@ -251,7 +252,7 @@ router.post("/auth/refresh", async (req, res) => {
     const newSessionId = crypto.randomUUID();
     const newRefresh = signRefreshToken(uid, newSessionId);
     const newHash = await bcrypt.hash(newRefresh, 12);
-    const expiresAt = new Date(Date.now() + REFRESH_TTL_SECONDS * 1000);
+    const expiresAt = new Date(Date.now() + envConfig.authRefreshTtlSeconds * 1000);
     sessions.set(newSessionId, { sid: newSessionId, uid, refreshHash: newHash, expiresAt });
 
     // New access token + new refresh cookie
