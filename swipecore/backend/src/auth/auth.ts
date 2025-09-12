@@ -1,5 +1,5 @@
 
-import { sign, verify } from "jsonwebtoken";
+import { sign, verify, SignOptions } from "jsonwebtoken";
 import { config as envConfig } from "../config";
 
 // ----- ENV -----
@@ -21,18 +21,20 @@ export const sessions = new Map<string, SessionData>();
 
 // Utility: sign tokens
 export function signAccessToken(uid: string) {
+    const options: SignOptions = { expiresIn: ACCESS_TTL as any };
     return sign(
         { sub: uid, typ: "access" },
         ACCESS_SECRET,
-        { expiresIn: ACCESS_TTL }
+        options
     );
 }
 
 export function signRefreshToken(uid: string, sid: string) {
+    const options: SignOptions = { expiresIn: REFRESH_TTL as any };
     return sign(
         { sub: uid, sid: sid, typ: "refresh" },
         REFRESH_SECRET,
-        { expiresIn: REFRESH_TTL }
+        options
     );
 }
 
