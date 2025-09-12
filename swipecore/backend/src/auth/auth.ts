@@ -1,10 +1,10 @@
 
 import { sign, verify } from "jsonwebtoken";
+import { config as envConfig } from "../config";
 
 // ----- ENV -----
-const ACCESS_TTL = "1m";          // short lived
-export const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
-const REFRESH_TTL = `${REFRESH_TTL_SECONDS}s`;
+const ACCESS_TTL = `${envConfig.authAccessTtlSeconds}s`; // short lived
+const REFRESH_TTL = `${envConfig.authRefreshTtlSeconds}s`;
 
 export const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || "dev-access-secret";
 export const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "dev-refresh-secret";
