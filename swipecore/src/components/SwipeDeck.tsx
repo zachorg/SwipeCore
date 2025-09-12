@@ -65,6 +65,7 @@ export function SwipeDeck({
 }: SwipeDeckProps) {
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
+  const cardsRef = useRef<RestaurantCard[]>([]);
 
   const {
     cards,
@@ -141,9 +142,9 @@ export function SwipeDeck({
     setExpandedCard(null);
   }, []);
 
-  const swiperProps = {
-    cards: cards,
-    renderCard: (card: RestaurantCard) => (
+  // Memoize the renderCard function to prevent unnecessary re-renders
+  const renderCard = useCallback(
+    (card: RestaurantCard) => (
       <View style={styles.cardContainer}>
         <View style={styles.cardWrapper}>
           <SwipeCard
@@ -154,17 +155,17 @@ export function SwipeDeck({
         </View>
       </View>
     ),
-    backgroundColor: "transparent",
-    stackSize: cards.length,
-    infinite: false,
-    animateOverlayLabelsOpacity: true,
-    onSwipedLeft: (cardIndex: number) => {
-      // Handle the swipe action after the animation completes
-      const swipedCard = cards[cardIndex];
-      if (swipedCard) {
-        // Call the parent callback
-        handleSwipe(swipedCard, "pass");
+    [handleCardTapInternal, handleExpandCard]
+  );
 
+  // Memoize swipe handlers to prevent unnecessary re-renders - OPTIMIZED
+  const handleSwipedLeft = useCallback(
+    (cardIndex: number) => {
+      // Use ref to get current cards for better performance
+      const currentCards = cardsRef.current;
+      const swipedCard = currentCards[cardIndex];
+      if (swipedCard) {
+        handleSwipe(swipedCard, "pass");
         if (__DEV__) {
           console.log("🎴 SWIPED LEFT:", {
             cardIndex,
@@ -173,13 +174,16 @@ export function SwipeDeck({
         }
       }
     },
-    onSwipedRight: (cardIndex: number) => {
-      // Handle the swipe action after the animation completes
-      const swipedCard = cards[cardIndex];
-      if (swipedCard) {
-        // Call the parent callback
-        handleSwipe(swipedCard, "menu");
+    [handleSwipe] // Removed cards dependency for better performance
+  );
 
+  const handleSwipedRight = useCallback(
+    (cardIndex: number) => {
+      // Use ref to get current cards for better performance
+      const currentCards = cardsRef.current;
+      const swipedCard = currentCards[cardIndex];
+      if (swipedCard) {
+        handleSwipe(swipedCard, "menu");
         if (__DEV__) {
           console.log("🎴 SWIPED RIGHT:", {
             cardIndex,
@@ -188,7 +192,12 @@ export function SwipeDeck({
         }
       }
     },
-    overlayLabels: {
+    [handleSwipe] // Removed cards dependency for better performance
+  );
+
+  // Memoize overlay labels to prevent recreation
+  const overlayLabels = useMemo(
+    () => ({
       left: {
         title: "PASS",
         style: {
@@ -223,33 +232,63 @@ export function SwipeDeck({
           },
         },
       },
-    },
-    swipeAnimationDuration: 300,
-    disableTopSwipe: true,
-    disableBottomSwipe: true,
-    disableLeftSwipe: false,
-    disableRightSwipe: false,
-    stackSeparation: 0,
-    stackScale: 0.95,
-    cardVerticalMargin: 0,
-    cardHorizontalMargin: 0,
-    goBackToPreviousCardOnSwipeLeft: false,
-    goBackToPreviousCardOnSwipeRight: false,
-    goBackToPreviousCardOnSwipeTop: false,
-    goBackToPreviousCardOnSwipeBottom: false,
-    useViewOverflow: false,
-    outputRotationRange: ["-0.3rad", "0rad", "0.3rad"] as [
-      string,
-      string,
-      string
-    ],
-    cardStyle: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-  };
+    }),
+    []
+  );
+
+  // Memoize swiper props to prevent unnecessary re-renders
+  // Optimize stack size for better performance with many cards
+  const optimizedStackSize = useMemo(() => {
+    // Limit stack size to improve performance with many cards
+    return Math.min(cards.length, maxVisibleCards || 5);
+  }, [cards.length, maxVisibleCards]);
+
+  const swiperProps = useMemo(
+    () => ({
+      cards: cards,
+      renderCard: renderCard,
+      backgroundColor: "transparent",
+      stackSize: optimizedStackSize,
+      infinite: false,
+      animateOverlayLabelsOpacity: true,
+      onSwipedLeft: handleSwipedLeft,
+      onSwipedRight: handleSwipedRight,
+      overlayLabels: overlayLabels,
+      swipeAnimationDuration: 200, // Reduced from 300ms for snappier feel
+      disableTopSwipe: true,
+      disableBottomSwipe: true,
+      disableLeftSwipe: false,
+      disableRightSwipe: false,
+      stackSeparation: 0,
+      stackScale: 0.95,
+      cardVerticalMargin: 0,
+      cardHorizontalMargin: 0,
+      goBackToPreviousCardOnSwipeLeft: false,
+      goBackToPreviousCardOnSwipeRight: false,
+      goBackToPreviousCardOnSwipeTop: false,
+      goBackToPreviousCardOnSwipeBottom: false,
+      useViewOverflow: false,
+      outputRotationRange: ["-0.3rad", "0rad", "0.3rad"] as [
+        string,
+        string,
+        string
+      ],
+      cardStyle: {
+        width: "100%",
+        height: "100%",
+        alignItems: "center",
+        justifyContent: "center",
+      },
+    }),
+    [
+      cards,
+      renderCard,
+      handleSwipedLeft,
+      handleSwipedRight,
+      overlayLabels,
+      optimizedStackSize,
+    ]
+  );
 
   const handleMenuOpen = useCallback(() => {
     if (cards.length === 0) return;
@@ -318,6 +357,11 @@ export function SwipeDeck({
     enableFiltering,
     handleVoiceFiltersApplied,
   ]);
+
+  // Update cardsRef when cards change for better performance
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
 
   // Pass filter functions to parent component
   useEffect(() => {
@@ -448,7 +492,10 @@ export function SwipeDeck({
                   )}
                   {expandedCard && (
                     <SwipeCard
-                      card={expandedCard}
+                      card={
+                        cards.find((c) => c.id === expandedCard.id) ||
+                        expandedCard
+                      }
                       isExpanded={true}
                       unExpandCard={handleCloseExpandedCard}
                     />

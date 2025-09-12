@@ -187,15 +187,12 @@ export async function getPreloadedAd(): Promise<NativeAd | null> {
   // First, clean up any excess ads
   await cleanupExcessAds();
 
-  const isEmpty = await adsRegistry.isEmpty();
-  if (isEmpty) {
-    // Only trigger preload if we don't have any ads
+  const ad = await adsRegistry.shift();
+  if (ad) {
     nativeAdsPreload().catch(error => {
       console.warn('[Ads] Preload failed when ads registry empty:', error);
     });
-    return null;
   }
-  const ad = await adsRegistry.shift();
 
   return ad || null;
 }

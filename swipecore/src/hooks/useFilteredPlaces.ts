@@ -1,6 +1,6 @@
 // Enhanced Restaurant Hook with Filtering System Integration and Heuristic Prefetching
 
-import { useState, useEffect, useCallback, useMemo, useRef, Ref } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, Ref } from "react";
 import { useGeolocation } from "./useGeolocation";
 import { useNearbyPlaces } from "./usePlaces";
 import {
@@ -127,14 +127,19 @@ export function useFilteredPlaces(
     enabled: prefetchDetails ?? true,
     debugMode: true,
     onPrefetchEvent: (event: PrefetchEvent) => {
+      console.log(`🎯 [useFilteredPlaces] Received prefetch event:`, event.type, event.cardId);
       if (event.type === "prefetch_completed") {
+        console.log(`🎉 [useFilteredPlaces] Processing prefetch_completed for ${event.cardId}`);
         setCards((prevCards) => {
           const cardIndex = prevCards.findIndex(
             (card) => card.id === event.cardId
           );
-          if (cardIndex === -1) return prevCards;
+          if (cardIndex === -1) {
+            console.log(`❌ [useFilteredPlaces] Card ${event.cardId} not found in cards array`);
+            return prevCards;
+          }
 
-          let updatedCards = [...cards];
+          let updatedCards = [...prevCards];
 
           const detailsData = queryClient.getQueryData([
             "places",
@@ -151,17 +156,23 @@ export function useFilteredPlaces(
             photoReference: string;
           };
 
+          console.log(`🔍 [useFilteredPlaces] Details data for ${event.cardId}:`, !!detailsData);
+          console.log(`🔍 [useFilteredPlaces] Photo data for ${event.cardId}:`, !!photoData);
+
           // Prefetched Details
-          let updatedCard = cards[cardIndex];
+          let updatedCard = prevCards[cardIndex];
           if (detailsData) {
-            updatedCard = mergeCardWithDetails(cards[cardIndex], detailsData);
+            console.log(`✅ [useFilteredPlaces] Merging details for ${event.cardId}`);
+            updatedCard = mergeCardWithDetails(prevCards[cardIndex], detailsData);
           }
           // Prefetched photos
           if (photoData) {
+            console.log(`✅ [useFilteredPlaces] Updating photo for ${event.cardId}`);
             updatedCard.photos[0].url = photoData.photoUrl;
           }
           updatedCards[cardIndex] = updatedCard;
 
+          console.log(`🎯 [useFilteredPlaces] Updated card ${event.cardId} with new data`);
           return updatedCards;
         });
       }
@@ -402,19 +413,21 @@ export function useFilteredPlaces(
 
   const cardsRef = useRef<RestaurantCard[]>([]);
 
-  // Track swiped cards as a Set for fast exclusion
-  const swipedCardIds = useMemo(() => {
-    const ids = new Set<string>();
+  // Track swiped cards as a Set for fast exclusion - optimize with useRef for better performance
+  const swipedCardIdsRef = useRef<Set<string>>(new Set());
+
+  // Update swiped card IDs only when swipeHistory changes
+  useEffect(() => {
+    swipedCardIdsRef.current.clear();
     for (const action of swipeHistory) {
-      if (action?.cardId) ids.add(action.cardId);
+      if (action?.cardId) swipedCardIdsRef.current.add(action.cardId);
     }
-    return ids;
   }, [swipeHistory]);
 
   const excludeSwiped = useCallback(
     (list: RestaurantCard[]): RestaurantCard[] =>
-      list.filter((c) => !swipedCardIds.has(c.id)),
-    [swipedCardIds]
+      list.filter((c) => !swipedCardIdsRef.current.has(c.id)),
+    []
   );
 
   // Trigger re-filtering when filters change from FilterProvider
@@ -473,7 +486,7 @@ export function useFilteredPlaces(
   useEffect(() => {
     if (!FEATURE_FLAGS.GOOGLE_PLACES_ENABLED && autoStart) {
       // Use mock data when Google Places is disabled
-      const cards = getRandomRestaurantCards(3);
+      const cards = getRandomRestaurantCards(40);
       console.log("Using mock data - Cards: ", cards.length);
       setBaseCards(cards);
       setCards(cards);
@@ -499,8 +512,8 @@ export function useFilteredPlaces(
     }
   }, [nearbyPlaces]);
 
-  // Process places with filtering
-  const processPlacesWithFilters = async (places: any[]) => {
+  // Process places with filtering - optimized for performance
+  const processPlacesWithFilters = useCallback(async (places: any[]) => {
     try {
       setError(null);
 
@@ -510,15 +523,13 @@ export function useFilteredPlaces(
         userLongitude: location?.longitude,
       });
 
-      let currentBaseCards: RestaurantCard[];
-
       // Merge new cards with existing baseCards, avoiding duplicates
       console.log(`🔄 Merging ${transformedCards.length} new cards with ${baseCards.length} existing cards`);
 
       const existingCardIds = new Set(baseCards.map(card => card.id));
       const newUniqueCards = transformedCards.filter(card => !existingCardIds.has(card.id));
 
-      currentBaseCards = [...baseCards, ...newUniqueCards];
+      const currentBaseCards = [...baseCards, ...newUniqueCards];
       console.log(`🔄 Merged result: ${currentBaseCards.length} total cards (${newUniqueCards.length} new)`);
 
       setBaseCards(currentBaseCards);
@@ -547,7 +558,7 @@ export function useFilteredPlaces(
     } finally {
       setIsRadiusLoading(false);
     }
-  };
+  }, [baseCards, location?.latitude, location?.longitude, excludeSwiped, hasActiveFilters, applyFiltersToCards]);
 
   // Add card view tracking effect
   useEffect(() => {
@@ -565,14 +576,20 @@ export function useFilteredPlaces(
     }
   }, [currentCard, trackCardView, isPrefetchingEnabled]);
 
-  // Apply filters manually
+  // Apply filters manually - optimized for performance
   const applyFilters = useCallback(
     async (cards: RestaurantCard[]) => {
       try {
+        // Early return if no cards to process
+        if (cards.length === 0) {
+          setCards([]);
+          setFilterResult(null);
+          return;
+        }
+
         // Always filter from the base, unfiltered list to avoid compounding filters
         console.log("🔍 Filtering from cards:", cards.length);
         console.log("🔍 hasActiveFilters:", hasActiveFilters);
-        console.log("🔍 current filters:", filters);
 
         // Check if there are active filters before applying them
         if (hasActiveFilters) {
@@ -623,7 +640,7 @@ export function useFilteredPlaces(
   //   console.log("Filtered cards: ", filterResult);
   // }, [filterResult]);
 
-  // Swipe card action with behavior tracking and prefetching
+  // Swipe card action with behavior tracking and prefetching - OPTIMIZED
   const swipeCard = useCallback(
     async (action: SwipeAction) => {
       console.log("Swiping card: ", action);
@@ -634,44 +651,59 @@ export function useFilteredPlaces(
         return;
       }
 
-      const card = cards.find((c) => c.id === action.cardId);
+      // Use ref to get current cards for better performance
+      const currentCards = cardsRef.current;
+      const cardIndex = currentCards.findIndex((c) => c.id === action.cardId);
 
       // If no card found (like when passing an ad), don't proceed
-      if (!card) {
+      if (cardIndex === -1) {
         return;
       }
 
-      // console.log("cards: ", JSON.stringify(cards));
-      // Remove the specific swiped card instead of always removing the first card
-      let remainingCards = cards.filter((c) => c.id !== action.cardId);
+      const card = currentCards[cardIndex];
 
-      setCards(remainingCards);
+      // OPTIMIZATION: Use splice for O(1) removal instead of filter O(n)
+      const remainingCards = [...currentCards];
+      remainingCards.splice(cardIndex, 1);
+
+      // Batch state updates for better performance using React 18 batching
+      React.startTransition(() => {
+        setCards(remainingCards);
+        setSwipeHistory((prev) => [...prev, action]);
+      });
 
       numSwipesRef.current++;
-      if (numSwipesRef.current > 0 && await hasPreloadedAds()) {
-        console.log("Showing Ad");
-        setShowAd(true);
-      }
 
-      // console.log("remainingCards: ", JSON.stringify(remainingCards));
-      setSwipeHistory((prev) => [...prev, action]);
+      // Defer expensive operations to prevent blocking the UI
+      setTimeout(async () => {
+        if (numSwipesRef.current > 0 && await hasPreloadedAds()) {
+          console.log("Showing Ad");
+          setShowAd(true);
+        }
 
-      // Track the swipe action for behavior analysis
-      trackSwipeAction(action);
+        // Track the swipe action for behavior analysis
+        trackSwipeAction(action);
 
-      // Trigger intelligent prefetching for remaining cards
-      if (isPrefetchingEnabled && cards.length > 1) {
-        // Create user preferences from current filters
-        const userPreferences: UserPreferences = {
-          maxDistance: 5000, // 5km default
-          preferredPriceRange: [],
-          preferredCuisines: [],
-          onlyOpenNow: false,
-          minRating: 0,
-        };
+        // Trigger intelligent prefetching for remaining cards (deferred for better performance)
+        if (isPrefetchingEnabled && remainingCards.length > 1) {
+          // Only prefetch if we have more than 3 cards to avoid over-prefetching
+          if (remainingCards.length > 3) {
+            // Create user preferences from current filters
+            const userPreferences: UserPreferences = {
+              maxDistance: 5000, // 5km default
+              preferredPriceRange: [],
+              preferredCuisines: [],
+              onlyOpenNow: false,
+              minRating: 0,
+            };
 
-        prefetchCards(remainingCards, 0, userPreferences);
-      }
+            // Defer prefetching to avoid blocking UI
+            setTimeout(() => {
+              prefetchCards(remainingCards, 0, userPreferences);
+            }, 100);
+          }
+        }
+      }, 0);
 
       if (action.action == "menu" && card) {
         const openMenu = async (swipedCard: RestaurantCard) => {
@@ -701,7 +733,7 @@ export function useFilteredPlaces(
         openMenu(card);
       }
     },
-    [cards, isPrefetchingEnabled, trackSwipeAction, prefetchCards, queryClient, showAd]
+    [isPrefetchingEnabled, trackSwipeAction, prefetchCards, queryClient, showAd]
   );
 
   const handleExpandCard = (card: RestaurantCard) => {

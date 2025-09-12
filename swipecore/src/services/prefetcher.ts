@@ -103,9 +103,10 @@ export class PrefetchingService {
       console.log("filterViableCandidates: ", JSON.stringify(viableCandidates.map(candidate => candidate.card.title), null, 2));
 
       // Optimize selection based on separate budget constraints
+      const budgetStatus = this.budgetStatus || this.getBudgetStatus();
       const { detailsCandidates, photoCandidates } = this.costOptimizer.optimizeSeparatePrefetchQueue(
         viableCandidates,
-        this.budgetStatus,
+        budgetStatus,
         userBehavior.detailViewRate
       );
 
@@ -123,7 +124,7 @@ export class PrefetchingService {
         cost: 0,
         score: {} as CardScore,
         decision: {} as PrefetchDecision,
-        metadata: { error: error.message },
+        metadata: { error: error instanceof Error ? error.message : String(error) },
       });
     }
   }
@@ -135,7 +136,13 @@ export class PrefetchingService {
     sessionContext: any,
     userPreferences?: any
   ): Array<{ card: RestaurantCard; score: CardScore; position: number }> {
-    const candidates = [];
+    // Pre-allocate array for better performance
+    const maxCandidates = Math.min(
+      cards.length - currentPosition,
+      this.config.thresholds.positionThreshold
+    );
+    const candidates = new Array(maxCandidates);
+    let candidateIndex = 0;
 
     // Only consider cards within the position threshold
     const maxPosition = Math.min(
@@ -161,9 +168,11 @@ export class PrefetchingService {
         userPreferences
       );
 
-      candidates.push({ card, score, position });
+      candidates[candidateIndex++] = { card, score, position };
     }
 
+    // Trim array to actual size
+    candidates.length = candidateIndex;
     return candidates;
   }
 
@@ -175,12 +184,13 @@ export class PrefetchingService {
     }>
   ): Array<{ card: RestaurantCard; score: CardScore; position: number }> {
     // Get dynamic thresholds based on budget status
+    const budgetStatus = this.budgetStatus || this.getBudgetStatus();
     const adjustedThresholds = this.costOptimizer.adjustThresholdsForBudget(
       {
         confidence: this.config.thresholds.minimumConfidence,
         score: this.config.thresholds.minimumScore,
       },
-      this.budgetStatus
+      budgetStatus
     );
 
     console.log(`adjustedThresholds: ${JSON.stringify(adjustedThresholds)}`);
@@ -264,7 +274,7 @@ export class PrefetchingService {
           cost: 0,
           score: candidate.score,
           decision: {} as PrefetchDecision,
-          metadata: { success: false, error: error.message, type: "photos" },
+          metadata: { success: false, error: error instanceof Error ? error.message : String(error), type: "photos" },
         });
       } finally {
         // Remove from active requests
@@ -327,7 +337,7 @@ export class PrefetchingService {
           cost: 0,
           score: candidate.score,
           decision: {} as PrefetchDecision,
-          metadata: { success: false, error: error.message, type: "details" },
+          metadata: { success: false, error: error instanceof Error ? error.message : String(error), type: "details" },
         });
       } finally {
         // Remove from active requests
@@ -341,15 +351,21 @@ export class PrefetchingService {
     queryClient: any
   ): Promise<void> {
     try {
+      console.log(`🔍 [Prefetcher] Starting to prefetch details for ${placeId}`);
       await queryClient.prefetchQuery({
         queryKey: ["places", "details", placeId],
-        queryFn: () => placesApi.getPlaceDetails(placeId),
+        queryFn: () => {
+          console.log(`🔍 [Prefetcher] Calling placesApi.getPlaceDetails for ${placeId}`);
+          return placesApi.getPlaceDetails(placeId);
+        },
         staleTime: 30 * 60 * 1000, // 30 minutes
         cacheTime: 60 * 60 * 1000, // 1 hour
       });
+      console.log(`✅ [Prefetcher] Successfully prefetched details for ${placeId}`);
     } catch (error) {
+      console.error(`❌ [Prefetcher] Failed to prefetch details for ${placeId}:`, error);
       throw new Error(
-        `Failed to prefetch details for ${placeId}: ${error.message}`
+        `Failed to prefetch details for ${placeId}: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -371,16 +387,16 @@ export class PrefetchingService {
         queryFn: () =>
           placesApi.getPhotoUrl(
             card.basicDetails.id,
-            firstPhoto.name,
-            firstPhoto.widthPx,
-            firstPhoto.heightPx
+            firstPhoto.name || "",
+            firstPhoto.widthPx || 400,
+            firstPhoto.heightPx || 400
           ),
         staleTime: 60 * 60 * 1000, // 1 hour
         cacheTime: 2 * 60 * 60 * 1000, // 2 hours
       });
     } catch (error) {
       throw new Error(
-        `Failed to prefetch photos for ${card.id}: ${error.message}`
+        `Failed to prefetch photos for ${card.id}: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -390,6 +406,7 @@ export class PrefetchingService {
   }
 
   private isPrefetched(cardId: string): boolean {
+    if (!this.queryClient) return false;
     const detailsData = this.queryClient.getQueryData([
       "places",
       "details",
@@ -473,30 +490,32 @@ export class PrefetchingService {
     const monthlySpend =
       (await this.getStoredSpend(`monthly_${thisMonth}`)) || 0;
 
-    this.budgetStatus.currentSpend.daily = dailySpend;
-    this.budgetStatus.currentSpend.monthly = monthlySpend;
-    this.budgetStatus.remainingDaily = Math.max(
-      0,
-      this.budgetStatus.dailyBudget - dailySpend
-    );
-    this.budgetStatus.remainingMonthly = Math.max(
-      0,
-      this.budgetStatus.monthlyBudget - monthlySpend
-    );
+    if (this.budgetStatus) {
+      this.budgetStatus.currentSpend.daily = dailySpend;
+      this.budgetStatus.currentSpend.monthly = monthlySpend;
+      this.budgetStatus.remainingDaily = Math.max(
+        0,
+        this.budgetStatus.dailyBudget - dailySpend
+      );
+      this.budgetStatus.remainingMonthly = Math.max(
+        0,
+        this.budgetStatus.monthlyBudget - monthlySpend
+      );
 
-    // Update status flags
-    this.budgetStatus.isLowBudget =
-      this.budgetStatus.remainingDaily < this.budgetStatus.dailyBudget * 0.25 ||
-      this.budgetStatus.remainingMonthly <
-      this.budgetStatus.monthlyBudget * 0.25;
+      // Update status flags
+      this.budgetStatus.isLowBudget =
+        this.budgetStatus.remainingDaily < this.budgetStatus.dailyBudget * 0.25 ||
+        this.budgetStatus.remainingMonthly <
+        this.budgetStatus.monthlyBudget * 0.25;
 
-    this.budgetStatus.isEmergencyMode =
-      this.budgetStatus.remainingDaily < this.budgetStatus.emergencyThreshold ||
-      this.budgetStatus.remainingMonthly < this.budgetStatus.emergencyThreshold;
+      this.budgetStatus.isEmergencyMode =
+        this.budgetStatus.remainingDaily < this.budgetStatus.emergencyThreshold ||
+        this.budgetStatus.remainingMonthly < this.budgetStatus.emergencyThreshold;
 
-    this.budgetStatus.budgetExceeded =
-      this.budgetStatus.remainingDaily <= 0 ||
-      this.budgetStatus.remainingMonthly <= 0;
+      this.budgetStatus.budgetExceeded =
+        this.budgetStatus.remainingDaily <= 0 ||
+        this.budgetStatus.remainingMonthly <= 0;
+    }
 
     // console.log("updateBudgetStatus: ", JSON.stringify(this.budgetStatus, null, 2));
   }
@@ -519,19 +538,21 @@ export class PrefetchingService {
     );
 
     // Update session spend
-    this.budgetStatus.currentSpend.session += cost;
+    if (this.budgetStatus) {
+      this.budgetStatus.currentSpend.session += cost;
 
-    // Update budget status
-    this.budgetStatus.currentSpend.daily += cost;
-    this.budgetStatus.currentSpend.monthly += cost;
-    this.budgetStatus.remainingDaily = Math.max(
-      0,
-      this.budgetStatus.dailyBudget - currentDailySpend
-    );
-    this.budgetStatus.remainingMonthly = Math.max(
-      0,
-      this.budgetStatus.monthlyBudget - currentMonthlySpend
-    );
+      // Update budget status
+      this.budgetStatus.currentSpend.daily += cost;
+      this.budgetStatus.currentSpend.monthly += cost;
+      this.budgetStatus.remainingDaily = Math.max(
+        0,
+        this.budgetStatus.dailyBudget - currentDailySpend
+      );
+      this.budgetStatus.remainingMonthly = Math.max(
+        0,
+        this.budgetStatus.monthlyBudget - currentMonthlySpend
+      );
+    }
 
     // console.log("updateBudgetSpend: ", JSON.stringify(this.budgetStatus, null, 2));
   }
@@ -549,15 +570,17 @@ export class PrefetchingService {
     await this.setStoredSpend(`monthly_details_${thisMonth}`, currentMonthlySpend + cost);
 
     // Update budget status
-    this.budgetStatus.currentSpend.details += cost;
-    this.budgetStatus.detailsBudget.remainingDaily = Math.max(
-      0,
-      this.budgetStatus.detailsBudget.daily - currentDailySpend
-    );
-    this.budgetStatus.detailsBudget.remainingMonthly = Math.max(
-      0,
-      this.budgetStatus.detailsBudget.monthly - currentMonthlySpend
-    );
+    if (this.budgetStatus) {
+      this.budgetStatus.currentSpend.details += cost;
+      this.budgetStatus.detailsBudget.remainingDaily = Math.max(
+        0,
+        this.budgetStatus.detailsBudget.daily - currentDailySpend
+      );
+      this.budgetStatus.detailsBudget.remainingMonthly = Math.max(
+        0,
+        this.budgetStatus.detailsBudget.monthly - currentMonthlySpend
+      );
+    }
 
     await this.updateBudgetSpend(cost);
   }
@@ -575,16 +598,18 @@ export class PrefetchingService {
     await this.setStoredSpend(`monthly_photos_${thisMonth}`, currentMonthlySpend + cost);
 
     // Update budget status
-    this.budgetStatus.currentSpend.photos += cost;
+    if (this.budgetStatus) {
+      this.budgetStatus.currentSpend.photos += cost;
 
-    this.budgetStatus.photoBudget.remainingDaily = Math.max(
-      0,
-      this.budgetStatus.photoBudget.daily - currentDailySpend
-    );
-    this.budgetStatus.photoBudget.remainingMonthly = Math.max(
-      0,
-      this.budgetStatus.photoBudget.monthly - currentMonthlySpend
-    );
+      this.budgetStatus.photoBudget.remainingDaily = Math.max(
+        0,
+        this.budgetStatus.photoBudget.daily - currentDailySpend
+      );
+      this.budgetStatus.photoBudget.remainingMonthly = Math.max(
+        0,
+        this.budgetStatus.photoBudget.monthly - currentMonthlySpend
+      );
+    }
 
     await this.updateBudgetSpend(cost);
   }
@@ -711,7 +736,40 @@ export class PrefetchingService {
   }
 
   getBudgetStatus(): BudgetStatus {
-    return { ...this.budgetStatus };
+    return this.budgetStatus ? { ...this.budgetStatus } : {
+      dailyBudget: 0,
+      monthlyBudget: 0,
+      remainingDaily: 0,
+      remainingMonthly: 0,
+      photoBudget: {
+        daily: 0,
+        monthly: 0,
+        remainingDaily: 0,
+        remainingMonthly: 0,
+      },
+      detailsBudget: {
+        daily: 0,
+        monthly: 0,
+        remainingDaily: 0,
+        remainingMonthly: 0,
+      },
+      currentSpend: {
+        daily: 0,
+        monthly: 0,
+        session: 0,
+        photos: 0,
+        details: 0,
+      },
+      predictedSpend: {
+        dailyProjection: 0,
+        monthlyProjection: 0,
+      },
+      minimumReserve: 0,
+      emergencyThreshold: 0,
+      isLowBudget: false,
+      isEmergencyMode: false,
+      budgetExceeded: false,
+    };
   }
 
   // New method to get detailed budget breakdown
@@ -737,22 +795,23 @@ export class PrefetchingService {
     const photoRatio = this.config.budgetLimits.photoBudgetRatio || 0.3;
     const detailsRatio = this.config.budgetLimits.detailsBudgetRatio || 0.7;
 
+    const budgetStatus = this.budgetStatus || this.getBudgetStatus();
     return {
-      total: { ...this.budgetStatus },
+      total: { ...budgetStatus },
       photos: {
-        daily: this.budgetStatus.photoBudget.daily,
-        monthly: this.budgetStatus.photoBudget.monthly,
-        remainingDaily: this.budgetStatus.photoBudget.remainingDaily,
-        remainingMonthly: this.budgetStatus.photoBudget.remainingMonthly,
-        spent: this.budgetStatus.currentSpend.photos,
+        daily: budgetStatus.photoBudget.daily,
+        monthly: budgetStatus.photoBudget.monthly,
+        remainingDaily: budgetStatus.photoBudget.remainingDaily,
+        remainingMonthly: budgetStatus.photoBudget.remainingMonthly,
+        spent: budgetStatus.currentSpend.photos,
         ratio: photoRatio,
       },
       details: {
-        daily: this.budgetStatus.detailsBudget.daily,
-        monthly: this.budgetStatus.detailsBudget.monthly,
-        remainingDaily: this.budgetStatus.detailsBudget.remainingDaily,
-        remainingMonthly: this.budgetStatus.detailsBudget.remainingMonthly,
-        spent: this.budgetStatus.currentSpend.details,
+        daily: budgetStatus.detailsBudget.daily,
+        monthly: budgetStatus.detailsBudget.monthly,
+        remainingDaily: budgetStatus.detailsBudget.remainingDaily,
+        remainingMonthly: budgetStatus.detailsBudget.remainingMonthly,
+        spent: budgetStatus.currentSpend.details,
         ratio: detailsRatio,
       },
     };
@@ -783,23 +842,25 @@ export class PrefetchingService {
     const newDetailsDaily = this.config.budgetLimits.dailyLimit * detailsBudgetRatio;
     const newDetailsMonthly = this.config.budgetLimits.monthlyLimit * detailsBudgetRatio;
 
-    // Adjust remaining budgets proportionally
-    const currentPhotoRatio = this.budgetStatus.photoBudget.remainingDaily / this.budgetStatus.photoBudget.daily;
-    const currentDetailsRatio = this.budgetStatus.detailsBudget.remainingDaily / this.budgetStatus.detailsBudget.daily;
+    if (this.budgetStatus) {
+      // Adjust remaining budgets proportionally
+      const currentPhotoRatio = this.budgetStatus.photoBudget.remainingDaily / this.budgetStatus.photoBudget.daily;
+      const currentDetailsRatio = this.budgetStatus.detailsBudget.remainingDaily / this.budgetStatus.detailsBudget.daily;
 
-    this.budgetStatus.photoBudget = {
-      daily: newPhotoDaily,
-      monthly: newPhotoMonthly,
-      remainingDaily: newPhotoDaily * currentPhotoRatio,
-      remainingMonthly: newPhotoMonthly * currentPhotoRatio,
-    };
+      this.budgetStatus.photoBudget = {
+        daily: newPhotoDaily,
+        monthly: newPhotoMonthly,
+        remainingDaily: newPhotoDaily * currentPhotoRatio,
+        remainingMonthly: newPhotoMonthly * currentPhotoRatio,
+      };
 
-    this.budgetStatus.detailsBudget = {
-      daily: newDetailsDaily,
-      monthly: newDetailsMonthly,
-      remainingDaily: newDetailsDaily * currentDetailsRatio,
-      remainingMonthly: newDetailsMonthly * currentDetailsRatio,
-    };
+      this.budgetStatus.detailsBudget = {
+        daily: newDetailsDaily,
+        monthly: newDetailsMonthly,
+        remainingDaily: newDetailsDaily * currentDetailsRatio,
+        remainingMonthly: newDetailsMonthly * currentDetailsRatio,
+      };
+    }
 
     this.log(`Budget ratios updated - Photos: ${(photoBudgetRatio * 100).toFixed(1)}%, Details: ${(detailsBudgetRatio * 100).toFixed(1)}%`);
   }

@@ -134,22 +134,29 @@ export function usePrefetcher(
 
   const requestImmediateFetch = useCallback(
     async (card: RestaurantCard, req: ImmediateFetchRequest) => {
-      console.log("requestImmediateFetch: ", card.title);
-      if (!isEnabled) return;
+      console.log("requestImmediateFetch: ", card.title, "Request type:", req);
+      if (!isEnabled) {
+        console.log("❌ [usePrefetcher] Prefetching is disabled");
+        return;
+      }
 
       try {
         if (
           req === ImmediateFetchRequest.Both ||
           req === ImmediateFetchRequest.Details
         ) {
+          console.log(`🔍 [usePrefetcher] Fetching details for ${card.id}`);
           await prefetchingService.prefetchPlaceDetails(card.id, queryClient);
+          console.log(`✅ [usePrefetcher] Details fetched for ${card.id}`);
         }
 
         const includePhotos =
           req === ImmediateFetchRequest.Both ||
           req === ImmediateFetchRequest.Photos;
         if (includePhotos) {
+          console.log(`🔍 [usePrefetcher] Fetching photos for ${card.id}`);
           await prefetchingService.prefetchPhotos(card, queryClient);
+          console.log(`✅ [usePrefetcher] Photos fetched for ${card.id}`);
         }
 
         // Update budget
@@ -162,6 +169,7 @@ export function usePrefetcher(
         );
 
         // Emit prefetch completed event
+        console.log(`🎉 [usePrefetcher] Emitting prefetch_completed event for ${card.id}`);
         prefetchingService.emitEvent({
           type: "prefetch_completed",
           cardId: card.id,
@@ -172,7 +180,7 @@ export function usePrefetcher(
           metadata: { success: true },
         });
       } catch (error) {
-        console.error("Error in prefetchCards:", error);
+        console.error("❌ [usePrefetcher] Error in requestImmediateFetch:", error);
       }
     },
     [isEnabled]
