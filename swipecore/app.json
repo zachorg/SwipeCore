@@ -46,7 +46,13 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "expo-speech-recognition",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice search.",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to access speech recognition for voice search."
+        }
+      ],
       [
         "react-native-google-mobile-ads",
         {
