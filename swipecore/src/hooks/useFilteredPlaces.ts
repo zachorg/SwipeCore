@@ -46,6 +46,7 @@ export interface UseFilteredPlacesReturn {
   isLocationLoading: boolean;
   isFilterLoading: boolean;
   isRadiusLoading: boolean;
+  isPlacesLoading: boolean;
 
   // Error handling
   error: string | null;
@@ -816,6 +817,7 @@ export function useFilteredPlaces(
     isLocationLoading,
     isFilterLoading,
     isRadiusLoading,
+    isPlacesLoading,
 
     // Error handling
     error,

@@ -74,6 +74,7 @@ export function SwipeDeck({
     isLocationLoading,
     isFilterLoading,
     isRadiusLoading,
+    isPlacesLoading,
     error,
     hasLocation,
     swipeCard,
@@ -335,11 +336,15 @@ export function SwipeDeck({
   }, [cards, handleMenuOpen]);
 
   const showLoading =
-    isLoading && (isFilterLoading || isRadiusLoading || cards.length === 0);
+    isLoading ||
+    (isPlacesLoading && cards.length === 0) ||
+    isFilterLoading ||
+    isRadiusLoading;
   const showError = Boolean(error);
   const showLocationNeeded =
     !hasLocation && !isLocationLoading && usingLiveData;
-  const showNoCards = cards.length === 0 && !isLoading && !error && !showAd;
+  const showNoCards =
+    cards.length === 0 && !isLoading && !isPlacesLoading && !error && !showAd;
 
   const UseSwipeControls = useMemo(() => {
     return (
