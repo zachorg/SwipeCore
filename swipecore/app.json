@@ -25,7 +25,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find nearby places.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice search.",
-        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to access speech recognition for voice search."
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to access speech recognition for voice search.",
+        "NSPhotoLibraryUsageDescription": "This app display photos from nearby resturants."
       }
     },
     "android": {
