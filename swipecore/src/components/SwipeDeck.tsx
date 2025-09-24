@@ -33,6 +33,7 @@ import {
 import { Platform } from "react-native";
 import AdView from "./ads/AdView";
 import { useFilterContext } from "../contexts/FilterContext";
+import { isIOS } from "../lib/utils";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -63,6 +64,8 @@ export function SwipeDeck({
   onFilterFunctionsReady,
   initialFilters = [],
 }: SwipeDeckProps) {
+  // Don't use status bar height on iOS since SwipeCard handles it internally
+  const effectiveStatusBarHeight = isIOS() ? 0 : statusBarHeight;
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
   const cardsRef = useRef<RestaurantCard[]>([]);
@@ -395,7 +398,9 @@ export function SwipeDeck({
       )}
 
       {showError && (
-        <View style={[styles.statusBar, { paddingTop: statusBarHeight }]}>
+        <View
+          style={[styles.statusBar, { paddingTop: effectiveStatusBarHeight }]}
+        >
           <Ionicons name="alert-circle" size={16} color="#EF4444" />
           <Text style={styles.statusText}>Error: {String(error)}</Text>
         </View>
@@ -483,14 +488,14 @@ export function SwipeDeck({
           <View
             style={[
               styles.stackContainer,
-              { paddingTop: statusBarHeight - 16 },
+              { paddingTop: effectiveStatusBarHeight - 16 },
             ]}
           >
             <View
               style={[
                 styles.cardsArea,
-                { marginBottom: statusBarHeight - 16 },
-                { marginHorizontal: statusBarHeight - 16 },
+                { marginBottom: effectiveStatusBarHeight - 16 },
+                { marginHorizontal: effectiveStatusBarHeight - 16 },
               ]}
             >
               {cards && cards.length > 0 && !showAd && (

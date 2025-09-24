@@ -10,14 +10,26 @@ web-build/
 expo-env.d.ts
 
 # Ignore all iOS files except icon folders
-ios/
+ios/*
+!ios/App/
+ios/App/*
+!ios/App/App/
+ios/App/App/*
+!ios/App/App/Assets.xcassets/
+ios/App/App/Assets.xcassets/*
 !ios/App/App/Assets.xcassets/AppIcon.appiconset/
-!ios/App/App/Assets.xcassets/AppIcon.appiconset/**
 
 # Ignore all Android files except icon folders
-android/
+android/*
+!android/app/
+android/app/*
+!android/app/src/
+android/app/src/*
+!android/app/src/main/
+android/app/src/main/*
+!android/app/src/main/res/
+android/app/src/main/res/*
 !android/app/src/main/res/mipmap-*/
-!android/app/src/main/res/mipmap-*/ic_launcher*.png
 
 # Native
 .kotlin/

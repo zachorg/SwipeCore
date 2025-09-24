@@ -17,6 +17,7 @@ import { useFilterContext } from "../contexts/FilterContext";
 import { FilterPanelRN } from "../components/filters/FilterPanelRN";
 import { FilterTest } from "../components/FilterTest";
 import { VoicePrompt } from "../components/VoicePrompt";
+import { isIOS } from "../lib/utils";
 
 const Index = () => {
   const { isAuthenticated, userProfile } = useAuth();
@@ -25,9 +26,9 @@ const Index = () => {
   const [showVoiceTest, setShowVoiceTest] = useState(false);
   const [showVoicePrompt, setShowVoicePrompt] = useState(false);
 
-  // Get status bar height dynamically
+  // Get status bar height dynamically (not applied on iOS)
   const getStatusBarHeight = () => {
-    return StatusBar.currentHeight || 0;
+    return isIOS() ? 0 : StatusBar.currentHeight || 0;
   };
 
   const statusBarHeight = getStatusBarHeight();
