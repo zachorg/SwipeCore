@@ -33,6 +33,7 @@ import {
 import { Platform } from "react-native";
 import AdView from "./ads/AdView";
 import { useFilterContext } from "../contexts/FilterContext";
+import { isIOS } from "../lib/utils";
 
 interface SwipeDeckProps {
   config?: Partial<SwipeConfig>;
@@ -63,6 +64,8 @@ export function SwipeDeck({
   onFilterFunctionsReady,
   initialFilters = [],
 }: SwipeDeckProps) {
+  // Don't use status bar height on iOS since SwipeCard handles it internally
+  const effectiveStatusBarHeight = isIOS() ? 0 : statusBarHeight;
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
   const cardsRef = useRef<RestaurantCard[]>([]);
@@ -335,11 +338,8 @@ export function SwipeDeck({
     return cards.length > 0 && cards[0]?.adData ? undefined : handleMenuOpen;
   }, [cards, handleMenuOpen]);
 
-  const showLoading =
-    isLoading ||
-    (isPlacesLoading && cards.length === 0) ||
-    isFilterLoading ||
-    isRadiusLoading;
+  const showLoading = isLoading || isFilterLoading || isRadiusLoading;
+  const showPlacesLoading = isPlacesLoading && cards.length === 0;
   const showError = Boolean(error);
   const showLocationNeeded =
     !hasLocation && !isLocationLoading && usingLiveData;
@@ -398,14 +398,16 @@ export function SwipeDeck({
       )}
 
       {showError && (
-        <View style={[styles.statusBar, { paddingTop: statusBarHeight }]}>
+        <View
+          style={[styles.statusBar, { paddingTop: effectiveStatusBarHeight }]}
+        >
           <Ionicons name="alert-circle" size={16} color="#EF4444" />
           <Text style={styles.statusText}>Error: {String(error)}</Text>
         </View>
       )}
 
       {/* Main Content */}
-      {showLoading && (
+      {showLoading && !showPlacesLoading && (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>
@@ -415,7 +417,7 @@ export function SwipeDeck({
               ? "Expanding search area..."
               : isFilterLoading
               ? "Applying filters..."
-              : "Finding restaurants..."}
+              : "Loading..."}
           </Text>
           <Text style={styles.loadingSubtext}>
             {usingLiveData
@@ -471,19 +473,29 @@ export function SwipeDeck({
         ) : null;
       })()}
 
-      {((cards && cards.length > 0) || showAd) && (
+      {showPlacesLoading && (
+        <View style={styles.stackContainer}>
+          <View style={styles.cardsArea}>
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {((cards && cards.length > 0) || showAd) && !showPlacesLoading && (
         <>
           <View
             style={[
               styles.stackContainer,
-              { paddingTop: statusBarHeight - 16 },
+              { paddingTop: effectiveStatusBarHeight - 16 },
             ]}
           >
             <View
               style={[
                 styles.cardsArea,
-                { marginBottom: statusBarHeight - 16 },
-                { marginHorizontal: statusBarHeight - 16 },
+                { marginBottom: effectiveStatusBarHeight - 16 },
+                { marginHorizontal: effectiveStatusBarHeight - 16 },
               ]}
             >
               {cards && cards.length > 0 && !showAd && (

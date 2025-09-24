@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "generate-icons": "node scripts/generate-app-icons.js",
+    "generate-icons-powershell": "powershell -ExecutionPolicy Bypass -File scripts/generate-app-icons.ps1"
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
@@ -51,6 +53,7 @@
     "@react-native-community/cli": "latest",
     "@types/lodash": "^4.17.20",
     "@types/react": "~18.3.12",
+    "sharp": "^0.33.5",
     "typescript": "^5.1.3"
   },
   "private": true

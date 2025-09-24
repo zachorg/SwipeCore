@@ -9,8 +9,27 @@ dist/
 web-build/
 expo-env.d.ts
 
-ios/
-android/
+# Ignore all iOS files except icon folders
+ios/*
+!ios/App/
+ios/App/*
+!ios/App/App/
+ios/App/App/*
+!ios/App/App/Assets.xcassets/
+ios/App/App/Assets.xcassets/*
+!ios/App/App/Assets.xcassets/AppIcon.appiconset/
+
+# Ignore all Android files except icon folders
+android/*
+!android/app/
+android/app/*
+!android/app/src/
+android/app/src/*
+!android/app/src/main/
+android/app/src/main/*
+!android/app/src/main/res/
+android/app/src/main/res/*
+!android/app/src/main/res/mipmap-*/
 
 # Native
 .kotlin/

@@ -30,6 +30,10 @@ import {
 import { isIOS, isAndroid } from "@/lib/utils";
 import * as nativeAdsProvider from "@/services/nativeAdsProvider";
 import { useQueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
+
+// iOS-specific static bar height
+const IOS_STATIC_BAR_HEIGHT = 44; // Standard iOS status bar height
 
 interface SwipeCardProps {
   card: RestaurantCard;
@@ -1316,7 +1320,7 @@ export const SwipeCard = React.memo(
         <View
           style={{
             position: "absolute",
-            top: 16,
+            top: isIOS() ? IOS_STATIC_BAR_HEIGHT + 16 : 16, // Apply iOS static bar height
             left: "50%",
             transform: [{ translateX: -60 }], // Center badge using fixed pixel value
             backgroundColor: "rgba(255,255,255,1)",
