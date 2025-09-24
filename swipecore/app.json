@@ -21,10 +21,11 @@
       "jsEngine": "jsc",
       "supportsTablet": true,
       "bundleIdentifier": "com.swipecore.app",
+      "buildNumber": "11",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find nearby places.",
-        "NSMicrophoneUsageDescription": "This app needs access to microphone for voice search.",
-        "NSSpeechRecognitionUsageDescription": "This app needs access to speech recognition for voice search."
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice search.",
+        "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to access speech recognition for voice search."
       }
     },
     "android": {
@@ -40,7 +41,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "RECORD_AUDIO",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -68,6 +70,11 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "95a4b7d4-9a04-48f1-934e-c80b45451b3b"
+      }
+    }
   }
 }

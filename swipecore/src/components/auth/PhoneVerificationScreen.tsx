@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
@@ -44,6 +46,11 @@ export function PhoneVerificationScreen({
         )}-${cleaned.slice(6)}`;
       }
       setPhoneNumber(formatted);
+
+      // Auto-dismiss keyboard on iOS when phone number is complete
+      if (Platform.OS === "ios" && cleaned.length === 10) {
+        Keyboard.dismiss();
+      }
     }
   };
 
@@ -160,6 +167,9 @@ export function PhoneVerificationScreen({
               onChangeText={handlePhoneNumberChange}
               keyboardType="phone-pad"
               editable={!isLoading}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+              blurOnSubmit={true}
             />
 
             {/* Consent Checkbox */}
@@ -223,12 +233,21 @@ export function PhoneVerificationScreen({
               style={styles.otpInput}
               placeholder="123456"
               value={otp}
-              onChangeText={(value) =>
-                setOtp(value.replace(/\D/g, "").slice(0, 6))
-              }
+              onChangeText={(value) => {
+                const cleanedValue = value.replace(/\D/g, "").slice(0, 6);
+                setOtp(cleanedValue);
+
+                // Auto-dismiss keyboard on iOS when OTP is complete
+                if (Platform.OS === "ios" && cleanedValue.length === 6) {
+                  Keyboard.dismiss();
+                }
+              }}
               keyboardType="number-pad"
               maxLength={6}
               editable={!isLoading}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+              blurOnSubmit={true}
             />
 
             <TouchableOpacity
