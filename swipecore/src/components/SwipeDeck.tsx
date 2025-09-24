@@ -335,11 +335,8 @@ export function SwipeDeck({
     return cards.length > 0 && cards[0]?.adData ? undefined : handleMenuOpen;
   }, [cards, handleMenuOpen]);
 
-  const showLoading =
-    isLoading ||
-    (isPlacesLoading && cards.length === 0) ||
-    isFilterLoading ||
-    isRadiusLoading;
+  const showLoading = isLoading || isFilterLoading || isRadiusLoading;
+  const showPlacesLoading = isPlacesLoading && cards.length === 0;
   const showError = Boolean(error);
   const showLocationNeeded =
     !hasLocation && !isLocationLoading && usingLiveData;
@@ -405,7 +402,7 @@ export function SwipeDeck({
       )}
 
       {/* Main Content */}
-      {showLoading && (
+      {showLoading && !showPlacesLoading && (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>
@@ -415,7 +412,7 @@ export function SwipeDeck({
               ? "Expanding search area..."
               : isFilterLoading
               ? "Applying filters..."
-              : "Finding restaurants..."}
+              : "Loading..."}
           </Text>
           <Text style={styles.loadingSubtext}>
             {usingLiveData
@@ -471,7 +468,17 @@ export function SwipeDeck({
         ) : null;
       })()}
 
-      {((cards && cards.length > 0) || showAd) && (
+      {showPlacesLoading && (
+        <View style={styles.stackContainer}>
+          <View style={styles.cardsArea}>
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {((cards && cards.length > 0) || showAd) && !showPlacesLoading && (
         <>
           <View
             style={[

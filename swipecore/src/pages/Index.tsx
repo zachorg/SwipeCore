@@ -27,13 +27,7 @@ const Index = () => {
 
   // Get status bar height dynamically
   const getStatusBarHeight = () => {
-    if (Platform.OS === "ios") {
-      // iOS: Default status bar height
-      return 44;
-    } else {
-      // Android: Use StatusBar.currentHeight
-      return StatusBar.currentHeight || 0;
-    }
+    return StatusBar.currentHeight || 0;
   };
 
   const statusBarHeight = getStatusBarHeight();
