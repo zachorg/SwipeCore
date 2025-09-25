@@ -19,10 +19,9 @@
     },
     "ios": {
       "jsEngine": "jsc",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.swipecore.app",
       "buildNumber": "11",
-      "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find nearby places.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice search.",
