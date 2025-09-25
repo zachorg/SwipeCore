@@ -1,0 +1,22 @@
+{
+  "name": "iphone-image-scaler",
+  "version": "1.0.0",
+  "description": "Script to scale images for different iPhone screen sizes",
+  "main": "scale-images-for-iphone.js",
+  "scripts": {
+    "scale": "node scale-images-for-iphone.js",
+    "install-deps": "npm install sharp"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0"
+  },
+  "keywords": [
+    "iphone",
+    "image",
+    "scaling",
+    "responsive",
+    "mobile"
+  ],
+  "author": "SwipeCore",
+  "license": "MIT"
+}
