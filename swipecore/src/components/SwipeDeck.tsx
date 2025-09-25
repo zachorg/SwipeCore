@@ -65,7 +65,7 @@ export function SwipeDeck({
   initialFilters = [],
 }: SwipeDeckProps) {
   // Don't use status bar height on iOS since SwipeCard handles it internally
-  const effectiveStatusBarHeight = isIOS() ? 0 : statusBarHeight;
+  const effectiveStatusBarHeight = isIOS() ? 44 : statusBarHeight;
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
   const cardsRef = useRef<RestaurantCard[]>([]);
