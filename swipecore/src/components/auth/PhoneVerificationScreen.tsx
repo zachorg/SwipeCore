@@ -188,7 +188,8 @@ export function PhoneVerificationScreen({
                 )}
               </TouchableOpacity>
               <Text style={styles.consentText}>
-                I consent to receive SMS messages for verification purposes
+                I consent to receive SMS messages for verification purposes. Msg
+                & data rates may apply.
               </Text>
             </View>
 
