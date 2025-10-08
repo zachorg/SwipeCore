@@ -19,6 +19,22 @@ export interface SessionData {
 /** sessions: sessionId -> { id, userId, refreshHash, expiresAt } */
 export const sessions = new Map<string, SessionData>();
 
+// Utility: Clean up expired sessions
+export function cleanupExpiredSessions() {
+    const now = new Date();
+    for (const [sessionId, session] of sessions.entries()) {
+        if (now > session.expiresAt) {
+            sessions.delete(sessionId);
+            console.log(`Cleaned up expired session: ${sessionId}`);
+        }
+    }
+}
+
+// Clean up expired sessions periodically
+setInterval(() => {
+    cleanupExpiredSessions();
+}, 60000); // Check every minute
+
 // Utility: sign tokens
 export function signAccessToken(uid: string) {
     const options: SignOptions = { expiresIn: ACCESS_TTL as any };
@@ -46,7 +62,24 @@ export function requireAuth(req: any, res: any, next: any) {
 
     try {
         const payload = verify(token, ACCESS_SECRET);
-        req.body.sid = payload.sub;
+        const sessionId = payload.sub as string;
+
+        // Check if session exists and is not expired
+        const session = sessions.get(sessionId);
+        if (!session || new Date() > session.expiresAt) {
+            // Clean up expired session if it exists
+            if (session) {
+                sessions.delete(sessionId);
+                console.log(`Removed expired session from auth middleware: ${sessionId}`);
+            }
+            return res.status(401).json({
+                success: false,
+                errorCode: "SESSION_EXPIRED",
+                message: 'Session has expired',
+            });
+        }
+
+        req.body.sid = sessionId;
         next();
     } catch {
         return res.sendStatus(401);

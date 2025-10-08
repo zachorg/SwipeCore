@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../contexts/AuthContext";
 import { verificationService } from "../../services/verificationService";
 import { otpService } from "../../services/otpService";
+import {
+  getHash,
+  startOtpListener,
+  removeListener,
+  getOtp,
+} from "react-native-otp-verify";
 
 interface PhoneVerificationScreenProps {
   onComplete: () => void;
@@ -29,7 +35,86 @@ export function PhoneVerificationScreen({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [consentChecked, setConsentChecked] = useState(false);
+  const [smsSupported, setSmsSupported] = useState(false);
   const { setIsAuthenticated } = useAuth();
+
+  // Check if SMS auto-detection is supported
+  useEffect(() => {
+    const checkSmsSupport = async () => {
+      try {
+        // For Android, we can check if we can get hash
+        if (Platform.OS === "android") {
+          await getHash();
+          setSmsSupported(true);
+          console.log("SMS auto-detection is supported on Android");
+        } else {
+          // For iOS, we assume it's supported but limited
+          setSmsSupported(true);
+          console.log("SMS auto-detection is supported on iOS");
+        }
+      } catch (error) {
+        console.log("SMS auto-detection not supported:", error);
+        setSmsSupported(false);
+      }
+    };
+
+    checkSmsSupport();
+  }, []);
+
+  // Start SMS listener when OTP is sent
+  useEffect(() => {
+    if (isOtpSent && smsSupported) {
+      startSmsListener();
+    }
+
+    return () => {
+      if (smsSupported) {
+        removeListener();
+      }
+    };
+  }, [isOtpSent, smsSupported]);
+
+  // Start SMS listener for auto-detection
+  const startSmsListener = async () => {
+    try {
+      if (Platform.OS === "android") {
+        // Get hash for Android
+        const hash = await getHash();
+        console.log("App hash:", hash);
+      }
+
+      // Start listening for SMS
+      const subscription = await startOtpListener((message: string) => {
+        console.log("SMS received:", message);
+
+        // Extract OTP from message (look for 6-digit number)
+        const otpMatch = message.match(/\b\d{6}\b/);
+        if (otpMatch) {
+          const detectedOtp = otpMatch[0];
+          console.log("Auto-detected OTP:", detectedOtp);
+          setOtp(detectedOtp);
+
+          // Auto-verify if we have the complete OTP
+          setTimeout(() => {
+            handleVerifyOtp(true);
+          }, 500); // Small delay to ensure state is updated
+        }
+      });
+
+      // Also try to get OTP immediately (for some cases)
+      getOtp()
+        .then((success: boolean) => {
+          console.log("Immediate OTP check result:", success);
+          // getOtp returns boolean, the actual OTP will come through the listener
+        })
+        .catch((error) => {
+          console.log("Immediate OTP check failed:", error);
+        });
+    } catch (error) {
+      console.error("Failed to start SMS listener:", error);
+      // Don't show error to user as manual entry is still possible
+    }
+  };
 
   // Format phone number as user types
   const handlePhoneNumberChange = (value: string) => {
@@ -84,7 +169,7 @@ export function PhoneVerificationScreen({
     }
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = async (autoVerified = false) => {
     if (!otp || otp.length !== 6) {
       setError("Please enter the 6-digit verification code");
       return;
@@ -95,7 +180,7 @@ export function PhoneVerificationScreen({
 
     try {
       const formattedPhone = `+1${phoneNumber.replace(/\D/g, "")}`;
-      console.log("Verifying OTP...");
+      console.log("Verifying OTP...", autoVerified ? "(auto-detected)" : "");
 
       const response = await otpService.verifyOtp(formattedPhone, otp);
 
@@ -113,6 +198,12 @@ export function PhoneVerificationScreen({
           });
           setIsAuthenticated(true);
           console.log("OTP verification successful");
+
+          // Show success message for auto-verification
+          if (autoVerified) {
+            Alert.alert("Success", "Code automatically detected and verified!");
+          }
+
           onComplete();
         } catch (storageError) {
           console.error("Failed to store verification:", storageError);
@@ -154,6 +245,12 @@ export function PhoneVerificationScreen({
               ? `We've sent a 6-digit code to ${phoneNumber}`
               : "Enter your phone number to receive a verification code"}
           </Text>
+          {isOtpSent && smsSupported && (
+            <View style={styles.autoDetectContainer}>
+              <Ionicons name="flash" size={16} color="#10B981" />
+              <Text style={styles.autoDetectText}>Auto-detection enabled</Text>
+            </View>
+          )}
         </View>
 
         {/* Phone Number Input */}
@@ -230,6 +327,11 @@ export function PhoneVerificationScreen({
         {isOtpSent && (
           <View style={styles.inputSection}>
             <Text style={styles.label}>Verification Code</Text>
+            {smsSupported && (
+              <Text style={styles.helperText}>
+                Code will be automatically detected from SMS
+              </Text>
+            )}
             <TextInput
               style={styles.otpInput}
               placeholder="123456"
@@ -256,7 +358,7 @@ export function PhoneVerificationScreen({
                 styles.verifyButton,
                 (!otp || otp.length !== 6) && styles.buttonDisabled,
               ]}
-              onPress={handleVerifyOtp}
+              onPress={() => handleVerifyOtp()}
               disabled={isLoading || !otp || otp.length !== 6}
             >
               {isLoading ? (
@@ -336,6 +438,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#374151",
     marginBottom: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    color: "#10B981",
+    marginBottom: 8,
+    fontStyle: "italic",
   },
   input: {
     borderWidth: 1,
@@ -430,5 +538,23 @@ const styles = StyleSheet.create({
     color: "#DC2626",
     fontSize: 14,
     textAlign: "center",
+  },
+  autoDetectContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#F0FDF4",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+  },
+  autoDetectText: {
+    color: "#10B981",
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 6,
   },
 });

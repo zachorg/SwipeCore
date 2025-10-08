@@ -5,7 +5,7 @@ import { IsEmptyRowError, supabase } from '../lib/supabase';
 import { userProfileService } from '../services/userProfileService';
 import { OtpRefreshRequest, OtpRequest, OtpResponse, OtpVerifyRequest } from '../types/otpTypes';
 import jwt from 'jsonwebtoken';
-import { REFRESH_SECRET, requireAuth, sessions, signAccessToken, signRefreshToken } from '../auth/auth';
+import { REFRESH_SECRET, requireAuth, sessions, signAccessToken, signRefreshToken, cleanupExpiredSessions } from '../auth/auth';
 import bcrypt from 'bcryptjs';
 import { config as envConfig } from "../config";
 
@@ -16,6 +16,9 @@ interface OtpStore {
 }
 
 const router = Router();
+
+// Clean up expired sessions on startup
+cleanupExpiredSessions();
 
 // In-memory storage for demo (use database in production)
 const otpStore = new Map<string, OtpStore>();
@@ -182,7 +185,7 @@ router.get(
             const response: OtpResponse = {
                 success: false,
                 errorCode: "UNAUTHORIZED",
-                message: 'Unauthorized',
+                message: 'Session not found',
             }
             return res.status(401).json(response);
         }
@@ -195,7 +198,7 @@ router.get(
     })
 );
 
-router.post("/auth/refresh", async (req, res) => {
+router.post("/auth/refresh", async (req: any, res: any) => {
     const request = req.body.request as OtpRefreshRequest;
 
     const refreshToken = request.refreshToken;
@@ -219,6 +222,7 @@ router.post("/auth/refresh", async (req, res) => {
     const { sub: userId, sid: sessionId } = payload;
     const uid = userId as string;
     const record = sessions.get(sessionId);
+
     if (!record) {
         // REUSE DETECTED (token valid signature but session not found)
         // Defensive move: revoke ALL sessions for the user
@@ -228,6 +232,20 @@ router.post("/auth/refresh", async (req, res) => {
             success: false,
             errorCode: "REFRESH_TOKEN_REUSE_DETECTED",
             message: "Refresh token reuse detected. All sessions revoked.",
+        }
+        return res.status(401).json(response);
+    }
+
+    // Check if session has expired
+    if (new Date() > record.expiresAt) {
+        // Clean up expired session
+        sessions.delete(sessionId);
+        console.log(`Removed expired session from refresh endpoint: ${sessionId}`);
+
+        const response: OtpResponse = {
+            success: false,
+            errorCode: "SESSION_EXPIRED",
+            message: "Session has expired",
         }
         return res.status(401).json(response);
     }
