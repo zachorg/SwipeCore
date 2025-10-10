@@ -139,6 +139,27 @@ export function PhoneVerificationScreen({
     }
   };
 
+  // Handle phone number deletion (backspace)
+  const handlePhoneNumberKeyPress = (event: any) => {
+    if (event.nativeEvent.key === "Backspace") {
+      const currentCleaned = phoneNumber.replace(/\D/g, "");
+      if (currentCleaned.length > 0) {
+        const newCleaned = currentCleaned.slice(0, -1);
+        let formatted = newCleaned;
+        if (newCleaned.length >= 3) {
+          formatted = `(${newCleaned.slice(0, 3)}) ${newCleaned.slice(3)}`;
+        }
+        if (newCleaned.length >= 6) {
+          formatted = `(${newCleaned.slice(0, 3)}) ${newCleaned.slice(
+            3,
+            6
+          )}-${newCleaned.slice(6)}`;
+        }
+        setPhoneNumber(formatted);
+      }
+    }
+  };
+
   const handleSendOtp = async () => {
     if (!phoneNumber || phoneNumber.replace(/\D/g, "").length !== 10) {
       setError("Please enter a valid 10-digit phone number");
@@ -262,6 +283,7 @@ export function PhoneVerificationScreen({
               placeholder="(555) 123-4567"
               value={phoneNumber}
               onChangeText={handlePhoneNumberChange}
+              onKeyPress={handlePhoneNumberKeyPress}
               keyboardType="phone-pad"
               editable={!isLoading}
               returnKeyType="done"

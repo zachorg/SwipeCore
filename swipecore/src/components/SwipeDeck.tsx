@@ -25,6 +25,7 @@ import {
   defaultSwipeConfig,
   androidOptimizedSwipeConfig,
   SwipeAction,
+  GooglePlacesApiAdvDetails,
 } from "../types/Types";
 import {
   useFilteredPlaces,
@@ -69,6 +70,7 @@ export function SwipeDeck({
   const [expandedCard, setExpandedCard] = useState<RestaurantCard | null>(null);
   const swiperRef = useRef<Swiper<RestaurantCard>>(null);
   const cardsRef = useRef<RestaurantCard[]>([]);
+  const queryClient = useQueryClient();
 
   const {
     cards,
@@ -297,26 +299,30 @@ export function SwipeDeck({
   const handleMenuOpen = useCallback(() => {
     if (cards.length === 0) return;
     const topCard = cards[0];
-    expandCard?.({ cardId: topCard.id, timestamp: Date.now() });
+    handleExpandCard({ cardId: topCard.id, timestamp: Date.now() });
+    //expandCard?.({ cardId: topCard.id, timestamp: Date.now() });
 
-    const queryClient = useQueryClient();
     const poll = () => {
       const detailsData = queryClient.getQueryData([
         "places",
         "details",
         topCard.id,
-      ]);
+      ]) as GooglePlacesApiAdvDetails;
       if (!detailsData) {
+        console.log("No details data");
         setTimeout(poll, 100);
+      } else if (detailsData.websiteUri) {
+        openUrl(detailsData.websiteUri);
       }
     };
 
     if (!topCard.website) {
+      console.log("Polling for details");
       poll();
     } else {
       openUrl(topCard.website);
     }
-  }, [cards, expandCard]);
+  }, [cards, expandCard, queryClient]);
 
   // Use FilterProvider as the single source of truth
   const filterContext = useFilterContext();
